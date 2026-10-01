@@ -1,0 +1,9 @@
+{
+  "name": "@oax/protocol",
+  "version": "0.1.0",
+  "private": true,
+  "exports": "./src/index.ts",
+  "dependencies": {
+    "zod": "4.1.12"
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "name": "@oax/cli",
+  "version": "0.1.0",
+  "private": true,
+  "dependencies": {
+    "@oax/protocol": "workspace:*",
+    "@oax/runtime": "workspace:*"
+  }
+}

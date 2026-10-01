@@ -1,0 +1,36 @@
+{
+  "name": "oax-vscode",
+  "displayName": "oAX Foundation",
+  "description": "Selection to local mock runtime foundation",
+  "version": "0.1.0",
+  "private": true,
+  "publisher": "oax-dev",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.105.0"
+  },
+  "main": "./dist/extension.cjs",
+  "activationEvents": [
+    "onCommand:oax.explainSelection"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "oax.explainSelection",
+        "title": "oAX: Explain Selection (Mock)"
+      }
+    ]
+  },
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": false
+    },
+    "virtualWorkspaces": {
+      "supported": false
+    }
+  },
+  "dependencies": {
+    "@oax/protocol": "workspace:*",
+    "@oax/runtime": "workspace:*"
+  }
+}

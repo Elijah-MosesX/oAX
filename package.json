@@ -1,0 +1,38 @@
+{
+  "name": "oax",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@11.25.0",
+  "engines": {
+    "node": "24.19.0"
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "node --import tsx --test tests/*.test.ts",
+    "test:integration": "node --import tsx --test tests/integration/*.test.ts",
+    "test:editor": "node scripts/test-editor.mjs",
+    "demo": "node dist/cli.cjs demo",
+    "schemas": "tsx scripts/schemas.ts"
+  },
+  "devDependencies": {
+    "@oax/protocol": "workspace:*",
+    "@oax/runtime": "workspace:*",
+    "@oax/context": "workspace:*",
+    "@oax/spatial": "workspace:*",
+    "@oax/permissions": "workspace:*",
+    "@oax/codex": "workspace:*",
+    "@types/node": "24.10.1",
+    "@types/vscode": "1.105.0",
+    "@vscode/test-electron": "2.5.2",
+    "esbuild": "0.25.12",
+    "eslint": "10.11.0",
+    "prettier": "3.6.2",
+    "tsx": "4.20.6",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.71.0"
+  }
+}

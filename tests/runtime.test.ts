@@ -279,3 +279,128 @@ test('engine stream termination without completion is a failure', async () => {
   );
   await runtime.stop();
 });
+
+test('relationship snapshots remain isolated by session and stale versions fail closed', async () => {
+  const { runtime, call, sessionId } = await setup();
+  try {
+    const opened = await call('session.open', {});
+    assert.ok(opened.ok);
+    const second = (opened.payload as { sessionId: string }).sessionId;
+    const query = (name: string, version: number, session: string) => {
+      const captured = observation(
+        `export function ${name}() {}\nfunction caller() { ${name}(); }`,
+        version,
+      );
+      captured.selection.end.column = captured.text.split('\n')[0]!.length;
+      return call(
+        'graph.query',
+        {
+          observation: captured,
+          relationship: 'callers',
+        },
+        session,
+      );
+    };
+    const first = await query('alpha', 3, sessionId);
+    assert.ok(first.ok);
+    assert.equal(
+      (first.payload as { node: { name: string } }).node.name,
+      'alpha',
+    );
+    const other = await query('beta', 4, second);
+    assert.ok(other.ok);
+    assert.equal(
+      (other.payload as { node: { name: string } }).node.name,
+      'beta',
+    );
+    const unchanged = await query('alpha', 3, sessionId);
+    assert.ok(unchanged.ok);
+    assert.equal(
+      (unchanged.payload as { node: { name: string } }).node.name,
+      'alpha',
+    );
+    assert.equal((await query('stale', 2, sessionId)).ok, false);
+  } finally {
+    await runtime.stop();
+  }
+});
+
+test('external text tasks reject missing or mismatched context consent before engine execution', async () => {
+  let transmissions = 0;
+  const mock = new MockAgentEngine();
+  const engine: import('@oax/runtime').AgentEngine = {
+    kind: 'external',
+    toolPolicy: 'text-only',
+    initialize: () => mock.initialize(),
+    createSession: () => mock.createSession(),
+    interrupt: (session) => mock.interrupt(session),
+    close: (session) => mock.close(session),
+    async *run(session, context, signal) {
+      transmissions++;
+      yield* mock.run(session, context, signal);
+    },
+  };
+  const events: Event[] = [];
+  const runtime = new Runtime({
+    root: fixtureRoot,
+    workspaceId: 'workspace',
+    token,
+    engine,
+    externalText: true,
+    emit: (event) => events.push(event),
+  });
+  const call = (method: string, payload: unknown, sessionId?: string) =>
+    runtime.dispatch(request('workspace', method, payload, sessionId));
+  try {
+    assert.ok((await call('initialize', { token, capabilities: [] })).ok);
+    const opened = await call('session.open', {});
+    assert.ok(opened.ok);
+    const session = (opened.payload as { sessionId: string }).sessionId;
+    for (const approvedContextHash of [undefined, 'a'.repeat(64)]) {
+      events.length = 0;
+      await call(
+        'selection.explain',
+        {
+          observation: observation(),
+          objective: 'Explain',
+          ...(approvedContextHash ? { approvedContextHash } : {}),
+        },
+        session,
+      );
+      await terminal(events, 'failed');
+      assert.equal(transmissions, 0);
+    }
+    const preview = await call(
+      'context.preview',
+      { observation: observation(), objective: 'Explain' },
+      session,
+    );
+    assert.ok(preview.ok);
+    events.length = 0;
+    await call(
+      'selection.explain',
+      {
+        observation: observation(),
+        objective: 'Explain',
+        approvedContextHash: (preview.payload as { hash: string }).hash,
+      },
+      session,
+    );
+    await terminal(events, 'completed');
+    assert.equal(transmissions, 1);
+    events.length = 0;
+    await call(
+      'selection.explain',
+      {
+        observation: observation('export const changed = 2;', 3),
+        objective: 'Explain',
+        approvedContextHash: (preview.payload as { hash: string }).hash,
+      },
+      session,
+    );
+    await terminal(events, 'failed');
+    assert.equal(transmissions, 1);
+  } finally {
+    await runtime.stop();
+  }
+});

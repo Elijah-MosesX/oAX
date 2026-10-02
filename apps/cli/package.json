@@ -3,6 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
+    "@oax/browser": "workspace:*",
+    "@oax/codex": "workspace:*",
+    "@oax/codegraph": "workspace:*",
+    "@oax/indexer": "workspace:*",
     "@oax/protocol": "workspace:*",
     "@oax/runtime": "workspace:*"
   }

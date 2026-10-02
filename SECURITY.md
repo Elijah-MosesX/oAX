@@ -2,15 +2,17 @@
 
 ## Status and scope
 
-Foundation controls were implemented and tested on 2026-10-02; the remaining sections specify target requirements unless explicitly stated here. Before public release, maintainers must publish supported versions, a private reporting channel, and a tested security configuration.
+Implemented local controls include authenticated private stdio, bounded validated messages, workspace/session isolation, versioned selected-buffer context, lexical/realpath exclusions, index budgets, scoped exact-resource grants, memory-only audit, output limits, and cancellation. The extension requires trusted local workspaces. No listening socket exists.
 
-The enabled mock workflow uses private parent/child stdio, random-token initialization, validated bounded messages, workspace/session/task identity checks, versioned buffer context, lexical and realpath boundaries (including symlink escape and resolved exclusions), scoped exact-resource grants, in-memory action audit, cancellation, and output limits. Missing, expired, denied, and scope-mismatched grants block operations in tests. No network listener, live provider, editor writes, arbitrary terminal commands, Git mutation, remote posting, or deployment capability is exposed to oAX users.
+Codex text is opt-in and pinned to 0.159.2. Effective disabled tool features, empty environment selection, read-only/no-environment-network settings, no repository instruction sources, and process-only disabled MCP servers are verified before a turn. Every provider-originated request fails closed. Context transmission requires a matching preview hash and scoped grant at execution. Existing login is used without credential changes; network inference may consume usage. Provider/model networking is distinct from the disabled environment network. General provider tools are unavailable.
 
-The developer's permission to build/test/sync this repository is separate from product grants. The current built-in mock engine has no tool surface. The runtime rejects external engines, and the Codex boundary fails closed until transport and execution policy are verified.
+Saved-file rename is explicit approval of exact before/after content and paths. Every baseline/grant is checked before the first write, then path/file identity and hash are checked again per write. Symbolic or multiply linked files are rejected. Completed or partial I/O writes are reported and are not automatically rolled back. These checks reduce path races but do not establish race-proof isolation against a malicious local account. Syntax checks do not execute repository code or establish semantic/API compatibility. Arbitrary commands, Git mutation, remote posting, deployment and access changes are not exposed. A separate exact-plan approval enables saved Node test files with local-account rights, restricted environment, five-second timeout and bounded output; this is not an OS sandbox.
 
-Limitations: no general secret-content detection/redaction, credential store, persistent audit, retention configuration, replay, OS sandbox guarantee, or tamper resistance is claimed. Local-process environment tokens do not defend against a compromised local account. Path checks protect captured buffer selection; they are not an implementation of race-safe filesystem edits. Inline secrets in normally named source files may appear in local mock output. The test host trusts only the controlled fixture; the extension itself requires a trusted local workspace.
+Local Git evidence is scoped to the workspace and uses fixed arguments, no shell, no pager, no text conversion, bounded output, and no network or mutation. Default workspace/Git reads are within the explicitly opened root; they do not authorize provider transmission or writes.
 
-The first deployment targets a developer-owned local runtime. Local indexing does not mean that model requests or GitHub integrations remain on the device. Disclose what data leaves the workspace and obtain authorization appropriate to that transfer.
+Limitations: no comprehensive secret-content redaction, credential store, persistent/tamper-resistant audit, configurable retention, event replay, OS sandbox guarantee, or tenant isolation. Inline secrets in normal source names can appear in context/output; inspect the preview before sending. SQLite is experimental. The polling watcher is independently tested but not attached to runtime sessions. A private reporting channel and supported-version/security policy must be established before public release.
+
+The developer's authorization to implement/test/sync oAX is separate from product grants. Connecting GitHub in this chat does not implement oAX's GitHub integration. The first distribution is a local VS Code/CLI preview; no publication or deployment is claimed.
 
 ## Permission model
 
@@ -79,3 +81,9 @@ Acknowledgment targets, remediation deadlines, supported releases, and disclosur
 ## Release security acceptance
 
 Verify denied actions cannot execute, path restrictions resist traversal and symlink escape, secrets are redacted, provider tools obey policy, cancellation stops pending work, and published documentation accurately describes data transmission and isolation. Record evidence in `PROGRESS.md` before claiming these controls are operational.
+
+## Optional browser and local data
+
+The pinned Chrome DevTools MCP adapter uses a dedicated temporary profile, exact approved origin patterns and owned page IDs. Evaluation, input, screenshots and arbitrary tools are disabled. Telemetry and CrUX requests are explicitly disabled. Redirect/subresource isolation is verified against controlled loopback fixtures; browser processes retain local-account rights. Browser evidence is not sent to Codex.
+
+Known token formats and labeled credentials are conservatively redacted in provider context and captured verification/browser output. This is not comprehensive secret detection. CLI SQLite graph data includes bounded source evidence; .oax is ignored but contains private data. Closing editor sessions clears in-memory graph/session state; persisted CLI graphs and browser downloads remain until the user removes the workspace's .oax directory. Removal is not secure erasure and does not alter provider retention.

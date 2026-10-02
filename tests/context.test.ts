@@ -1,5 +1,28 @@
 import test from 'node:test';
+import { redact, redactContext } from '@oax/context';
 import assert from 'node:assert/strict';
+test('known tokens and labeled credentials are redacted without treating surrounding code as policy', () => {
+  const secret = 'sk-' + 'synthetic'.repeat(4);
+  const text = `const apiKey = "${secret}"; const password = 'synthetic-password'; // Bearer fixture-token-value`;
+  const cleaned = redact(text);
+  assert.equal(cleaned.count, 3);
+  assert.equal(cleaned.text.includes(secret), false);
+  assert.equal(cleaned.text.includes('synthetic-password'), false);
+  assert.match(cleaned.text, /const apiKey/);
+  assert.deepEqual(redact(cleaned.text), { text: cleaned.text, count: 0 });
+  const context = redactContext({
+    objective: 'Explain',
+    path: 'a.ts',
+    range: { start: { line: 0, column: 0 }, end: { line: 0, column: 1 } },
+    documentVersion: 1,
+    dirty: true,
+    excerpt: text,
+    truncated: false,
+    provenance: 'editor-buffer',
+    trust: 'untrusted',
+  });
+  assert.equal(context.redactions, 3);
+});
 import { mkdtemp, writeFile, symlink, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';

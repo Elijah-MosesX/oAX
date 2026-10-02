@@ -17,6 +17,7 @@
     "apps/**/*.ts",
     "adapters/**/*.ts",
     "tests/**/*.ts",
-    "scripts/**/*.ts"
+    "scripts/**/*.ts",
+    "services/**/*.ts"
   ]
 }

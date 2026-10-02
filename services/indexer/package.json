@@ -1,0 +1,11 @@
+{
+  "name": "@oax/indexer",
+  "version": "0.1.0",
+  "private": true,
+  "exports": "./src/index.ts",
+  "dependencies": {
+    "@oax/codegraph": "workspace:*",
+    "@oax/context": "workspace:*",
+    "@oax/protocol": "workspace:*"
+  }
+}

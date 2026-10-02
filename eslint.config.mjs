@@ -6,6 +6,7 @@ export default tseslint.config(
       '**/node_modules/**',
       '.vscode-test/**',
       '.pnpm-store/**',
+      '.oax/**',
     ],
   },
   ...tseslint.configs.recommended,

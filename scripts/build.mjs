@@ -1,5 +1,14 @@
 import { build } from 'esbuild';
 await build({
+  entryPoints: ['apps/cli/src/browser.ts'],
+  outfile: 'dist/browser.cjs',
+  bundle: true,
+  platform: 'node',
+  target: 'node24',
+  format: 'cjs',
+  external: ['chrome-devtools-mcp'],
+});
+await build({
   entryPoints: ['apps/cli/src/main.ts'],
   outfile: 'dist/cli.cjs',
   bundle: true,

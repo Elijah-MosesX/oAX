@@ -8,6 +8,7 @@ export type AgentEvent =
   | { type: 'completed' };
 export interface AgentEngine {
   readonly kind: 'local-mock' | 'external';
+  readonly toolPolicy?: 'text-only';
   initialize(): Promise<void>;
   createSession(): Promise<AgentSession>;
   run(
@@ -42,7 +43,7 @@ export class MockAgentEngine implements AgentEngine {
     signal.throwIfAborted();
     yield {
       type: 'delta',
-      text: `Context: ${context.excerpt}${context.truncated ? '\n[Context truncated]' : ''}\nSemantic explanations and relationships require later integration.\n`,
+      text: `Context: ${context.excerpt}${context.truncated ? '\n[Context truncated]' : ''}\n${context.focusedSymbol ? `Resolved symbol: ${context.focusedSymbol.name}\n` : ''}Model explanations require the live provider integration. Use relationship commands for deterministic graph evidence.\n`,
     };
     yield { type: 'completed' };
   }

@@ -2075,3 +2075,9 @@ Developer review
 ```
 
 Once that loop is stable, every additional feature has a clear place in the architecture.
+
+## Browser Runtime Intelligence and Verification
+
+An optional Chrome DevTools MCP adapter extends source intelligence with authorized browser evidence. Keep its wire details and lifecycle behind a tool adapter; scope each operation to an approved development origin and dedicated profile. Browser context is untrusted, cannot change policy, and requires separate authorization from provider context transmission. Disable unnecessary tools, personal profiles, telemetry and CrUX requests; bound and redact captured evidence.
+
+The local preview implements a pinned, origin-scoped read-only CLI inspection adapter with real loopback tests. Source-map relationships, browser evidence in ContextSlice, approved browser-driven fixes and repeated application verification remain planned. This addition does not replace the core spatial/context/runtime/Codex architecture or authorize remote submissions.

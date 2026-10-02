@@ -8,6 +8,14 @@ export const CAPABILITIES = [
   'agent.mock.explain.v1',
   'agent.events.v1',
   'task.cancel.v1',
+  'spatial.observe.v1',
+  'codegraph.relationships.v1',
+  'agent.cursor.v1',
+  'context.preview.v1',
+  'git.history.v1',
+  'refactor.rename.v1',
+  'verification.node-test.v1',
+  'repository.onboard.v1',
 ] as const;
 const id = z.string().min(1).max(128);
 export const positionSchema = z.strictObject({
@@ -69,6 +77,7 @@ export const taskStates = [
   'created',
   'gathering_context',
   'planning',
+  'awaiting_approval',
   'executing',
   'verifying',
   'completed',
@@ -76,6 +85,36 @@ export const taskStates = [
   'cancelled',
 ] as const;
 export type TaskState = (typeof taskStates)[number];
+export const renamePlanSchema = z.strictObject({
+  id,
+  hash: z.string().regex(/^[a-f0-9]{64}$/),
+  expiresAt: z.number().int(),
+  state: z.literal('awaiting_approval'),
+  verification: z.string().max(1024),
+  changes: z
+    .array(
+      z.strictObject({
+        path: z.string().max(4096),
+        before: z.string().max(131072),
+        after: z.string().max(131072),
+        beforeHash: z.string().regex(/^[a-f0-9]{64}$/),
+      }),
+    )
+    .max(20),
+});
+export const checkPlanSchema = z.strictObject({
+  id,
+  hash: z.string().regex(/^[a-f0-9]{64}$/),
+  expiresAt: z.number().int(),
+  state: z.literal('awaiting_approval'),
+  path: z.string().max(4096),
+  sourceHash: z.string().regex(/^[a-f0-9]{64}$/),
+  executable: z.string().max(4096),
+  args: z.array(z.string().max(4096)).max(32),
+  cwd: z.string().max(4096),
+  timeoutMs: z.literal(5000),
+  disclosure: z.string().max(1024),
+});
 const eventBase = {
   ...envelope,
   type: z.literal('event'),
@@ -98,6 +137,20 @@ export const eventSchema = z.union([
     method: z.literal('agent.delta'),
     payload: z.strictObject({ text: z.string().max(16_384) }),
   }),
+  z.strictObject({
+    ...eventBase,
+    method: z.literal('agent.cursor.changed'),
+    payload: z.strictObject({
+      path: z.string().max(4096),
+      range: rangeSchema,
+      mode: z.enum(['investigating', 'reviewing', 'editing']),
+      documentVersion: z.number().int().min(1).optional(),
+      contentHash: z
+        .string()
+        .regex(/^[a-f0-9]{64}$/)
+        .optional(),
+    }),
+  }),
 ]);
 export const messageSchema = z.union([
   requestSchema,
@@ -110,7 +163,36 @@ export const payloadSchemas = {
     capabilities: z.array(z.string().max(128)).max(32),
   }),
   'session.open': z.strictObject({}),
+  'spatial.observe': z.strictObject({ observation: observationSchema }),
+  'history.query': z.strictObject({ observation: observationSchema }),
+  'repository.onboard': z.strictObject({ observation: observationSchema }),
+  'verification.prepare': z.strictObject({ observation: observationSchema }),
+  'verification.run': z.strictObject({
+    planId: id,
+    approvedHash: z.string().regex(/^[a-f0-9]{64}$/),
+  }),
+  'refactor.prepare': z.strictObject({
+    observation: observationSchema,
+    newName: z.string().min(1).max(128),
+  }),
+  'refactor.apply': z.strictObject({
+    planId: id,
+    approvedHash: z.string().regex(/^[a-f0-9]{64}$/),
+    observation: observationSchema,
+  }),
+  'graph.query': z.strictObject({
+    observation: observationSchema,
+    relationship: z.enum(['callers', 'imports', 'implements', 'tests']),
+  }),
   'selection.explain': z.strictObject({
+    observation: observationSchema,
+    objective: z.string().min(1).max(2048),
+    approvedContextHash: z
+      .string()
+      .regex(/^[a-f0-9]{64}$/)
+      .optional(),
+  }),
+  'context.preview': z.strictObject({
     observation: observationSchema,
     objective: z.string().min(1).max(2048),
   }),

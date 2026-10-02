@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "token": { "type": "string", "minLength": 32, "maxLength": 128 },
+    "capabilities": {
+      "maxItems": 32,
+      "type": "array",
+      "items": { "type": "string", "maxLength": 128 }
+    }
+  },
+  "required": ["token", "capabilities"],
+  "additionalProperties": false
+}

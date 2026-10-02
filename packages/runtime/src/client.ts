@@ -30,6 +30,7 @@ export class RuntimeClient {
     root: string,
     token: string,
     nodePath: string,
+    providerExecutable?: string,
   ) {
     this.child = spawn(nodePath, [runtimePath, 'serve', root, workspaceId], {
       stdio: 'pipe',
@@ -39,6 +40,7 @@ export class RuntimeClient {
         ...process.env,
         OAX_CONNECTION_TOKEN: token,
         ELECTRON_RUN_AS_NODE: '1',
+        OAX_PROVIDER_EXECUTABLE: providerExecutable ?? '',
       },
     });
     this.writer = new FrameWriter(this.child.stdin);
@@ -60,6 +62,7 @@ export class RuntimeClient {
     runtimePath: string,
     root: string,
     nodePath = process.execPath,
+    providerExecutable?: string,
   ): Promise<RuntimeClient> {
     const token = randomBytes(32).toString('hex');
     const client = new RuntimeClient(
@@ -68,6 +71,7 @@ export class RuntimeClient {
       root,
       token,
       nodePath,
+      providerExecutable,
     );
     try {
       await client.call('initialize', {
@@ -149,14 +153,40 @@ export class RuntimeClient {
     observation: Observation,
     objective = 'Explain this selection',
     signal?: AbortSignal,
+    approvedContextHash?: string,
+  ): Promise<string> {
+    return this.runTask(
+      sessionId,
+      'selection.explain',
+      {
+        observation,
+        objective,
+        ...(approvedContextHash ? { approvedContextHash } : {}),
+      },
+      signal,
+    );
+  }
+  async verify(
+    sessionId: string,
+    planId: string,
+    approvedHash: string,
+    signal?: AbortSignal,
+  ): Promise<string> {
+    return this.runTask(
+      sessionId,
+      'verification.run',
+      { planId, approvedHash },
+      signal,
+    );
+  }
+  private async runTask(
+    sessionId: string,
+    method: string,
+    payload: unknown,
+    signal?: AbortSignal,
   ): Promise<string> {
     signal?.throwIfAborted();
-    const req = request(
-      this.workspaceId,
-      'selection.explain',
-      { observation, objective },
-      sessionId,
-    );
+    const req = request(this.workspaceId, method, payload, sessionId);
     let text = '',
       taskId: string | undefined;
     let resolve!: (value: string) => void, reject!: (error: Error) => void;
@@ -193,7 +223,7 @@ export class RuntimeClient {
     const timer = setTimeout(() => {
       this.dispose();
       reject(new OaxError('TIMEOUT', 'Task timed out'));
-    }, 35_000);
+    }, 75_000);
     // Attach immediately so early task failure cannot become an unhandled rejection.
     const sent = this.send(req).then(
       () => {

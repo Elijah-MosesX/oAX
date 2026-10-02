@@ -1,63 +1,51 @@
 # Developing oAX
 
-The foundation is a local, read-only mock implementation. The actual VS Code selection loop is verified; live Codex, graph indexing, refactoring, packaging, and release are pending. See `PROGRESS.md`.
+The local preview implements spatial/code intelligence, optional restricted Codex text, saved-file rename previews, and local Git evidence. It is not a public release. The first distribution target is VS Code and CLI.
 
-## Toolchain and setup
+## Setup and checks
 
-Pinned versions: Node.js **24.19.0**, pnpm **11.25.0**, TypeScript **5.9.3**. The extension is tested with VS Code **1.105.0**. Normal checks require no provider credentials or model usage.
+Pinned: Node **24.19.0**, pnpm **11.25.0**, TypeScript **5.9.3**, VS Code acceptance host **1.105.0**, Codex **0.159.2**, local VSIX packager **@vscode/vsce 4.0.0**.
 
 ```powershell
-corepack enable
 pnpm install --frozen-lockfile --ignore-scripts
+pnpm schemas
 pnpm typecheck
 pnpm lint
 pnpm format:check
 pnpm build
 pnpm test
 pnpm test:integration
+pnpm test:editor
 pnpm demo
+pnpm package:local
 ```
 
-The lockfile pins dependency resolution. Installation scripts are unnecessary on the tested Windows platform; esbuild uses its optional platform binary. `.npmrc` requests a project-local package store. pnpm's bundled runtime may apply its own store setting. Dependencies, stores, build output, test profiles, credentials, and private local state are ignored by Git.
+Inspect scripts before running them. Normal tests are deterministic and do not call a provider. `test:editor` downloads the pinned host and launches it with argument arrays and an isolated profile. On this Windows environment pnpm checks required authorized sandbox escalation; product use does not require administrator privileges. Do not change user credentials or global Git trust settings.
 
-Inspect `package.json`, `pnpm-workspace.yaml`, and scripts before execution. In this Codex Windows session, normal sandbox pnpm commands attempted dependency relinking and failed without a TTY; authorized elevated checks succeeded. This is an environment limitation, not a required product privilege. Do not change user credentials or global Git trust settings to run checks.
+`package:local` stages only the extension manifest, README, unchanged MIT license, third-party notices, and two bundles. It verifies the file allowlist, creates a local VSIX and SHA-256 sidecar, and never publishes. Install through **Extensions: Install from VSIX...**. Reinstall a rebuilt package to update; uninstall in the extension manager. The bundled runtime needs the extension host's compatible Node runtime; the verified host is 1.105.0. SQLite remains experimental.
 
-## Run the mock workflow
+The source development workflow uses the supplied F5 launch configuration. Commands and transmission behavior are documented in the extension README. Connections persist per workspace/provider and **Reconnect Runtime** closes them. Other unsaved editors are not overlaid into the selected document's context. The watcher service is independently tested; runtime indexing currently refreshes on observation/commands rather than running a background watcher.
 
-`pnpm demo` launches the actual bundled runtime over private stdio, creates a disposable fixture/session, passes an editor-shaped selection, prints explicitly labeled mock output, and cleans up. It does not call a model or interpret code semantically.
+## Opt-in live test
 
-For VS Code development, open this checkout, run `pnpm build`, and launch **oAX extension (mock)** using the supplied F5 configuration. In the development host open a trusted local workspace, select text in an existing file, and invoke **oAX: Explain Selection (Mock)**. The **oAX (Mock)** Output channel displays the result. Unsaved buffer text and version are captured together. Each command owns its runtime and releases it afterward; overlapping commands are rejected. Cancel through the progress notification.
+This test sends only synthetic TypeScript through an existing login, may consume usage, and does not change credentials:
 
-`pnpm test:editor` downloads VS Code 1.105.0 into `.vscode-test`, then launches a development host against `tests/fixtures/workspace`. It changes the fixture buffer without saving, invokes the real extension command, checks the selected text/version/unsaved status, and reverts the buffer. Download requires network access and approximately 155 MB. The runner uses argument-array process spawning for Windows paths containing spaces and isolated test profiles. Linux CI uses Xvfb. No user VS Code profile or extension installation is modified.
+```powershell
+$env:OAX_LIVE_TEST = '1'
+$env:OAX_CODEX_EXECUTABLE = 'C:\path\to\codex.exe'
+pnpm test:live
+```
 
-## Actual commands
+It verifies provider preflight, restricted thread configuration, model response, runtime context consent, and denial without consent. It does not establish a live editor UI test or general provider tool execution. No external provider is enabled by default. Unsupported versions fail closed. Contracts were inspected using `codex app-server generate-ts --experimental --out .oax/provider-contract`; regenerate and review before changing the supported version.
 
-| Command                    | Behavior                                                                         |
-| -------------------------- | -------------------------------------------------------------------------------- |
-| `pnpm build`               | Bundle CLI/runtime, extension, and editor acceptance test                        |
-| `pnpm typecheck`           | Check all workspace source and tests without emitting                            |
-| `pnpm lint`                | ESLint TypeScript checks                                                         |
-| `pnpm format:check`        | Check source, schemas, and maintained documentation formatting                   |
-| `pnpm format`              | Format maintained files; original blueprint and AGENTS instructions are excluded |
-| `pnpm schemas`             | Regenerate versioned JSON schemas from protocol source                           |
-| `pnpm test`                | Deterministic unit tests                                                         |
-| `pnpm test:integration`    | Real child-process mock protocol/adapter tests; build first                      |
-| `pnpm test:editor`         | Actual VS Code development-host acceptance; build first                          |
-| `pnpm demo`                | Disposable CLI-to-mock-runtime demo; build first                                 |
-| `node dist/cli.cjs --help` | Supported CLI contract                                                           |
+## CLI and boundaries
 
-The CLI exposes `demo`, `serve <workspace-root> <workspace-id>`, and help. `serve` is an internal private-stdio interface requiring `OAX_CONNECTION_TOKEN`; the adapter creates this token. No HTTP endpoint exists. Unsupported commands exit 2; configuration/runtime failure exits 1. `init`, `analyze`, `explain`, `review`, and live-provider tests are planned and are not advertised as working commands.
+`node dist/cli.cjs --help` is the implemented contract: `init`, `analyze`/`onboard`, `rename`, `demo`, and internal private `serve`. Exit codes: 0 success, 1 operation failure, 2 unsupported command. Rename positions are zero-based and writes require the exact preview hash. Workspace tests are not executed by rename. Internal `serve` requires a parent-generated connection token and opens no TCP listener.
 
-## Package boundaries
+The TypeScript checker handles local relative imports without reading libraries outside indexed snapshots. Discovery skips dependencies, generated/private directories, environment files, and symbolic links, with 2,000-file, 128-KiB-file, and 8-MiB-total limits. Selected editor snapshots replace disk for context/graph queries. SQLite uses migration version 1, foreign keys, indexes, and transactions. Changes reuse unchanged ASTs/file records but rebuild semantic relationships globally for correctness; this is not a fully incremental semantic engine.
 
-Only packages needed for the foundation exist. Core runtime/context/spatial/permissions depend on the public protocol; VS Code APIs remain in `adapters/vscode`. The Codex package contains an explicitly disabled `AgentEngine` implementation. Future graph, indexer, watcher, Git/GitHub, and evaluation packages must be created alongside real workflows. Internal packages export TypeScript source and are private; this is a development checkout, not a published installation.
+Core packages do not import VS Code APIs. Provider RPC stays in `packages/codex`. The adapter consumes the client subpath without loading the graph into the editor process. `packages/git` uses fixed local read commands; `refactor` compares every baseline and grant before writing, then rechecks each write. Audit/session state is memory-only. Hosted CI, publication, recovery/security support policy, and private vulnerability reporting remain prerequisites for a supported release.
 
-Protocol semantics and limits: `docs/protocol.md`. Verified provider integration direction and next work: `docs/codex-integration.md`.
+Preserve unrelated changes and update PROGRESS after each session. Remote history is maintained through the authorized GitHub connector because this machine's pre-existing Git CLI account cannot fetch the selected private repository. Do not force-push independent local history or change credentials to work around that limitation.
 
-## Verification and contribution
-
-Tests cover validation, buffer provenance/freshness, boundaries, scoped policy, lifecycle, cancellation/timeout, ordering, framing, disconnect, and the mock/editor loop. Normal tests use deterministic mocks; no live model usage is performed. A CI definition runs checks on Windows/Linux and the editor acceptance on Linux, but a workflow file alone is not evidence that hosted CI passed.
-
-Preserve unrelated changes, inspect diffs, update `PROGRESS.md`, and record exact outcomes. The private repository is `Elijah-MosesX/oAX`, default branch `main`, MIT licensed. The selected GitHub connector confirms access; the pre-existing Git CLI identity could not fetch this repository. Connector sync must preserve the existing remote parent commit; do not force push unrelated local history. Configure the correct Git authentication before using the local checkout as a clone of remote history.
-
-Before live provider work, pin the Codex version and generated contracts, establish authentication and context-transmission consent, and verify all enabled tool permissions. Before release, verify packaging, distribution, recovery, and private vulnerability reporting.
+Selected saved Node test files can be run through the separate VS Code approval command. This invokes the host Node executable with fixed --test arguments, a restricted environment, five-second timeout and 64-KiB output limit. It does not run package scripts. Browser setup and scoped inspection are documented in docs/browser.md. All .oax state is local and ignored, including persisted graph evidence and the optional browser cache.

@@ -1,4 +1,4 @@
-name: foundation
+name: local-preview
 on: [push, pull_request]
 permissions:
   contents: read
@@ -14,13 +14,16 @@ jobs:
         with:
           node-version-file: .node-version
       - run: corepack enable
-      - run: pnpm install --frozen-lockfile
+      - run: pnpm install --frozen-lockfile --ignore-scripts
       - run: pnpm typecheck
+      - run: pnpm schemas
+      - run: git diff --exit-code -- schemas
       - run: pnpm lint
       - run: pnpm format:check
       - run: pnpm build
       - run: pnpm test
       - run: pnpm test:integration
+      - run: pnpm package:local
       - run: pnpm demo
       - if: runner.os == 'Linux'
         run: xvfb-run -a pnpm test:editor

@@ -2,17 +2,22 @@ import { downloadAndUnzipVSCode } from '@vscode/test-electron';
 import { spawn } from 'node:child_process';
 import path from 'node:path';
 const executable = await downloadAndUnzipVSCode('1.105.0');
+const packaged = process.env.OAX_PACKAGED_TEST === '1';
 // Launch without a shell so Windows workspace paths containing spaces stay intact.
 const child = spawn(
   executable,
   [
     path.resolve('tests/fixtures/workspace'),
-    `--extensionDevelopmentPath=${path.resolve('adapters/vscode')}`,
+    ...(packaged
+      ? [
+          `--extensionDevelopmentPath=${path.resolve('.vscode-test/vsix-installed/oax-dev.oax-vscode-0.1.0')}`,
+        ]
+      : [`--extensionDevelopmentPath=${path.resolve('adapters/vscode')}`]),
     `--extensionTestsPath=${path.resolve('dist/editor-tests.cjs')}`,
-    `--user-data-dir=${path.resolve('.vscode-test/profile')}`,
-    `--extensions-dir=${path.resolve('.vscode-test/extensions')}`,
+    `--user-data-dir=${path.resolve(packaged ? '.vscode-test/packaged-profile' : '.vscode-test/profile')}`,
+    `--extensions-dir=${path.resolve(packaged ? '.vscode-test/vsix-installed' : '.vscode-test/extensions')}`,
     '--disable-workspace-trust',
-    '--disable-extensions',
+    ...(packaged ? [] : ['--disable-extensions']),
     '--disable-updates',
     '--skip-welcome',
     '--skip-release-notes',

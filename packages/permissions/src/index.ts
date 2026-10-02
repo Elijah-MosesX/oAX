@@ -3,7 +3,10 @@ export type Capability =
   | 'workspace.read'
   | 'workspace.write'
   | 'terminal.execute'
-  | 'provider.context';
+  | 'provider.context'
+  | 'git.read'
+  | 'browser.read'
+  | 'browser.navigate';
 export interface Action {
   principal: string;
   workspaceId: string;

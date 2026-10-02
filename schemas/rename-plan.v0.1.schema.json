@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "id": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "hash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "expiresAt": {
+      "type": "integer",
+      "minimum": -9007199254740991,
+      "maximum": 9007199254740991
+    },
+    "state": { "type": "string", "const": "awaiting_approval" },
+    "verification": { "type": "string", "maxLength": 1024 },
+    "changes": {
+      "maxItems": 20,
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "path": { "type": "string", "maxLength": 4096 },
+          "before": { "type": "string", "maxLength": 131072 },
+          "after": { "type": "string", "maxLength": 131072 },
+          "beforeHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+        },
+        "required": ["path", "before", "after", "beforeHash"],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": ["id", "hash", "expiresAt", "state", "verification", "changes"],
+  "additionalProperties": false
+}

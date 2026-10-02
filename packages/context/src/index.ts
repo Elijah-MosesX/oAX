@@ -17,6 +17,73 @@ export interface ContextSlice {
   truncated: boolean;
   provenance: 'editor-buffer';
   trust: 'untrusted';
+  focusedSymbol?: {
+    id: string;
+    name: string;
+    path: string;
+    range: TextRange;
+    hash: string;
+  };
+  related?: {
+    path: string;
+    range: TextRange;
+    excerpt: string;
+    hash: string;
+    reason: string;
+    resolution: string;
+  }[];
+  limitations?: string[];
+  redactions?: number;
+}
+/** Conservative known-token and labeled-assignment redaction; not a complete secret detector. */
+export function redact(text: string): { text: string; count: number } {
+  let count = 0;
+  const replace = () => {
+    count++;
+    return '[REDACTED]';
+  };
+  text = text.replace(
+    /(?:sk-[A-Za-z0-9_-]{16,}|gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,})/g,
+    replace,
+  );
+  text = text.replace(
+    /(Bearer|Basic)\s+[A-Za-z0-9._~+\/-]+={0,2}/gi,
+    (_match, prefix: string) => {
+      count++;
+      return `${prefix} [REDACTED]`;
+    },
+  );
+  text = text.replace(
+    /(\b(?:api[_-]?key|password|secret|token)\b\s*[=:]\s*)(["'])([^"'\r\n]{8,})\2/gi,
+    (_match, prefix: string, quote: string, value: string) => {
+      if (value === '[REDACTED]') return _match;
+      count++;
+      return `${prefix}${quote}[REDACTED]${quote}`;
+    },
+  );
+  return { text, count };
+}
+export function redactContext(context: ContextSlice): ContextSlice {
+  let count = 0;
+  const clean = (text: string) => {
+    const result = redact(text);
+    count += result.count;
+    return result.text;
+  };
+  const result = {
+    ...context,
+    objective: clean(context.objective),
+    excerpt: clean(context.excerpt),
+    ...(context.related
+      ? {
+          related: context.related.map((item) => ({
+            ...item,
+            excerpt: clean(item.excerpt),
+          })),
+        }
+      : {}),
+  };
+  return { ...result, redactions: count };
 }
 function excluded(resource: string): boolean {
   return resource
@@ -87,12 +154,10 @@ export function validateRange(
     );
   return [start, end];
 }
-export async function buildContext(
+export async function validateObservation(
   root: string,
   observation: Observation,
-  objective: string,
-  budget = 8192,
-): Promise<ContextSlice> {
+): Promise<void> {
   const actual = await workspacePath(root, observation.path);
   let uriPath: string;
   try {
@@ -106,10 +171,19 @@ export async function buildContext(
   if (uriPath !== actual)
     throw new OaxError('PATH_DENIED', 'Document URI and path disagree');
   offset(observation.text, observation.cursor);
+  validateRange(observation.text, observation.selection);
   for (const range of observation.visibleRanges)
     validateRange(observation.text, range);
   for (const resource of observation.openFiles)
     await workspacePath(root, resource);
+}
+export async function buildContext(
+  root: string,
+  observation: Observation,
+  objective: string,
+  budget = 8192,
+): Promise<ContextSlice> {
+  await validateObservation(root, observation);
   const [start, end] = validateRange(observation.text, observation.selection);
   if (start === end)
     throw new OaxError('EMPTY_SELECTION', 'Select code before explaining');

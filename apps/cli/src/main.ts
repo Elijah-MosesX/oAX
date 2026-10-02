@@ -254,6 +254,56 @@ async function rename(args: string[]): Promise<void> {
     client.dispose();
   }
 }
+async function query(args: string[]): Promise<void> {
+  const [relationship, resource, lineText, columnText] = args;
+  const line = Number(lineText),
+    column = Number(columnText);
+  if (
+    args.length !== 4 ||
+    !resource ||
+    !['callers', 'imports', 'implements', 'tests'].includes(
+      relationship ?? '',
+    ) ||
+    !Number.isInteger(line) ||
+    line < 0 ||
+    !Number.isInteger(column) ||
+    column < 0
+  )
+    throw new OaxError(
+      'INVALID_ARGS',
+      'query <callers|imports|implements|tests> <path> <zero-based-line> <zero-based-column>',
+    );
+  const root = await realpath(process.cwd());
+  const absolute = await workspacePath(root, resource);
+  const text = await readFile(absolute, 'utf8');
+  const point = { line, column };
+  const observation: Observation = {
+    path: resource,
+    uri: pathToFileURL(absolute).href,
+    text,
+    documentVersion: 1,
+    dirty: false,
+    cursor: point,
+    selection: { start: point, end: point },
+    visibleRanges: [],
+    openFiles: [resource],
+  };
+  const client = await RuntimeClient.connect(__filename, root);
+  try {
+    const { sessionId } = (await client.call('session.open', {})) as {
+      sessionId: string;
+    };
+    const result = await client.call(
+      'graph.query',
+      { observation, relationship },
+      sessionId,
+    );
+    process.stdout.write(JSON.stringify(result, null, 2) + '\n');
+    await client.call('session.close', {}, sessionId);
+  } finally {
+    client.dispose();
+  }
+}
 async function serve(root: string, workspaceId: string): Promise<void> {
   const token = process.env.OAX_CONNECTION_TOKEN;
   delete process.env.OAX_CONNECTION_TOKEN;
@@ -335,6 +385,7 @@ const main = async () => {
   if (command === 'explain' || command === 'review' || command === 'verify')
     return inspectOrVerify(command, process.argv.slice(3));
   if (command === 'rename') return rename(process.argv.slice(3));
+  if (command === 'query') return query(process.argv.slice(3));
   if (command === 'init') {
     process.stdout.write(
       JSON.stringify(
@@ -354,7 +405,7 @@ const main = async () => {
   }
   if (!command || command === '--help' || command === 'help') {
     process.stdout.write(
-      'oAX CLI (Explain uses Codex; explicit --mock is development-only)\nUsage: node dist/cli.cjs init [workspace-root]\n       node dist/cli.cjs analyze [workspace-root]\n       node dist/cli.cjs onboard [workspace-root]\n       node dist/cli.cjs rename <path> <zero-based-line> <zero-based-column> <new-name> [--apply <preview-hash>]\n       node dist/cli.cjs explain <path> [--codex <absolute-executable>] [--approve <context-hash>]\n       node dist/cli.cjs review <path>\n       node dist/cli.cjs verify <saved-test-path> [--approve <plan-hash>]\n       node dist/cli.cjs serve <workspace-root> <workspace-id>\ninit preserves config; analyze builds a local TypeScript/JavaScript SQLite graph. Rename previews before writes and verifies syntax; workspace tests are not run.\nserve is a private stdio interface requiring OAX_CONNECTION_TOKEN; no TCP port is opened.\nExit codes: 0 success, 1 operation failed, 2 unsupported command.\n',
+      'oAX CLI (Explain uses Codex; explicit --mock is development-only)\nUsage: node dist/cli.cjs init [workspace-root]\n       node dist/cli.cjs analyze [workspace-root]\n       node dist/cli.cjs onboard [workspace-root]\n       node dist/cli.cjs query <callers|imports|implements|tests> <path> <zero-based-line> <zero-based-column>\n       node dist/cli.cjs rename <path> <zero-based-line> <zero-based-column> <new-name> [--apply <preview-hash>]\n       node dist/cli.cjs explain <path> [--codex <absolute-executable>] [--approve <context-hash>]\n       node dist/cli.cjs review <path>\n       node dist/cli.cjs verify <saved-test-path> [--approve <plan-hash>]\n       node dist/cli.cjs serve <workspace-root> <workspace-id>\ninit preserves config; analyze builds a local TypeScript/JavaScript SQLite graph. Rename previews before writes and verifies syntax; workspace tests are not run.\nserve is a private stdio interface requiring OAX_CONNECTION_TOKEN; no TCP port is opened.\nExit codes: 0 success, 1 operation failed, 2 unsupported command.\n',
     );
     return;
   }

@@ -27,12 +27,19 @@ export class Indexer {
   ): Promise<{ changed: number; files: number; symbols: number }> {
     const root = await realpath(this.root);
     const sources: SourceSnapshot[] = [];
+    const metadataFiles: SourceSnapshot[] = [];
     let bytes = 0;
+    let entriesVisited = 0;
     this.exclusions = [];
     const visit = async (directory: string) => {
       for (const entry of (
         await readdir(directory, { withFileTypes: true })
       ).sort((a, b) => a.name.localeCompare(b.name))) {
+        if (++entriesVisited > 20000)
+          throw new OaxError(
+            'INDEX_LIMIT',
+            'Index discovery entry limit (20000) exceeded',
+          );
         if (
           entry.isSymbolicLink() ||
           ignored.has(entry.name.toLowerCase()) ||
@@ -48,9 +55,21 @@ export class Indexer {
           await visit(absolute);
           continue;
         }
-        if (!entry.isFile() || !/\.(?:[cm]?tsx?|jsx?)$/i.test(entry.name))
+        const projectMetadata =
+          entry.name === 'package.json' ||
+          /^(?:ts|js)config[^/]*\.json$/.test(entry.name);
+        if (
+          !entry.isFile() ||
+          (!projectMetadata &&
+            !/\.(?:tsx?|jsx?|mts|cts|mjs|cjs)$/i.test(entry.name))
+        )
           continue;
-        if (sources.length >= 2000)
+        if (projectMetadata && metadataFiles.length >= 256)
+          throw new OaxError(
+            'INDEX_LIMIT',
+            'Project metadata limit (256 files) exceeded',
+          );
+        if (!projectMetadata && sources.length >= 2000)
           throw new OaxError('INDEX_LIMIT', 'Index file limit (2000) exceeded');
         const resource = path
           .relative(root, absolute)
@@ -63,13 +82,20 @@ export class Indexer {
           continue;
         }
         const text = await readFile(safe, 'utf8');
+        if (Buffer.byteLength(text) > 131072) {
+          this.exclusions.push(resource);
+          continue;
+        }
         bytes += Buffer.byteLength(text);
         if (bytes > 8_388_608)
           throw new OaxError(
             'INDEX_LIMIT',
             'Index byte limit (8 MiB) exceeded',
           );
-        sources.push({ path: resource, text });
+        (projectMetadata ? metadataFiles : sources).push({
+          path: resource,
+          text,
+        });
       }
     };
     await visit(root);
@@ -86,13 +112,14 @@ export class Indexer {
     }
     if (
       sources.length > 2000 ||
-      sources.reduce(
+      [...sources, ...metadataFiles].reduce(
         (total, source) => total + Buffer.byteLength(source.text),
         0,
       ) > 8_388_608
     )
       throw new OaxError('INDEX_LIMIT', 'Editor snapshots exceed index budget');
+    const result = this.graph.update(sources, metadataFiles);
     this.snapshots = new Map(sources.map((s) => [s.path, s]));
-    return this.graph.update(sources);
+    return result;
   }
 }

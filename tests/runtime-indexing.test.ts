@@ -100,6 +100,19 @@ test('runtime continuously indexes changes, renames and deletion without explici
     );
     assert.equal(deleted.symbols, 2);
     assert.equal(deleted.state, 'ready');
+    await writeFile(
+      path.join(root, 'package.json'),
+      '{"name":"fixture","exports":"./a.ts"}',
+    );
+    const configured = await wait(
+      (state) => state.generation > deleted.generation,
+    );
+    assert.equal(configured.symbols, 2);
+    assert.equal(
+      configured.files,
+      1,
+      'Metadata changes invalidate the graph without adding source-file nodes',
+    );
     assert.ok((await call('session.close', {}, session)).ok);
     assert.equal((await call('index.status', {}, session)).ok, false);
   } finally {

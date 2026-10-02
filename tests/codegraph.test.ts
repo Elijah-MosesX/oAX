@@ -1,6 +1,27 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { CodeGraph } from '@oax/codegraph';
+test('calls inside variable initializers belong to their enclosing callable, not the result variable', () => {
+  const graph = new CodeGraph();
+  try {
+    graph.update([
+      {
+        path: 'a.ts',
+        text: 'function target() {} function caller() { const value = target(); return value; } const arrow = () => { const value = target(); };',
+      },
+    ]);
+    const target = graph.nodes().find((node) => node.name === 'target')!;
+    assert.deepEqual(
+      graph
+        .related(target.id, 'callers')
+        .relationships.map((item) => item.node?.name)
+        .sort(),
+      ['arrow', 'caller'],
+    );
+  } finally {
+    graph.close();
+  }
+});
 test('exports and reexports retain alias targets and invalidate removed modules', () => {
   const graph = new CodeGraph();
   try {

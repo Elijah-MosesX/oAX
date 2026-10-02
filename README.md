@@ -16,7 +16,7 @@ pnpm test:integration
 pnpm package:local
 ```
 
-Install `dist/oax-vscode-0.1.0.vsix` through **Extensions: Install from VSIX...**. In a trusted local workspace, select code and run **oAX: Explain Selection** for a real Codex explanation, or a **Find** relationship command for deterministic evidence. Symbols, exports and caller/import/implementation evidence come from the TypeScript checker; test relationships are labeled filename heuristics. Relative local module resolution is supported; full project configuration and external dependency resolution are pending. Session indexing refreshes in the background, preserving the selected unsaved buffer. **Show Index Status** reports freshness and failures.
+Install `dist/oax-vscode-0.1.0.vsix` through **Extensions: Install from VSIX...**. In a trusted local workspace, select code and run **oAX: Explain Selection** for a real Codex explanation, or a **Find** relationship command for deterministic evidence. Symbols, exports and caller/import/implementation evidence come from the TypeScript checker; test relationships are labeled filename heuristics. Local relative modules, bounded project aliases and exact workspace package exports are supported. Full project/reference and external dependency resolution remain pending. See [codegraph scope](docs/codegraph.md). Session indexing refreshes in the background, preserving the selected unsaved buffer. **Show Index Status** reports freshness and failures.
 
 Explain requires an existing official Codex login and compatible **Codex 0.159.2** executable. Windows discovers the official desktop installation; other installations require user setting `oax.codexExecutable` with an absolute path. The command previews context and requires consent before transmission. Model usage may apply. Setup failures are reported without substituting a mock answer. Provider tools, environment access, and inherited MCP servers are disabled in the private subprocess. Normal tests require no login or model usage.
 
@@ -31,6 +31,7 @@ The status bar and a separate symbol decoration reflect observed runtime activit
 ```powershell
 node dist/cli.cjs init
 node dist/cli.cjs analyze
+node dist/cli.cjs query callers packages/context/src/index.ts 130 16
 node dist/cli.cjs rename src/example.ts 0 17 welcome
 # Inspect the JSON preview, then authorize that exact hash:
 node dist/cli.cjs rename src/example.ts 0 17 welcome --apply <preview-hash>
@@ -42,6 +43,8 @@ node dist/cli.cjs verify src/example.test.ts --approve <plan-hash>
 ```
 
 Positions are zero-based. `init` preserves valid configuration; `analyze` builds `.oax/graph.sqlite` and reports evidence and limitations. Private state is ignored by this repository's Git configuration. The bundled CLI currently runs from a built checkout; no global npm installation is advertised.
+
+`query` answers callers, importers, implementations and heuristic related tests from the current runtime graph. TS/JS includes the common ESM/CJS extensions. The real-repository acceptance suite checks oAX's own cross-package callers and `AgentEngine` implementations; see [codebase intelligence](docs/codegraph.md) for verified scope, budgets and limitations.
 
 ## Documentation
 

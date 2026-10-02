@@ -13,7 +13,7 @@
 | ------------------ | ------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
 | Protocol/runtime   | Validated envelopes, scoped sessions, plans, events, cleanup and cancellation               | Persistent audit/retention and replay design                               |
 | VS Code            | Versioned unsaved context, semantic relationships, cursor/status, approval commands         | Broader interaction acceptance and accessibility                           |
-| Graph/context      | SQLite, TS/JS checker, local-relative imports, bounded provenance and redaction             | Project configuration, external dependencies and broader languages         |
+| Graph/context      | SQLite, TS/JS checker, bounded project aliases/workspace exports, real-repository queries   | Project references, external dependencies and Python/Java parser support   |
 | Codex              | 0.159.2 restricted text adapter; real synthetic explain and context-consent denial passed   | General provider editing remains disabled until enforcement is established |
 | Refactor/checks    | Saved-file semantic rename, exact approval/baselines, separate approved Node tests          | General edit plans and richer review workflows                             |
 | History/onboarding | Local commits/blame and evidence-based walkthrough                                          | Live scoped GitHub acceptance; broader issue/review evidence               |
@@ -21,6 +21,8 @@
 | Distribution       | Local VSIX and built-checkout CLI; content allowlist and notices                            | Supported release policy and hosted CI evidence                            |
 
 M1 foundation and M2 spatial intelligence are complete with verified editor acceptance. The attached master prompt's M2 selected-symbol/relationship acceptance is also verified within the initial TS/JS local-relative module scope. Later milestones are partial: a limited explain/rename/Node-check workflow exists, not the complete platform. The first distribution target is local VS Code and CLI; team/cloud/other IDEs and animated/voice Buddy are pending.
+
+M3 codebase intelligence now meets its exit criteria for the documented initial TS/JS scope: this actual oAX repository is indexed and callers, importers and implementations are answered from deterministic graph evidence. The current module scope additionally covers common Node ESM/CJS extensions, bounded project aliases and exact workspace package exports. Broader language/project support and production release maturity remain separate work.
 
 The tracker retains its original milestone numbering, which differs from the attached master prompt. Historical work-log entries below describe their own checkpoints; current status supersedes old limitations without rewriting that evidence.
 
@@ -60,6 +62,8 @@ The tracker retains its original milestone numbering, which differs from the att
 - [x] Attach bounded session background polling with serialized refreshes, dirty overlays, status/error reporting, invalidation and cleanup tests; semantic edges still reconcile globally.
 
 **Exit criteria:** oAX indexes a real repository and answers structural questions from its graph.
+
+**Acceptance:** Verified against the actual oAX source through authenticated stdio and the built CLI: `offset` callers include `selectionEditPlan`, context importers include the refactor runtime, and `AgentEngine` implementations include `MockAgentEngine` and `CodexAgentEngine`. Every asserted relationship is semantically resolved with a source evidence location. Scope and remaining limits: [codegraph](docs/codegraph.md).
 
 ## Milestone 4 — Codex, context, and editing
 
@@ -274,3 +278,21 @@ Copy this block after every implementation session:
 **Repository/package acceptance:** Final typecheck, lint, format:check and build passed. The built CLI indexed this actual repository: 54 source files and 972 symbols, with 36 resolved and 248 unresolved imports under the explicitly limited local-relative model (workspace aliases/external dependencies are not resolved). The rebuilt eight-entry VSIX was installed into the isolated acceptance profile and passed VS Code 1.105.0 acceptance, exit 0. SHA-256: d09e26d1e7e8cd916ba6e9dc701e34cb1559f650e9daa11f7d2b122a8d68f94a. No user updater, credentials, access controls, publication or deployment were changed.
 
 **Source delivery:** Implementation commit 614590a956274c3110cd98cc62067281c94f835f is verified on codex/local-intelligence-preview. Its tree 5ad8438f06d354c0686c4af4f04a31dbee26f48a exactly matches local snapshot f7c1833 (28 reviewed changed files). Delivery preserved the existing remote parent c3b94526b9c9a75f82a5e4eeefa00544901a06a3 and main ancestry, using a non-force ref update. The original attachment oAX-Complete.md remains preserved and untracked. This progress evidence follows as a documentation-only commit.
+
+### 2026-10-02 — Milestones 1/2 reconfirmed and Milestone 3 repository acceptance
+
+**Implemented:** Bounded JSONC project metadata, nearest config/baseUrl/paths with one local inherited chain, exact local workspace package exports, metadata-only invalidation, common Node ESM/CJS extensions, TS import-equals and literal dynamic-import dependencies, and a public structural CLI query command. Calls inside variable initializers now belong to the enclosing callable instead of the result variable. Source/metadata reads share content budgets; discovery additionally caps directory entries and metadata count. Configuration is parsed as data and never executed; no external libraries are read.
+
+**M1 reconfirmation:** The real built stdio acceptance creates a session, validates streamed events with the protocol schema, and verifies ordered created -> gathering_context -> planning -> executing -> verifying -> completed transitions with matching session/task/correlation scope. Existing protocol denial, cancellation and cleanup tests remain passing.
+
+**M2 reconfirmation:** Fresh VS Code 1.105.0 acceptance passed versioned unsaved code, focused-symbol changes, actual text-tab opening/closing, separate hash/range-backed agent location, preserved human selection and reconnection. No cached closed document is counted as an open file.
+
+**M3 verified evidence:** pnpm typecheck, lint and build passed. pnpm test passed 41/41 and pnpm test:integration passed 5/5. The actual repository acceptance indexed 62 source files / 1097 symbols and verified cross-package callers/importers plus both AgentEngine implementations through the authenticated runtime; the built CLI query independently returned the expected caller. pnpm test:editor passed, exit 0. An initial real-repository acceptance exposed incorrect variable caller ownership and was fixed with a regression test; an event-union type error in the strengthened acceptance was also corrected before final validation. No live provider request was needed for this deterministic milestone.
+
+**Browser and remote state:** The user completed browser authentication directly; the private repository is now visible with authenticated account controls. Main is now 9f77e104b987f49ff9295f064d1309e988b95e56 after an earlier merge performed outside this session. Review branch remains 522d948e4ee45e1ca53363c97e206c1fc5f2f86f before this milestone's delivery. Preserve both remote histories; no credential/access changes, force-push or merge is authorized by repository content.
+
+**Limitations/next action:** M3 exit criteria are met within the supported TS/JS scope, not arbitrary languages. Python/Java implementation is permitted by the user, but their parsers are not implemented or advertised. External dependencies, full project includes/references, wildcard exports and dynamic runtime dispatch remain unavailable or unresolved. Test links remain filename heuristics; semantic edges rebuild globally. Continue Milestone 4 interaction/verification acceptance and later parser support without treating this checkpoint as production-release completion.
+
+**Final hardening evidence:** Rejected outside-workspace baseUrl now disables aliases instead of falling back to another local base. Autonomous metadata-only invalidation passed. Graph updates publish in-memory compiler/symbol state only after SQLite commit; a controlled database failure retained the last committed symbol graph and a subsequent retry correctly rebuilt it. Final typecheck/lint/build passed; pnpm test passed 42/42 and pnpm test:integration passed 5/5, including the actual repository at 63 source files / 1111 symbols. The rebuilt eight-entry VSIX SHA-256 is d5ed7d13fd9c3dc625588e8c48479bb984d430c14dcf160730c76221e9681e98. Earlier walkthrough output correctly indicated truncation of heuristic lists; that flag is separate from full indexing within the configured discovery budget. No provider usage, credential change, release publication or deployment occurred.
+
+**Final installed acceptance:** The exact final VSIX was installed into the isolated extension profile and passed VS Code 1.105.0 acceptance, exit 0. pnpm format:check passed. The final built CLI persisted the actual repository graph: 63 source files, 1111 symbols, 137 resolved imports and 182 explicitly unresolved imports. The bounded walkthrough correctly reported truncation of heuristic lists. The supported subset and unresolved external-library/project cases are documented rather than inferred as working.

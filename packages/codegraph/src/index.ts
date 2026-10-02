@@ -1,7 +1,7 @@
-import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
 import ts from 'typescript';
+import { projectResolver, type ProjectFile } from './resolution.js';
 import type { Position, TextRange } from '@oax/protocol';
 export interface SourceSnapshot {
   path: string;
@@ -48,7 +48,7 @@ export interface GraphResult {
 }
 export const digest = (text: string) =>
   createHash('sha256').update(text).digest('hex');
-const supported = /\.(?:[cm]?tsx?|jsx?)$/i;
+const supported = /\.(?:tsx?|jsx?|mts|cts|mjs|cjs)$/i;
 const fileId = (file: string) => `file:${file}`;
 const pos = (source: ts.SourceFile, offset: number): Position => {
   const point = source.getLineAndCharacterOfPosition(offset);
@@ -80,9 +80,11 @@ export class CodeGraph {
   private declarations = new Map<ts.Node, GraphNode>();
   private sources = new Map<string, ts.SourceFile>();
   private signature = '';
-  readonly limitations = [
-    'TypeScript/JavaScript local relative-module resolution only; external packages and computed calls may be unresolved.',
+  private projectSignature = '';
+  limitations = [
+    'TypeScript/JavaScript indexed local modules, bounded project aliases and workspace package exports; external packages and computed calls may be unresolved.',
     'Test relationships are filename heuristics and are never reported as semantic coverage.',
+    'Resolution uses captured workspace files only. Single local config inheritance, baseUrl/paths and exact package export entries are supported; external libraries, project references and wildcard package exports are unavailable. Static declaration targets do not prove runtime dispatch.',
   ];
   constructor(database = ':memory:') {
     this.db = new DatabaseSync(database);
@@ -98,7 +100,10 @@ export class CodeGraph {
       CREATE TABLE IF NOT EXISTS edges(id TEXT PRIMARY KEY, source TEXT NOT NULL REFERENCES nodes(id) ON DELETE CASCADE, target TEXT REFERENCES nodes(id) ON DELETE CASCADE, relationship TEXT NOT NULL, data TEXT NOT NULL);
       CREATE INDEX IF NOT EXISTS node_path ON nodes(path); CREATE INDEX IF NOT EXISTS edge_source ON edges(source,relationship); CREATE INDEX IF NOT EXISTS edge_target ON edges(target,relationship); PRAGMA user_version=1; COMMIT;`);
   }
-  update(snapshots: SourceSnapshot[]): {
+  update(
+    snapshots: SourceSnapshot[],
+    metadata: ProjectFile[] = [],
+  ): {
     changed: number;
     files: number;
     symbols: number;
@@ -106,7 +111,15 @@ export class CodeGraph {
     const files = snapshots
       .filter((s) => supported.test(s.path))
       .sort((a, b) => a.path.localeCompare(b.path));
-    const signature = files.map((s) => `${s.path}:${digest(s.text)}`).join('|');
+    const projectSignature = metadata
+      .slice()
+      .sort((a, b) => a.path.localeCompare(b.path))
+      .map((s) => `${s.path}:${digest(s.text)}`)
+      .join('|');
+    const signature =
+      files.map((s) => `${s.path}:${digest(s.text)}`).join('|') +
+      '#' +
+      projectSignature;
     if (signature === this.signature && this.program)
       return {
         changed: 0,
@@ -120,12 +133,13 @@ export class CodeGraph {
           this.sources.get(s.path)?.text !== s.text,
       ).length +
       [...this.sources.keys()].filter((p) => !files.some((s) => s.path === p))
-        .length;
+        .length +
+      Number(!!this.signature && this.projectSignature !== projectSignature);
     const previous = this.sources;
-    this.sources = new Map();
-    this.declarations = new Map();
+    const sources = new Map<string, ts.SourceFile>();
+    const declarations = new Map<ts.Node, GraphNode>();
     for (const snapshot of files)
-      this.sources.set(
+      sources.set(
         snapshot.path,
         previous.get(snapshot.path)?.text === snapshot.text
           ? previous.get(snapshot.path)!
@@ -136,36 +150,20 @@ export class CodeGraph {
               true,
             ),
       );
-    const resolve = (specifier: string, importer: string) => {
-      if (!specifier.startsWith('.')) return undefined;
-      const base = path.posix.normalize(
-        path.posix.join(path.posix.dirname(importer), specifier),
-      );
-      for (const candidate of [
-        base,
-        base.replace(/\.js$/, '.ts'),
-        base.replace(/\.jsx$/, '.tsx'),
-        ...[
-          '.ts',
-          '.tsx',
-          '.js',
-          '.jsx',
-          '/index.ts',
-          '/index.tsx',
-          '/index.js',
-        ].map((ext) => base + ext),
-      ])
-        if (this.sources.has(candidate)) return candidate;
-      return undefined;
-    };
+    const resolver = projectResolver(sources, metadata);
+    const resolve = resolver.resolve;
+    const limitations = [
+      ...this.limitations.slice(0, 3),
+      ...resolver.limitations,
+    ];
     const host: ts.CompilerHost = {
-      getSourceFile: (name) => this.sources.get(name),
+      getSourceFile: (name) => sources.get(name),
       getDefaultLibFileName: () => '',
       writeFile: () => {},
       getCurrentDirectory: () => '',
       getDirectories: () => [],
-      fileExists: (name) => this.sources.has(name),
-      readFile: (name) => this.sources.get(name)?.text,
+      fileExists: (name) => sources.has(name),
+      readFile: (name) => sources.get(name)?.text,
       getCanonicalFileName: (name) => name,
       useCaseSensitiveFileNames: () => true,
       getNewLine: () => '\n',
@@ -177,15 +175,22 @@ export class CodeGraph {
                 resolvedFileName: file,
                 extension: file.endsWith('.tsx')
                   ? ts.Extension.Tsx
-                  : file.endsWith('.ts')
-                    ? ts.Extension.Ts
-                    : ts.Extension.Js,
+                  : file.endsWith('.mts')
+                    ? ts.Extension.Mts
+                    : file.endsWith('.cts')
+                      ? ts.Extension.Cts
+                      : file.endsWith('.mjs')
+                        ? ts.Extension.Mjs
+                        : file.endsWith('.cjs')
+                          ? ts.Extension.Cjs
+                          : file.endsWith('.ts')
+                            ? ts.Extension.Ts
+                            : ts.Extension.Js,
               }
             : undefined;
         }),
     };
-    this.host = host;
-    this.program = ts.createProgram(
+    const program = ts.createProgram(
       files.map((s) => s.path),
       {
         noLib: true,
@@ -195,11 +200,11 @@ export class CodeGraph {
       },
       host,
     );
-    const checker = this.program.getTypeChecker();
+    const checker = program.getTypeChecker();
     const nodes: GraphNode[] = [],
       edges: GraphEdge[] = [];
     for (const snapshot of files) {
-      const source = this.sources.get(snapshot.path)!;
+      const source = sources.get(snapshot.path)!;
       const hash = digest(snapshot.text);
       nodes.push({
         id: fileId(snapshot.path),
@@ -226,7 +231,7 @@ export class CodeGraph {
             hash,
           };
           nodes.push(item);
-          this.declarations.set(node, item);
+          declarations.set(node, item);
         }
         ts.forEachChild(node, visit);
       };
@@ -240,10 +245,10 @@ export class CodeGraph {
       if (symbol && symbol.flags & ts.SymbolFlags.Alias)
         symbol = checker.getAliasedSymbol(symbol);
       return symbol?.declarations
-        ?.map((d) => this.declarations.get(d))
+        ?.map((d) => declarations.get(d))
         .find(Boolean);
     };
-    for (const [file, source] of this.sources) {
+    for (const [file, source] of sources) {
       const add = (
         owner: string,
         destination: string | null,
@@ -267,8 +272,12 @@ export class CodeGraph {
           evidence,
         });
       };
-      const visit = (node: ts.Node, owner = fileId(file)) => {
-        const declaration = this.declarations.get(node);
+      const visit = (
+        node: ts.Node,
+        owner = fileId(file),
+        callOwner = owner,
+      ) => {
+        const declaration = declarations.get(node);
         if (declaration) {
           add(owner, declaration.id, 'contains', 'syntactic', node);
           if (
@@ -277,6 +286,14 @@ export class CodeGraph {
           )
             add(fileId(file), declaration.id, 'exports', 'semantic', node);
           owner = declaration.id;
+          if (
+            ['function', 'method', 'class'].includes(declaration.kind) ||
+            (ts.isVariableDeclaration(node) &&
+              node.initializer &&
+              (ts.isArrowFunction(node.initializer) ||
+                ts.isFunctionExpression(node.initializer)))
+          )
+            callOwner = declaration.id;
         }
         if (ts.isExportDeclaration(node)) {
           if (
@@ -327,10 +344,40 @@ export class CodeGraph {
             node.moduleSpecifier,
           );
         }
+        if (
+          ts.isImportEqualsDeclaration(node) &&
+          ts.isExternalModuleReference(node.moduleReference) &&
+          node.moduleReference.expression &&
+          ts.isStringLiteral(node.moduleReference.expression)
+        ) {
+          const resolved = resolve(node.moduleReference.expression.text, file);
+          add(
+            fileId(file),
+            resolved ? fileId(resolved) : null,
+            'imports',
+            resolved ? 'semantic' : 'unresolved',
+            node.moduleReference.expression,
+          );
+        }
+        if (
+          ts.isCallExpression(node) &&
+          node.expression.kind === ts.SyntaxKind.ImportKeyword &&
+          node.arguments[0] &&
+          ts.isStringLiteral(node.arguments[0])
+        ) {
+          const resolved = resolve(node.arguments[0].text, file);
+          add(
+            fileId(file),
+            resolved ? fileId(resolved) : null,
+            'imports',
+            resolved ? 'semantic' : 'unresolved',
+            node.arguments[0],
+          );
+        }
         if (ts.isCallExpression(node)) {
           const resolved = target(node.expression);
           add(
-            owner,
+            callOwner,
             resolved?.id ?? null,
             'calls',
             resolved ? 'semantic' : 'unresolved',
@@ -350,12 +397,15 @@ export class CodeGraph {
               base,
             );
           }
-        ts.forEachChild(node, (child) => visit(child, owner));
+        ts.forEachChild(node, (child) => visit(child, owner, callOwner));
       };
       visit(source);
-      if (/\.(test|spec)\.[jt]sx?$/.test(file)) {
-        const implementation = file.replace(/\.(test|spec)(?=\.[jt]sx?$)/, '');
-        if (this.sources.has(implementation))
+      if (/\.(test|spec)\.(?:[cm]?[jt]s|[jt]sx)$/.test(file)) {
+        const implementation = file.replace(
+          /\.(test|spec)(?=\.(?:[cm]?[jt]s|[jt]sx)$)/,
+          '',
+        );
+        if (sources.has(implementation))
           add(
             fileId(implementation),
             fileId(file),
@@ -370,7 +420,7 @@ export class CodeGraph {
       this.db.exec('DELETE FROM edges');
       const removed = (
         this.db.prepare('SELECT path FROM files').all() as { path: string }[]
-      ).filter((row) => !this.sources.has(row.path));
+      ).filter((row) => !sources.has(row.path));
       for (const row of removed)
         this.db.prepare('DELETE FROM files WHERE path=?').run(row.path);
       for (const snapshot of files) {
@@ -404,7 +454,13 @@ export class CodeGraph {
             JSON.stringify(edge),
           );
       this.db.exec('COMMIT');
+      this.sources = sources;
+      this.declarations = declarations;
+      this.host = host;
+      this.program = program;
+      this.limitations = limitations;
       this.signature = signature;
+      this.projectSignature = projectSignature;
     } catch (error) {
       this.db.exec('ROLLBACK');
       throw error;

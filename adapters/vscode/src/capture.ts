@@ -26,3 +26,16 @@ export function capture(root: string, input: EditorSnapshot): Observation {
     openFiles: input.openFiles.map(relative),
   };
 }
+/** Compare editor state without retaining another source-text copy. */
+export function observationSignature(
+  root: string,
+  observation: Observation,
+): string {
+  const { text: _text, ...state } = observation;
+  void _text;
+  return JSON.stringify({
+    root,
+    ...state,
+    openFiles: [...state.openFiles].sort(),
+  });
+}

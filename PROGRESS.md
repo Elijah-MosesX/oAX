@@ -20,7 +20,7 @@
 | Browser            | Optional pinned MCP inspection, dedicated profile, origin/page grants; real fixtures passed | Source-map/context integration                                             |
 | Distribution       | Local VSIX and built-checkout CLI; content allowlist and notices                            | Supported release policy and hosted CI evidence                            |
 
-M1 foundation remains verified. Spatial and initial code intelligence are implemented and tested within documented TS/JS limitations. Later milestones are partial: a limited explain/rename/Node-check workflow exists, not the complete platform. The first distribution target is local VS Code and CLI; team/cloud/other IDEs and animated/voice Buddy are pending.
+M1 foundation and M2 spatial intelligence are complete with verified editor acceptance. The attached master prompt's M2 selected-symbol/relationship acceptance is also verified within the initial TS/JS local-relative module scope. Later milestones are partial: a limited explain/rename/Node-check workflow exists, not the complete platform. The first distribution target is local VS Code and CLI; team/cloud/other IDEs and animated/voice Buddy are pending.
 
 The tracker retains its original milestone numbering, which differs from the attached master prompt. Historical work-log entries below describe their own checkpoints; current status supersedes old limitations without rewriting that evidence.
 
@@ -34,7 +34,7 @@ The tracker retains its original milestone numbering, which differs from the att
 - [x] Implement the runtime process, ordered event delivery, workspace identity, and session manager.
 - [x] Implement scoped permission enforcement and in-memory action audit records for enabled operations (persistent audit remains future work).
 - [x] Define the product-neutral `AgentEngine` interface.
-- [x] Inspect current official Codex app-server documentation and implement a disabled adapter boundary; live transport remains pending.
+- [x] Inspect official Codex app-server documentation and define its adapter boundary; restricted live text was subsequently implemented and verified in a later slice.
 - [x] Create a minimal VS Code extension and authenticated private stdio runtime connection.
 - [x] Pass initial build, unit tests, integration smoke tests, and actual VS Code mock selection test.
 
@@ -48,7 +48,7 @@ The tracker retains its original milestone numbering, which differs from the att
 - [x] Implement `agent.cursor.changed` and render a separate agent cursor in VS Code.
 - [x] Test spatial state transitions and editor reconnection.
 
-**Exit criteria:** oAX reliably identifies the developer's current code and shows the agent's location separately.
+**Exit criteria:** Verified complete on VS Code 1.105.0: oAX identifies current code and shows an evidence-based agent location separately, preserving the developer selection. Open files mean actual text tabs rather than cached document models.
 
 ## Milestone 3 — Codebase intelligence
 
@@ -244,3 +244,15 @@ Copy this block after every implementation session:
 **Final GitHub-slice verification:** After echoed-token redaction and expiry cleanup, 33/33 unit tests, typecheck/lint/build, format checking, frozen installation across 15 workspaces, packaging and audit all passed. Four integration tests passed before this final redaction-only change. The final installed VSIX passed the isolated VS Code 1.105.0 development-host assertions again, including onboarding and preserved selection. Package SHA-256: 56edcb4dee26703a4378ab6eebf76ab76f4f012550229a006313217f6e97271c. Testing the installed VS Code 1.138.0 executable failed before extension activation because CodeSetup still held its update mutex after 30 seconds; read-only process inspection confirmed active setup processes. The updater was not interrupted or modified. No installed-1.138.0 or live GitHub acceptance is claimed.
 
 **Follow-up delivery verified:** CLI commit 11e07cc2a59d28e613e677df7d1fed9d71b68601 and scoped GitHub commit 27c411e1e01fe3af8793b3f4d658e5400daf78a2 are synced to codex/local-intelligence-preview. Latest implementation tree 7d1572f626feefd626a6a93adb67b51e93f03324 exactly matches local snapshot 49194e5. Remote GitHub adapter content was fetched after updating the branch. Main remains 98a2cfe074491b5f0ec5784765411ece37f5b722; no force push, merge, PR posting, publication or credential changes occurred. The only untracked workspace file is the preserved user attachment oAX-Complete.md. This delivery evidence follows as a documentation-only commit.
+
+### 2026-10-02 — Milestone 2 acceptance and observation fixes
+
+**Completed:** Rechecked M1 acceptance and completed M2 spatial verification. Observation deduplication now includes workspace identity, URI, document version, dirty/saved state, cursor, selection, visible ranges and open files. Opening/closing tabs and saving files schedule observations. Open-file capture uses actual file-backed text tabs rather than VS Code's cached document models; stale asynchronous observations cannot replace a newer active editor state. Empty/nonlocal/untrusted active views clear current spatial status. A read-only extension inspection API exposes source-free metadata and only a cursor location actually accepted for decoration after version/hash checks.
+
+**Evidence:** Actual VS Code 1.105.0 test host verifies selected unsaved text and version, observed decoration/source hash, automatic caret-to-focused-symbol changes, captured visible ranges, actual tab opening/closing, no full source in inspection metadata, stale decoration clearing after a buffer edit, semantic callers with source evidence, preserved developer selection, onboarding and reconnection. Unit suite: 34/34; integration suite: 4/4. `pnpm typecheck`, `pnpm lint`, `pnpm build`, `pnpm test`, `pnpm test:integration`, `pnpm test:editor`, and `pnpm package:local` passed. Initial editor acceptance exposed cached closed documents in openFiles; tab-based capture fixed that. A later test used an old TextEditor instance after switching tabs; the harness now uses the returned current editor. Fixtures are restored and no model requests were made in this session.
+
+**Scope:** The tracker/blueprint M2 is spatial intelligence. The attached master prompt combines spatial and initial code intelligence; its selected-symbol/relationship acceptance is also covered by the existing deterministic TS/JS SQLite graph and editor tests. Full project configuration, external dependencies, broader languages and runtime background watcher attachment remain pending. Graph changes already invalidate on refreshed queries; unchanged AST/file records are reused and semantic edges rebuild globally. No full-platform or release completion is implied.
+
+**Next milestone:** M3 codebase intelligence: attach the bounded watcher safely to session indexing, preserving unsaved overlays and serializing refreshes, then expand supported graph evidence. Keep later provider/tool and deployment work separate.
+
+**Packaged M2 acceptance:** The rebuilt eight-entry VSIX was installed into the isolated extension directory and passed the expanded VS Code 1.105.0 acceptance again (exit 0). No live-provider/GitHub/browser requests were required by this spatial-only change. The installed editor updater limitation remains separate from the verified baseline.

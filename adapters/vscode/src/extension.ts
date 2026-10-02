@@ -3,7 +3,20 @@ import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { RuntimeClient } from '@oax/runtime/client';
 import type { GraphResult, GraphNode } from '@oax/codegraph';
-import { capture } from './capture.js';
+import { capture, observationSignature } from './capture.js';
+export interface SpatialView {
+  root: string;
+  observation: Omit<import('@oax/protocol').Observation, 'text'>;
+  focused: GraphNode | null;
+}
+export interface SpatialInspection {
+  spatial?: SpatialView;
+  cursor?: {
+    path: string;
+    range: import('@oax/protocol').TextRange;
+    contentHash: string;
+  };
+}
 const connections = new Map<
   string,
   Promise<{ client: RuntimeClient; sessionId: string }>
@@ -33,21 +46,29 @@ function snapshot(editor: vscode.TextEditor) {
       cursor: point(editor.selection.active),
       selection: range(editor.selection),
       visibleRanges: editor.visibleRanges.map(range),
-      openFiles: vscode.workspace.textDocuments
+      openFiles: vscode.window.tabGroups.all
+        .flatMap((group) => group.tabs)
+        .flatMap((tab) =>
+          tab.input instanceof vscode.TabInputText ? [tab.input.uri] : [],
+        )
         .filter(
-          (d) =>
-            d.uri.scheme === 'file' &&
-            vscode.workspace.getWorkspaceFolder(d.uri)?.uri.toString() ===
+          (uri) =>
+            uri.scheme === 'file' &&
+            vscode.workspace.getWorkspaceFolder(uri)?.uri.toString() ===
               folder.uri.toString() &&
             !/(?:^|[\\/])(?:\.env[^\\/]*|\.git|\.oax|node_modules)(?:[\\/]|$)/i.test(
-              d.fileName,
+              uri.fsPath,
             ),
         )
-        .map((d) => d.fileName),
+        .map((uri) => uri.fsPath),
     }),
   };
 }
-export function activate(context: vscode.ExtensionContext): void {
+export function activate(context: vscode.ExtensionContext): {
+  inspectSpatial: () => SpatialInspection;
+} {
+  let spatial: SpatialView | undefined;
+  let agentCursor: SpatialInspection['cursor'];
   const output = vscode.window.createOutputChannel('oAX');
   const previews = new Map<string, string>();
   context.subscriptions.push(
@@ -116,6 +137,11 @@ export function activate(context: vscode.ExtensionContext): void {
                   r.end.column,
                 ),
               ]);
+              agentCursor = {
+                path: event.payload.path,
+                range: r,
+                contentHash: event.payload.contentHash,
+              };
             }
           }
         });
@@ -135,20 +161,21 @@ export function activate(context: vscode.ExtensionContext): void {
       const editor = vscode.window.activeTextEditor;
       if (
         !editor ||
-        busy ||
         !vscode.workspace.isTrusted ||
         editor.document.uri.scheme !== 'file'
-      )
+      ) {
+        spatial = undefined;
+        observed = undefined;
+        status.text = '$(search) oAX: ready';
         return;
+      }
+      if (busy) return;
       try {
         const captured = snapshot(editor);
-        const signature = JSON.stringify({
-          path: captured.observation.path,
-          version: captured.observation.documentVersion,
-          cursor: captured.observation.cursor,
-          selection: captured.observation.selection,
-          visible: captured.observation.visibleRanges,
-        });
+        const signature = observationSignature(
+          captured.root,
+          captured.observation,
+        );
         if (observed === signature) return;
         const { client, sessionId } = await connect(captured.root);
         const result = (await client.call(
@@ -156,6 +183,18 @@ export function activate(context: vscode.ExtensionContext): void {
           { observation: captured.observation },
           sessionId,
         )) as { focused: GraphNode | null };
+        const current = vscode.window.activeTextEditor;
+        if (!current || current.document.uri.scheme !== 'file') return;
+        const latest = snapshot(current);
+        if (observationSignature(latest.root, latest.observation) !== signature)
+          return;
+        const { text: _text, ...state } = captured.observation;
+        void _text;
+        spatial = {
+          root: captured.root,
+          observation: state,
+          focused: result.focused,
+        };
         observed = signature;
         status.text = `$(search) oAX: ${result.focused?.name ?? 'ready'}`;
       } catch {
@@ -170,9 +209,14 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.window.onDidChangeActiveTextEditor(observe),
     vscode.window.onDidChangeTextEditorSelection(observe),
     vscode.window.onDidChangeTextEditorVisibleRanges(observe),
+    vscode.window.tabGroups.onDidChangeTabs(observe),
+    vscode.workspace.onDidOpenTextDocument(observe),
+    vscode.workspace.onDidCloseTextDocument(observe),
+    vscode.workspace.onDidSaveTextDocument(observe),
     vscode.workspace.onDidChangeTextDocument(() => {
       for (const editor of vscode.window.visibleTextEditors)
         editor.setDecorations(decoration, []);
+      agentCursor = undefined;
       observe();
     }),
     {
@@ -662,9 +706,18 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand('oax.reconnect', async () => {
       deactivate();
       observed = undefined;
+      spatial = undefined;
+      agentCursor = undefined;
       observe();
     }),
   );
+  return {
+    inspectSpatial: () =>
+      structuredClone({
+        ...(spatial ? { spatial } : {}),
+        ...(agentCursor ? { cursor: agentCursor } : {}),
+      }),
+  };
 }
 export function deactivate(): void {
   for (const pending of connections.values())

@@ -21,7 +21,15 @@
     "schemas": "tsx scripts/schemas.ts",
     "package:local": "node scripts/package.mjs",
     "test:live": "tsx scripts/test-live-codex.ts",
-    "test:neovim": "node scripts/test-neovim.mjs"
+    "test:neovim": "node scripts/test-neovim.mjs",
+    "test:jev": "tsx scripts/test-jev.ts",
+    "test:browser-jev": "tsx scripts/test-browser.ts --jev",
+    "package:desktop": "node scripts/package-desktop.mjs",
+    "test:desktop": "node scripts/test-desktop.mjs",
+    "setup:editors": "node scripts/setup-editors.mjs",
+    "test:vim": "node scripts/test-vim.mjs",
+    "test:browser-addons": "node scripts/browser-addons.mjs --verify",
+    "package:chrome": "node scripts/package-chrome.mjs"
   },
   "devDependencies": {
     "@oax/browser": "workspace:*",

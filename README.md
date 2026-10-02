@@ -61,3 +61,16 @@ CLI explain uses real Codex and prints a bounded context preview before transmis
 Optional read-only GitHub commands trace selected-line commits to bounded PR, review, discussion, referenced-issue and check evidence using selected-repository grants and password/secret-storage handling. Live product authentication remains unverified; see [GitHub setup](docs/github.md) and [historical evidence](docs/history.md). VS Code sign-in and chat connectors do not authenticate the product runtime. **Review Last Applied Edit and Test Evidence** connects exact approved changes to real checks and invalidates results when edited files or the test change.
 
 [Additional editor adapters](docs/adapters.md), [audit storage](docs/audit.md), and [Python/Java/Go boundaries](docs/polyglot.md) document the verified preview and remaining release gates.
+
+## Local workbench and optional Jev planning
+
+The built checkout includes a local repository workbench: `node dist/workbench.cjs <workspace-root>`. It reuses the same runtime for saved-source symbol/caller/context/history inspection. A portable Windows x64 desktop package includes Node and the runtime; relocation, actual app authentication and cleanup are verified. See [desktop installation](docs/desktop.md) and [shared surfaces](docs/surfaces.md). The pinned Python Jev adapter projects authorized Chrome MCP observations locally and supports separately approved TypeSafe proposals without executing them. See [installation, checks and limitations](docs/jev.md).
+
+The [installable PWA](docs/pwa.md) includes a local runtime workbench and a publicly
+deployed [evidence viewer](https://oax-evidence-viewer-xvokez.v2.appdeploy.ai/).
+The hosted viewer inspects exported ContextSlices locally; it has no cloud agent
+or private workspace access. [Chrome launcher and Vimium](docs/browser-extensions.md)
+and the [Vim adapter](docs/vim.md) are separate interfaces over the existing boundaries.
+See the [integration and gap review](docs/integration-audit.md) for evaluated dependencies
+and open release gates. This is a verified subset of the platform, not the completed
+enterprise product or a signed Marketplace release.

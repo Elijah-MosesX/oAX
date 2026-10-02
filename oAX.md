@@ -2085,3 +2085,7 @@ The local preview implements a pinned, origin-scoped read-only CLI inspection ad
 ## Verified implementation checkpoint — 2026-10-02
 
 The local preview now includes the supported TS/JS vertical slice, Buddy, durable source-free authorization journals and a Neovim adapter using the same runtime/protocol. JetBrains Java source compiles against its SDK, while packaging/live IDE acceptance remains separate. Python/Java/Go semantic analysis and voice are planned implementation work, not advertised capabilities. See [PROGRESS](PROGRESS.md), [language boundaries](docs/polyglot.md) and [audit](docs/audit.md) for evidence and remaining release gates. The blueprint above remains the intended full product scope.
+
+## Browser planner and shared-surface checkpoint (2026-10-02)
+
+The optional Jev integration uses a pinned Python planning worker behind the existing permissions boundary, with verified local Chrome MCP observation projection and separate exact-context authorization for TypeSafe proposals. It does not enable upstream unrestricted browser execution. A local web workbench and dedicated app-window launcher reuse the existing runtime/protocol/graph. Verified versus pending capabilities, installation and team deployment boundaries are recorded in docs/jev.md, docs/surfaces.md and PROGRESS.md. The five-interface architecture remains the intended platform; the GitHub App and enterprise hosted surfaces are not yet implemented.

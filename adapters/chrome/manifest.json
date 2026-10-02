@@ -1,0 +1,7 @@
+{
+  "manifest_version": 3,
+  "name": "oAX Workbench Launcher",
+  "version": "0.1.0",
+  "description": "Open an explicitly selected local oAX workbench. No browsing or repository access.",
+  "action": { "default_popup": "popup.html", "default_title": "Connect to oAX" }
+}

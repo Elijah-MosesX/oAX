@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
-import { z } from 'zod';
-export { z };
+import { z, positionSchema, rangeSchema } from './browser.js';
+export { z, positionSchema, rangeSchema } from './browser.js';
 export const VERSION = '0.1' as const;
 export const MAX_FRAME_BYTES = 262_144;
 export const CAPABILITIES = [
@@ -41,14 +41,6 @@ export const editorBootstrapSchema = z.strictObject({
     .min(1)
     .max(EDITOR_READ_METHODS.length),
   engine: z.literal('mock'),
-});
-export const positionSchema = z.strictObject({
-  line: z.number().int().min(0),
-  column: z.number().int().min(0),
-});
-export const rangeSchema = z.strictObject({
-  start: positionSchema,
-  end: positionSchema,
 });
 export const observationSchema = z.strictObject({
   path: z.string().min(1).max(4096),

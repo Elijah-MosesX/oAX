@@ -1,0 +1,66 @@
+[
+  {
+    "name": "Inspect a bounded context export and clear it",
+    "sanity": true,
+    "viewport": "desktop",
+    "covers": [
+      "ContextSlice import",
+      "source evidence rendering",
+      "provenance and freshness limitations",
+      "clear evidence"
+    ],
+    "description": "A valid exported ContextSlice renders source and limitations, and clearing removes all imported content.",
+    "steps": [
+      "Paste this JSON into the evidence field: {\"format\":\"oax-evidence.v1\",\"method\":\"context.preview\",\"capturedAt\":\"2026-10-02T00:00:00.000Z\",\"result\":{\"objective\":\"Explain sum\",\"path\":\"src/sum.ts\",\"range\":{\"start\":{\"line\":0,\"column\":0},\"end\":{\"line\":0,\"column\":8}},\"documentVersion\":1,\"dirty\":false,\"excerpt\":\"export const sum = 1 + 2;\",\"truncated\":false,\"provenance\":\"editor-buffer\",\"trust\":\"untrusted\",\"related\":[],\"limitations\":[\"Direct callers only\"]}}",
+      "Click Inspect evidence and verify src/sum.ts, the source excerpt and Direct callers only are displayed",
+      "Click Clear evidence"
+    ],
+    "expected": "The excerpt was displayed as text; after clearing, source details are hidden, the input is empty and Evidence cleared is shown."
+  },
+  {
+    "name": "Reject invalid evidence on mobile",
+    "viewport": "mobile",
+    "covers": [
+      "schema rejection",
+      "mobile import controls",
+      "error presentation"
+    ],
+    "description": "Invalid content cannot become a ContextSlice and produces an actionable visible message.",
+    "steps": [
+      "Enter {\"permissions\":[\"write\"]} in the evidence field",
+      "Click Inspect evidence"
+    ],
+    "expected": "Invalid evidence is visible, no source details are shown, and the page remains usable without horizontal page scrolling."
+  },
+  {
+    "name": "Do not persist imported evidence after reload",
+    "viewport": "desktop",
+    "covers": [
+      "memory-only evidence",
+      "reload clearing",
+      "public viewer runtime boundary"
+    ],
+    "description": "Sensitive imported text is not restored by local storage or the offline shell.",
+    "steps": [
+      "Enter PRIVATE-TEST-CONTENT in the evidence field",
+      "Reload the page"
+    ],
+    "expected": "The input is empty and no PRIVATE-TEST-CONTENT is displayed. The page explains that the hosted viewer cannot connect to the computer's runtime."
+  },
+  {
+    "name": "Installable public shell metadata",
+    "viewport": "desktop",
+    "covers": [
+      "PWA manifest",
+      "service-worker registration",
+      "offline public shell"
+    ],
+    "description": "The application exposes standalone installation metadata and a shell service worker without caching imported content.",
+    "steps": [
+      "Inspect the linked web app manifest and its icon resource",
+      "Verify a same-origin service worker is registered after loading",
+      "If supported, switch offline and reload the page"
+    ],
+    "expected": "The manifest declares oAX Evidence Viewer, standalone display and a valid icon; the worker exists. When offline simulation is supported, the public shell loads without imported source."
+  }
+]

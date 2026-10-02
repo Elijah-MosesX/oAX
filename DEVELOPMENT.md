@@ -73,3 +73,22 @@ Milestone 2 editor acceptance also checks automatic focused-symbol changes after
 Selection refactoring uses the text-only provider to propose strict JSON, followed by runtime refactor.propose and refactor.apply. Model output cannot choose paths or commands. A saved captured range determines the replacement; all existing execution-boundary path, grant and baseline checks apply. No syntax or behavior success is inferred from a proposal. Unit acceptance covers extra-field injection, incorrect hashes, changed baselines, Unicode/CRLF preservation and replay denial. The opt-in live test additionally generates a real synthetic fix, applies its exact approved plan, and runs a separately approved Node test. Installed VS Code 1.105.0 live acceptance verifies production approval dialogs, actual model edits, separate approved Node checks and current diff review.
 
 Language implementation and semantic indexing are distinct: see [Python/Java/Go boundaries](docs/polyglot.md). The first vertical slice and durable permission records are described in [audit](docs/audit.md) and PROGRESS. Use the pinned pnpm 11.25.0; if the desktop fallback resolves another runtime, corepack with a workspace-local COREPACK_HOME can select the packageManager version without changing global configuration.
+
+## Local workbench and Jev
+
+After the normal build, run node dist/workbench.cjs with a trusted workspace root; add --desktop for a dedicated Chrome app window after browser setup. Use Python 3.12 to run scripts/setup-jev.py, then pnpm test:jev and pnpm test:browser-jev. No global installation or live model request is part of setup. Details, exact commands and disclosures: docs/surfaces.md and docs/jev.md. TypeSafe credentials are separate from Codex and remain process-local.
+
+## Desktop, PWA and additional local tools
+
+`pnpm package:desktop` creates an allowlisted Windows x64 portable ZIP using the
+verified official Node binary. `pnpm test:desktop` checks the extracted application
+and actual dedicated Chrome authentication/cleanup; its explicit sandbox setup
+requires consent. The public PWA bundle is isolated from browser global properties
+and built under `dist/evidence`, with deterministic 192/512 PNG icons.
+
+`pnpm setup:editors` installs pinned portable Vim/Vimium in `.tools` without global
+PATH or personal settings changes. `pnpm test:vim` uses real Vim and the existing
+read-only bridge. `pnpm test:browser-addons` verifies actual Chrome registration
+in a dedicated owned profile. `pnpm package:chrome` creates the five-file Manifest
+V3 launcher ZIP; it is not Web Store publication. See docs/vim.md,
+docs/browser-extensions.md, docs/pwa.md and docs/integration-audit.md.

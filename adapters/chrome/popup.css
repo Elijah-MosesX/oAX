@@ -1,0 +1,40 @@
+body {
+  width: 340px;
+  margin: 0;
+  background: #f4f7f6;
+  color: #152a33;
+  font:
+    14px 'Segoe UI',
+    sans-serif;
+}
+main {
+  padding: 24px;
+}
+h1 {
+  font-size: 24px;
+}
+p {
+  line-height: 1.5;
+}
+label {
+  display: block;
+  margin-bottom: 8px;
+}
+input {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #536970;
+}
+button {
+  margin-top: 12px;
+  padding: 10px 16px;
+  background: #08695d;
+  color: white;
+  border: 0;
+  cursor: pointer;
+}
+:focus-visible {
+  outline: 3px solid #0d8979;
+  outline-offset: 3px;
+}

@@ -22,6 +22,15 @@ VSIX packaging uses an allowlisted staging directory and two bundles; the CLI cu
 
 ## Architectural direction
 
+The local workbench also exposes a PWA shell and a portable Windows desktop
+distribution over the same RuntimeClient. Its static service worker never stores
+private API traffic. The hosted AppDeploy PWA validates and renders exported bounded
+evidence in memory; it owns no agent session, workspace or approval state. Browser-safe
+protocol coordinate schemas are shared without importing Node transport crypto.
+The Chrome extension is a no-permission loopback launcher. Vimscript reuses the
+read-only bridge with actual unsaved snapshots and UTF-16 positions. Vimium is
+installed separately in an owned profile and never grants oAX browser tool authority.
+
 Milestone 7 introduces a private read-only editor companion over the existing protocol 0.1 envelopes, validators and RuntimeClient. Neovim captures current unsaved buffers and translates UTF-8 byte coordinates to UTF-16. The JetBrains prototype captures UTF-16 document offsets and consumes the same contract. The runtime retains graph construction, path/snapshot validation, sessions and lifecycle; editor-specific APIs remain outside core. Prototype adapters expose no provider transmission, writes, terminal execution or credentials. Desktop/web are assessed rather than deployed; see [adapter contract](docs/adapters.md).
 
 Milestone 6 adds `packages/buddy`, an editor-independent read-only projection of validated public events and actual editor prompts/edit/review receipts. The native VS Code Buddy tree and status item subscribe to it; task lifecycle remains authoritative in the runtime. Provider item completion is separate from task completion, and a completed task is separate from passing edit verification. Cursor acceptance shares the decoration's content/version checks. Source changes clear locations and invalidate known result paths; the tree labels retained verification as the last observed review. RuntimeClient exposes disconnection observation independently of task rejection. Hiding Buddy affects presentation only. The blueprint's illustrative Buddy event names are mapped to the actual protocol in [Buddy](docs/buddy.md). Voice has been assessed and deferred; no microphone capture is implemented.
@@ -112,7 +121,7 @@ A provider adapter must surface connection failure, disconnects, approvals, canc
 
 ## Open decisions
 
-Pin Node/pnpm and provider versions; choose local IPC transport and authentication; choose first supported languages and parser; define context budgets and exclusions; decide extension/runtime packaging and update policy; specify crash recovery and log retention. Record resolved decisions with implementation references and date.
+Node 24.19.0, pnpm 11.25.0, exact supported provider versions, authenticated private stdio, the initial TS/JS checker and bounded context are implemented. Local VSIX content validation and source-free action journals are verified. Remaining decisions concern supported public releases and updates, crash recovery/retention, voice, broader language workers, team identity/isolation and deployment operations. See PROGRESS.md for acceptance evidence.
 
 ## Added local preview boundaries
 
@@ -121,3 +130,7 @@ Repository onboarding consumes deterministic graph counts, imports, file hashes 
 The packages/github fixed-origin GET adapter is initialized only by an explicit approved selected-repository connection. Each runtime session owns its credential and authorization expiration; exact resource grants wrap requests. Editor authentication input and optional SecretStorage remain adapter responsibilities. PR association evidence is returned to the editor without being injected into provider context. Deterministic HTTP fixtures prove boundaries; live authenticated product acceptance is pending.
 
 Spatial capture now derives open files from actual file-backed text tabs, listens to tab/open/close/save events, and compares the complete source-free observation metadata before deduplication. Results from asynchronous observation requests are checked against the current active editor before display. The extension's read-only inspection API reports the accepted metadata and decorated agent location without returning buffer text; it is used for real editor acceptance and does not orchestrate core tasks.
+
+## Shared local surfaces and Python browser planner (2026-10-02)
+
+The local workbench owns loopback authentication and presentation over RuntimeClient and the same scoped protocol/session/graph used by CLI and editors. Its HTTP method allowlist exposes local intelligence without writes or provider transmission. A dedicated Chrome app-window launcher wraps that same surface. packages/browser isolates MCP snapshot projection and an optional pinned Python Jev planning worker; provider-context grants gate TypeSafe transmission, while returned choices never authorize browser execution. See docs/surfaces.md and docs/jev.md for exact supported boundaries and pending App/enterprise deployment.

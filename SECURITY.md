@@ -1,10 +1,19 @@
 # oAX security policy
 
+The portable desktop uses checksum-verified Chrome setup only within the downloaded
+browser directory, after explicit consent. Read-only ACL checks verify the pinned
+browser sandbox capability SIDs on every downloaded file/directory before launch;
+no repository ACL or sandbox-disable flag is used. Public PWA viewing has no backend
+or model request, renders imports as text, and keeps them in page memory. Service
+workers cache only public assets. The Chrome launcher requests no host/content/history
+permissions. Vimium's broader permissions belong only to its separate dedicated
+profile, not oAX's runtime policy. See docs/browser-extensions.md and docs/pwa.md.
+
 ## Status and scope
 
-Implemented local controls include authenticated private stdio, bounded validated messages, workspace/session isolation, versioned selected-buffer context, lexical/realpath exclusions, index budgets, scoped exact-resource grants, memory-only audit, output limits, and cancellation. The extension requires trusted local workspaces. No listening socket exists.
+Implemented local controls include authenticated private stdio, bounded validated messages, workspace/session isolation, versioned selected-buffer context, lexical/realpath exclusions, index budgets, scoped exact-resource grants, durable source-free permission audit (grants remain memory-only), output limits, and cancellation. The extension requires trusted local workspaces. The optional authenticated single-user workbench binds only to 127.0.0.1.
 
-Codex text is opt-in and pinned to 0.159.2. Effective disabled tool features, empty environment selection, read-only/no-environment-network settings, no repository instruction sources, and process-only disabled MCP servers are verified before a turn. Every provider-originated request fails closed. Context transmission requires a matching preview hash and scoped grant at execution. Existing login is used without credential changes; network inference may consume usage. Provider/model networking is distinct from the disabled environment network. General provider tools are unavailable.
+Codex text is opt-in and restricted to contract-verified 0.159.2 or 0.159.0-alpha.12.1. Effective disabled tool features, empty environment selection, read-only/no-environment-network settings, no repository instruction sources, and process-only disabled MCP servers are verified before a turn. Every provider-originated request fails closed. Context transmission requires a matching preview hash and scoped grant at execution. Existing login is used without credential changes; network inference may consume usage. Provider/model networking is distinct from the disabled environment network. General provider tools are unavailable.
 
 Saved-file rename is explicit approval of exact before/after content and paths. Every baseline/grant is checked before the first write, then path/file identity and hash are checked again per write. Symbolic or multiply linked files are rejected. Completed or partial I/O writes are reported and are not automatically rolled back. These checks reduce path races but do not establish race-proof isolation against a malicious local account. Syntax checks do not execute repository code or establish semantic/API compatibility. Arbitrary commands, Git mutation, remote posting, deployment and access changes are not exposed. A separate exact-plan approval enables saved Node test files with local-account rights, restricted environment, five-second timeout and bounded output; this is not an OS sandbox.
 
@@ -103,3 +112,7 @@ Known token formats and labeled credentials are conservatively redacted in provi
 ## Product GitHub reads
 
 A user-entered, fine-grained selected-repository token enables only fixed-origin GET metadata/PR association routes after explicit connection approval. Exact scoped grants gate each request. The token stays in runtime memory or optional VS Code secret storage, outside context/config/audit/output; the known supplied token is also removed from echoed response text. Connection authorization expires after one hour, responses are bounded, redirects rejected and network requests time out. Token privilege may exceed product privilege; configure read-only repository scope. No writes or model transmission are exposed. Runtime disconnect/close clears references but does not guarantee secure memory erasure. Live credential UI/authenticated acceptance remains pending.
+
+## Additional local boundaries (2026-10-02)
+
+The workbench is single-user loopback HTTP with strict Host/Origin checks, a short-lived single-use bootstrap, HttpOnly SameSite cookie, CSRF header, bounded JSON, strict CSP and a read-only RPC allowlist. It does not accept GitHub credentials, edits or model transmission. Its HTTP cookie is intentionally not Secure on loopback; public hosting is unsupported. Jev is a pinned, wheel-only isolated Python installation, not an OS sandbox. Exact disclosed and conservatively redacted context requires a scoped provider.context grant before TypeSafe transmission. Upstream browser automation and text-helper execution are disabled; proposals remain unexecuted. See docs/jev.md and docs/surfaces.md.

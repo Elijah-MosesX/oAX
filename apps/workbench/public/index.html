@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>oAX · Repository workbench</title>
+    <meta name="theme-color" content="#08695d" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" href="/icon.svg" />
+    <link rel="stylesheet" href="/style.css" />
+    <script src="/app.js" defer></script>
+  </head>
+  <body>
+    <header>
+      <a class="brand" href="/">oAX<span>REPOSITORY WORKBENCH</span></a>
+      <p id="connection" role="status">Connecting to your local runtime…</p>
+    </header>
+    <main>
+      <section class="intro">
+        <p class="eyebrow">LOCAL INTELLIGENCE</p>
+        <h1>Follow the code.<br />Inspect the evidence.</h1>
+        <p>
+          Explore saved source, direct relationships and history through the
+          same runtime used by the editor and CLI.
+        </p>
+        <p id="workspace" class="mono"></p>
+      </section>
+      <form id="open">
+        <label for="resource">Workspace-relative source file</label>
+        <div class="row">
+          <input
+            id="resource"
+            placeholder="packages/runtime/src/runtime.ts"
+            required
+            autocomplete="off"
+          /><button>Open file</button>
+        </div>
+      </form>
+      <div class="columns">
+        <section aria-labelledby="source-title">
+          <div class="section-heading">
+            <h2 id="source-title">Source</h2>
+            <span id="version" class="mono">No file selected</span>
+          </div>
+          <label for="source"
+            >Saved file snapshot · select text to focus a symbol</label
+          ><textarea
+            id="source"
+            readonly
+            spellcheck="false"
+            aria-label="Saved source code"
+          ></textarea>
+          <p id="position" class="mono">
+            Positions are zero-based. Your selection stays yours.
+          </p>
+        </section>
+        <section aria-labelledby="evidence-title">
+          <div class="section-heading">
+            <h2 id="evidence-title">Evidence</h2>
+            <span class="tag">LOCAL ONLY</span>
+          </div>
+          <div class="tools">
+            <button type="button" data-method="spatial.observe">
+              Identify symbol</button
+            ><button type="button" data-method="graph.query">
+              Find callers</button
+            ><button type="button" data-method="context.preview">
+              Inspect context</button
+            ><button type="button" data-method="history.query">
+              Trace history</button
+            ><button type="button" data-method="repository.onboard">
+              Repository walkthrough
+            </button>
+          </div>
+          <p id="feedback" role="status">
+            Open a source file to begin. This interface does not transmit
+            context or edit files.
+          </p>
+          <pre id="result" tabindex="0" aria-label="Structured evidence"></pre>
+          <button type="button" id="export" disabled>
+            Export displayed evidence
+          </button>
+          <p>
+            Exports may contain source excerpts. Review the displayed evidence
+            before sharing it.
+          </p>
+        </section>
+      </div>
+      <section class="activity">
+        <h2>Runtime activity</h2>
+        <p>
+          Actual public events; agent locations appear only when emitted by the
+          runtime. Live explain and approved refactoring remain available in VS
+          Code and the CLI.
+        </p>
+        <pre id="events" tabindex="0" aria-label="Runtime events">
+No events yet.</pre
+        >
+      </section>
+    </main>
+    <footer>
+      One runtime. Evidence before action.
+      <span>Local workbench preview · protocol 0.1</span>
+    </footer>
+  </body>
+</html>

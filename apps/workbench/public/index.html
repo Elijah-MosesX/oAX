@@ -87,6 +87,28 @@
         </section>
       </div>
       <section class="activity">
+        <div class="section-heading">
+          <h2>Buddy</h2>
+          <button
+            type="button"
+            id="buddy-toggle"
+            aria-expanded="true"
+            aria-controls="buddy"
+          >
+            Hide Buddy
+          </button>
+        </div>
+        <div id="buddy" role="status" aria-live="polite">
+          <p id="buddy-state">Waiting for the local runtime.</p>
+          <p id="buddy-operation">No inspection requested.</p>
+          <p id="buddy-location">No observed agent location.</p>
+          <p>
+            Graph inspection only. Buddy reports activity; it cannot approve
+            actions. Read completion does not mean tests passed.
+          </p>
+        </div>
+      </section>
+      <section class="activity">
         <h2>Runtime activity</h2>
         <p>
           Actual public events; agent locations appear only when emitted by the

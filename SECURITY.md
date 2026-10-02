@@ -1,5 +1,11 @@
 # oAX security policy
 
+Clicky is installed as checksum-verified reference source only. oAX does not run
+its proxy, analytics, screenshot capture, speech providers or updater. The
+workbench Buddy consumes authenticated source-free operation receipts and grants
+no permissions; hiding it does not affect execution. No microphone, screen or
+personal browser access is added by this adaptation.
+
 The portable desktop uses checksum-verified Chrome setup only within the downloaded
 browser directory, after explicit consent. Read-only ACL checks verify the pinned
 browser sandbox capability SIDs on every downloaded file/directory before launch;
@@ -21,15 +27,15 @@ Local Git evidence is scoped to the workspace and uses fixed arguments, no shell
 
 Project resolution consumes bounded captured JSON/JSONC metadata and source files without executing repository configuration or reading external libraries. Alias/export targets must resolve to already indexed workspace files. Discovery is capped at 20,000 entries, 256 metadata files, 2,000 source files and 8 MiB combined content; source and metadata share the 128-KiB file limit. Ambiguous packages and unavailable targets stay unresolved. Structural queries require no provider/network transmission.
 
-Limitations: no comprehensive secret-content redaction, general credential store (GitHub optionally uses VS Code secret storage), persistent/tamper-resistant audit, configurable retention, event replay, OS sandbox guarantee, or tenant isolation. Inline secrets in normal source names can appear in context/output; inspect the preview before sending. SQLite is experimental. Session background polling respects discovery budgets, preserves the selected dirty overlay and reports failures. A private reporting channel and supported-version/security policy must be established before public release.
+Limitations: no comprehensive secret-content redaction, general credential store (GitHub optionally uses VS Code secret storage), tamper-resistant audit, configurable retention, event replay, OS sandbox guarantee, or tenant isolation. Source-free audit journals persist locally; grants do not. Inline secrets in normal source names can appear in context/output; inspect the preview before sending. SQLite is experimental. Session background polling respects discovery budgets, preserves the selected dirty overlay and reports failures. A private reporting channel and supported-version/security policy must be established before public release.
 
 Codex selection proposals remain untrusted text. Strict JSON allows only replacement and explanation strings; captured saved context determines the single file and range. Proposing does not write or grant permissions. Exact approved diff hashes and unchanged baselines gate writes; provider tools remain disabled. Proposals carry no syntax/behavior success claim. The editor rejects truncated/redacted selections and changed document versions, shows provider context before consent, then displays the actual diff before separate write approval.
 
-The developer's authorization to implement/test/sync oAX is separate from product grants. Connecting GitHub in this chat does not implement oAX's GitHub integration. The first distribution is a local VS Code/CLI preview; no publication or deployment is claimed.
+The developer's authorization to implement/test/sync oAX is separate from product grants. Connecting GitHub in this chat does not authenticate oAX's GitHub integration. Local VS Code/CLI and portable Windows packages are available for controlled acceptance. The public PWA is an exported-evidence viewer; it has no backend agent or private workspace access. Marketplace publication and an enterprise deployment remain open gates.
 
 ## Permission model
 
-Prototype editor companions are private parent-owned stdio processes with an explicit trusted root and a read-only method allowlist. The runtime token stays inside RuntimeClient. Editors receive only workspace/session identity and documented capabilities; these identifiers are not network credentials. Wrong scope, duplicate requests, unsupported methods, malformed parameters, invalid versions and bounded framing fail closed. No provider, write, execution or GitHub credential surface is exposed. Tool/cache directories `.tools` and `.gradle` are excluded from both indexing and context, including explicit overlays. Desktop/web evaluation adds no listening endpoint. Voice remains requested future implementation with no microphone capture enabled.
+Prototype editor companions are private parent-owned stdio processes with an explicit trusted root and a read-only method allowlist. The runtime token stays inside RuntimeClient. Editors receive only workspace/session identity and documented capabilities; these identifiers are not network credentials. Wrong scope, duplicate requests, unsupported methods, malformed parameters, invalid versions and bounded framing fail closed. No provider, write, execution or GitHub credential surface is exposed by these companions. Tool/cache directories `.tools` and `.gradle` are excluded from both indexing and context, including explicit overlays. The optional desktop/workbench uses the separately authenticated single-user loopback listener described above. Voice remains requested future implementation with no microphone capture enabled.
 
 Buddy is a presentation projection. Its prompt entry only reopens the existing Cancel-default decision UI; it cannot authorize or execute. It retains no model deltas, source content, tool arguments, credential values or provider error details. Results come from actual runtime receipts, and verification is labeled as the last observed saved-file review. Cursor navigation is opt-in and rechecks the accepted open-document hash/version before revealing a range without changing selection. Hiding the view does not alter runtime policy or task state. Voice is deferred and no microphone capture or voice transmission is enabled. Workspace names, paths and session identifiers appear in the native view; existing output/review privacy limitations still apply.
 

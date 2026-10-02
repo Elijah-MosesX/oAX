@@ -1,10 +1,18 @@
 # oAX architecture
 
+The local workbench projects real read-operation receipts through the same
+`BuddyStore` used by VS Code. Inspection state is separate from agent task state,
+verification and cursor evidence. Authenticated event polls and RPC responses
+include a source-free Buddy view with monotonic revisions; delayed responses
+cannot regress the UI. Hide/show is presentation-only. No protocol 0.1 contract,
+permission, provider route or editor orchestration changes.
+See [Clicky source review](docs/clicky.md) for the pinned reference and adaptation.
+
 ## Current implementation status
 
 As of 2026-10-02 the local preview includes protocol/runtime, persistent editor connections, debounced versioned observations, deterministic TypeScript/JavaScript graph queries, bounded context, optional restricted Codex text, saved-file rename previews, Git history, observed symbol decorations, and an event-driven status bar. The complete platform is unreleased. See PROGRESS for exact verification.
 
-The core is independent of VS Code; provider-specific JSONL RPC remains in `packages/codex`. Public oAX stdio envelopes remain distinct from provider RPC. A random parent-generated token authenticates each private connection; no TCP listener exists. Sessions and grants remain memory-only. Production companions persist source-free permission/action records through an injected sink in `.oax/audit`; records are flushed before execution and unavailable recording fails closed. See [audit boundaries](docs/audit.md).
+The core is independent of VS Code; provider-specific JSONL RPC remains in `packages/codex`. Public oAX stdio envelopes remain distinct from provider RPC. A random parent-generated token authenticates each private connection. Editor companions use stdio; the optional desktop/workbench adds a loopback HTTP listener with single-use bootstrap, scoped cookie and CSRF checks. Sessions and grants remain memory-only. Production companions persist source-free permission/action records through an injected sink in `.oax/audit`; records are flushed before execution and unavailable recording fails closed. See [audit boundaries](docs/audit.md).
 
 Each session owns its graph and selected-buffer overlay so one session cannot replace another's unsaved context. Indexer discovery enforces exclusions, symlink checks and budgets. TypeScript's checker resolves indexed local modules, bounded project aliases, workspace package exports and re-exports and preserves unresolved edges; filename test relationships remain heuristic. SQLite migration 1 has foreign keys, indexes and transactions. Unchanged source/file records are reused; semantic relationships are reconciled globally after changes. Runtime observations and background polling share a serialized refresh queue. Background refresh retains the selected dirty overlay, records refresh errors without claiming freshness, and stops before session graph disposal. `index.status` exposes generation, counts and refresh state. CLI analysis persists its graph under `.oax`; sessions do not persist source excerpts.
 
@@ -31,7 +39,7 @@ The Chrome extension is a no-permission loopback launcher. Vimscript reuses the
 read-only bridge with actual unsaved snapshots and UTF-16 positions. Vimium is
 installed separately in an owned profile and never grants oAX browser tool authority.
 
-Milestone 7 introduces a private read-only editor companion over the existing protocol 0.1 envelopes, validators and RuntimeClient. Neovim captures current unsaved buffers and translates UTF-8 byte coordinates to UTF-16. The JetBrains prototype captures UTF-16 document offsets and consumes the same contract. The runtime retains graph construction, path/snapshot validation, sessions and lifecycle; editor-specific APIs remain outside core. Prototype adapters expose no provider transmission, writes, terminal execution or credentials. Desktop/web are assessed rather than deployed; see [adapter contract](docs/adapters.md).
+Milestone 7 introduces a private read-only editor companion over the existing protocol 0.1 envelopes, validators and RuntimeClient. Neovim captures current unsaved buffers and translates UTF-8 byte coordinates to UTF-16. The JetBrains prototype captures UTF-16 document offsets and consumes the same contract. The runtime retains graph construction, path/snapshot validation, sessions and lifecycle; editor-specific APIs remain outside core. Prototype adapters expose no provider transmission, writes, terminal execution or credentials. The subsequent desktop/workbench and hosted evidence viewer have the separate boundaries described above; see [adapter contract](docs/adapters.md).
 
 Milestone 6 adds `packages/buddy`, an editor-independent read-only projection of validated public events and actual editor prompts/edit/review receipts. The native VS Code Buddy tree and status item subscribe to it; task lifecycle remains authoritative in the runtime. Provider item completion is separate from task completion, and a completed task is separate from passing edit verification. Cursor acceptance shares the decoration's content/version checks. Source changes clear locations and invalidate known result paths; the tree labels retained verification as the last observed review. RuntimeClient exposes disconnection observation independently of task rejection. Hiding Buddy affects presentation only. The blueprint's illustrative Buddy event names are mapped to the actual protocol in [Buddy](docs/buddy.md). Voice has been assessed and deferred; no microphone capture is implemented.
 

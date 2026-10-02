@@ -10,6 +10,7 @@ import { randomBytes, createHash } from 'node:crypto';
 import { z, observationSchema, OaxError, type Event } from '@oax/protocol';
 import { workspacePath } from '@oax/context';
 import { RuntimeClient } from '../../../packages/runtime/src/client.js';
+import { BuddyStore, buddyLabel } from '@oax/buddy';
 
 const methods = [
   'spatial.observe',
@@ -69,6 +70,20 @@ export async function startWorkbench(
   const { sessionId } = z
     .object({ sessionId: z.string() })
     .parse(await client.call('session.open', {}));
+  const buddy = new BuddyStore();
+  buddy.register(sessionId, root, 'mock');
+  let buddyRevision = 0;
+  buddy.subscribe(() => buddyRevision++);
+  const buddyView = () => {
+    const session = buddy.snapshot().sessions[0]!;
+    return {
+      label: buddyLabel(session),
+      revision: buddyRevision,
+      inspection: session.inspection ?? null,
+      agentLocation: session.location ?? null,
+      engine: 'graph-only',
+    };
+  };
   const bootstrap = randomBytes(32).toString('hex'),
     cookie = randomBytes(32).toString('hex'),
     csrf = randomBytes(32).toString('hex');
@@ -83,11 +98,13 @@ export async function startWorkbench(
   let sequence = 0;
   const events: { index: number; event: Event }[] = [];
   client.subscribe((event) => {
+    buddy.observe(event);
     events.push({ index: ++sequence, event });
     if (events.length > 200) events.shift();
   });
   client.onDisconnect(() => {
     disconnected = true;
+    buddy.disconnect(sessionId);
   });
   const versions = new Map<string, { hash: string; version: number }>();
   let origin = '';
@@ -235,6 +252,7 @@ export async function startWorkbench(
           events: events.filter((item) => item.index > after),
           latest: sequence,
           truncated: events.length > 0 && after < events[0]!.index - 1,
+          buddy: buddyView(),
         });
       }
       if (busy) return send(res, 409, { error: 'BUSY' });
@@ -299,13 +317,31 @@ export async function startWorkbench(
                 'Reopen the changed saved file before querying evidence',
               );
           }
-          return send(res, 200, {
-            result: await client.call(
+          const labels: Record<(typeof methods)[number], string> = {
+            'spatial.observe': 'Identify selected symbol',
+            'graph.query': 'Find code relationships',
+            'index.status': 'Inspect index freshness',
+            'context.preview': 'Gather bounded context',
+            'repository.onboard': 'Build repository walkthrough',
+            'history.query': 'Trace repository history',
+            'review.get': 'Read review evidence',
+          };
+          const inspectionId = buddy.beginInspection(
+            sessionId,
+            labels[request.method],
+          )!;
+          try {
+            const result = await client.call(
               request.method,
               request.payload,
               sessionId,
-            ),
-          });
+            );
+            buddy.finishInspection(sessionId, inspectionId, true);
+            return send(res, 200, { result, buddy: buddyView() });
+          } catch (error) {
+            buddy.finishInspection(sessionId, inspectionId, false);
+            throw error;
+          }
         }
         send(res, 404, { error: 'NOT_FOUND' });
       } finally {
@@ -337,6 +373,7 @@ export async function startWorkbench(
     url: `${origin}/#${bootstrap}`,
     async close() {
       client.dispose();
+      buddy.dispose();
       server.closeAllConnections();
       await new Promise<void>((resolve) => server.close(() => resolve()));
     },

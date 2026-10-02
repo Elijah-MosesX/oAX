@@ -5,6 +5,27 @@ let csrf,
   eventIndex = 0;
 const token = location.hash.slice(1);
 history.replaceState(null, '', '/');
+let buddyRevision = -1;
+function renderBuddy(view) {
+  if (!view) return;
+  // The HTTP receipt and event poll can arrive in either order.
+  if (view.revision <= buddyRevision) return;
+  buddyRevision = view.revision;
+  $('buddy-state').textContent = `${view.label} · Local graph session`;
+  $('buddy-operation').textContent = view.inspection
+    ? `${view.inspection.label} · ${view.inspection.state}`
+    : 'No inspection requested.';
+  // This surface currently has no agent execution route. Never infer a cursor
+  // from a human selection, narrative answer, or graph-query completion.
+  $('buddy-location').textContent = 'No observed agent location.';
+}
+$('buddy-toggle').addEventListener('click', () => {
+  $('buddy').hidden = !$('buddy').hidden;
+  $('buddy-toggle').setAttribute('aria-expanded', String(!$('buddy').hidden));
+  $('buddy-toggle').textContent = $('buddy').hidden
+    ? 'Show Buddy'
+    : 'Hide Buddy';
+});
 async function post(route, payload) {
   const response = await fetch(route, {
     method: 'POST',
@@ -52,7 +73,9 @@ $('open').addEventListener('submit', async (event) => {
 });
 for (const button of document.querySelectorAll('[data-method]'))
   button.addEventListener('click', async () => {
-    const controls = [...document.querySelectorAll('button')];
+    const controls = [
+      ...document.querySelectorAll('button:not(#buddy-toggle)'),
+    ];
     try {
       const payload = { observation: capture() };
       const method = button.dataset.method;
@@ -65,6 +88,7 @@ for (const button of document.querySelectorAll('[data-method]'))
       });
       $('feedback').textContent = 'Gathering evidence from the local runtime…';
       const data = await post('/rpc', { method, payload });
+      renderBuddy(data.buddy);
       $('result').textContent = JSON.stringify(data.result, null, 2);
       displayed = {
         format: 'oax-evidence.v1',
@@ -107,11 +131,16 @@ post(token ? '/connect' : '/resume', token ? { token } : {})
       try {
         const data = await post('/events', { after: eventIndex });
         eventIndex = data.latest;
+        renderBuddy(data.buddy);
         if (data.events.length)
           $('events').textContent = JSON.stringify(data.events, null, 2);
         setTimeout(poll, 1500);
       } catch (error) {
         $('connection').textContent = `Disconnected · ${error.message}`;
+        buddyRevision = Infinity;
+        $('buddy-state').textContent = 'Disconnected · relaunch to reconnect';
+        $('buddy-operation').textContent = 'Inspection status unavailable.';
+        $('buddy-location').textContent = 'No observed agent location.';
       }
     };
     void poll();

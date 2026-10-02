@@ -2,6 +2,24 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { BuddyStore, buddyLabel } from '@oax/buddy';
 import { eventSchema, type Event } from '@oax/protocol';
+test('inspection receipts stay separate from tasks, ignore superseded completion, and clear on disconnect', () => {
+  const store = new BuddyStore();
+  store.register('s', '/repo', 'mock');
+  const first = store.beginInspection('s', 'Find callers')!;
+  const second = store.beginInspection('s', 'Inspect context')!;
+  store.finishInspection('s', first, true);
+  assert.equal(store.snapshot().sessions[0]!.inspection?.state, 'running');
+  store.finishInspection('s', second, false);
+  const current = store.snapshot().sessions[0]!;
+  assert.equal(current.inspection?.state, 'failed');
+  assert.equal(current.phase, 'idle');
+  assert.equal(current.result, undefined);
+  assert.equal(current.location, undefined);
+  store.disconnect('s');
+  store.finishInspection('s', second, true);
+  assert.equal(store.snapshot().sessions[0]!.inspection, undefined);
+  assert.equal(store.beginInspection('s', 'Late work'), undefined);
+});
 function event(
   sequence: number,
   method: string,

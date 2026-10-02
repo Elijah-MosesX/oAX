@@ -1,5 +1,13 @@
 # Developing oAX
 
+Optional Clicky reference source: `python scripts/setup-clicky.py` (Python 3.12+).
+It verifies the pinned official archive and existing source under `.tools/clicky`,
+retaining the upstream license without running native code, the worker or a model.
+Clicky's macOS app cannot run on Windows. The workbench Buddy adaptation is built
+with `pnpm build` and included by `pnpm package:desktop`; its runtime receipts and
+failure handling are covered by `pnpm test` and `pnpm test:integration`.
+See [scope and mapping](docs/clicky.md).
+
 The local preview implements spatial/code intelligence, optional restricted Codex text, saved-file rename previews, and local Git evidence. It is not a public release. The first distribution target is VS Code and CLI.
 
 ## Setup and checks

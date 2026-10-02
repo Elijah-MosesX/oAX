@@ -110,7 +110,21 @@ test('workbench authenticates one owner, reuses real runtime graph, rejects exte
       auth,
     );
     assert.equal(graph.status, 200);
-    assert.match(JSON.stringify(await graph.json()), /sample.ts/);
+    const graphReceipt = await graph.json();
+    assert.match(JSON.stringify(graphReceipt.result), /sample.ts/);
+    assert.equal(graphReceipt.buddy.inspection.state, 'completed');
+    assert.equal(graphReceipt.buddy.label, 'Ready');
+    assert.equal(graphReceipt.buddy.agentLocation, null);
+    const poll = await post('/events', { after: 0 }, auth);
+    assert.deepEqual((await poll.json()).buddy, graphReceipt.buddy);
+    const failedRead = await post(
+      '/rpc',
+      { method: 'graph.query', payload: {} },
+      auth,
+    );
+    assert.equal(failedRead.status, 400);
+    const afterFailure = await post('/events', { after: 0 }, auth);
+    assert.equal((await afterFailure.json()).buddy.inspection.state, 'failed');
     const preview = await post(
       '/rpc',
       {

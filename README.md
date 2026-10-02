@@ -1,8 +1,26 @@
 # oAX
 
-A spatially aware codebase onboarding, analysis, and refactoring platform, with Codex behind a provider boundary.
+oAX is a spatially aware developer platform for understanding repositories, explaining code, tracing history, and making reviewed changes. Its direction is one shared runtime, protocol, codebase graph, context engine, and permission system across IDEs, desktop, CLI, GitHub, and web interfaces. Codex is the primary agent engine behind a provider adapter.
 
-This local development preview supports versioned VS Code observations, deterministic TypeScript/JavaScript symbols and relationships, bounded context, optional Codex explanations, local Git evidence, and a reviewed symbol-rename workflow. It is not the complete platform or a public release. See [PROGRESS.md](PROGRESS.md) for verified results and remaining work.
+The platform is being built end to end, with each supported workflow verified before it is advertised. The implementation branch is [codex/local-intelligence-preview](https://github.com/Elijah-MosesX/oAX/tree/codex/local-intelligence-preview); see its [verification tracker](https://github.com/Elijah-MosesX/oAX/blob/codex/local-intelligence-preview/PROGRESS.md) for tested versions, evidence, and remaining release gates. Universal IDE support and enterprise deployment are goals, not current compatibility claims.
+
+## Interfaces and deployment
+
+| Interface      | Available implementation                                                                                                                                                      | Remaining scope                                                             |
+| -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| VS Code        | Versioned selection, deterministic TS/JS graph, real Codex explanation and selected-range refactor, exact approvals, Node tests, diff review, Buddy and separate agent cursor | Broader languages and general multi-file model edits                        |
+| Neovim and Vim | Actual editor acceptance for read-only structural queries using the shared runtime; unsaved text and preserved developer cursor                                               | Editing/provider workflows and broader host acceptance                      |
+| JetBrains      | Java adapter compiled against the IntelliJ SDK                                                                                                                                | Plugin packaging and live IDE acceptance                                    |
+| Desktop        | Portable Windows x64 workbench, authenticated local runtime, source/context/history inspection and Buddy inspection receipts                                                  | Signed installers, full agent/editing UI, macOS/Linux acceptance            |
+| CLI            | Initialization, indexing, structural queries, explanation, rename previews, approved checks and review                                                                        | Published package and broader installation acceptance                       |
+| GitHub         | Selected-repository read adapter for commits, PRs, issues, reviews and checks                                                                                                 | Live product authentication acceptance, GitHub App and authorized posting   |
+| Web/PWA        | Local workbench plus a deployed browser-only exported-evidence viewer                                                                                                         | Shared workspace access, team identity, isolation and enterprise operations |
+
+An interface is separate from its deployment: the supported runtime currently runs locally. Managed, hybrid and enterprise self-hosted deployments will reuse the core contracts but still require their own identity, isolation, installation and recovery validation. A local runtime can use remote model inference. No interface requires all users to share one server.
+
+Python already powers the pinned Jev planning worker; Java powers the JetBrains prototype. Go is an available implementation choice for a justified worker, not an implemented service. Cross-language workers must preserve the same validated contracts, permissions and evidence; using a language does not imply semantic indexing support for that language. See [polyglot boundaries](docs/polyglot.md).
+
+Optional integrations include [Chrome DevTools MCP](docs/browser.md), the [Jev Python planner](docs/jev.md), and [Clicky-inspired companion behavior](docs/clicky.md). Their supported capabilities and external-service limits are explicit.
 
 ## Build and use locally
 

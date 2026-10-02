@@ -1,5 +1,11 @@
 # oAX portable desktop preview — Windows x64
 
+Buddy reports actual graph inspection activity through the same presentation
+store used by VS Code. You can hide/show it without changing the operation or
+source selection. A completed inspection means a runtime read returned; it does
+not imply an agent executed or tests passed. This interface has no agent cursor
+until an actual supported agent workflow supplies validated location evidence.
+
 This distribution runs the local repository workbench in a dedicated desktop app window. It includes Node 24.19.0, the shared oAX runtime, graph and static interface. It does not require npm, pnpm, Python, VS Code or a Node installation. A dedicated, pinned Chrome for Testing is downloaded separately during explicit first setup; it is not bundled or attached to your personal browser profile.
 
 Git is optional for structural analysis and required for local commit/blame/history

@@ -16,6 +16,11 @@ export interface BuddySession {
   activity?: { kind: 'turn' | 'message' | 'tool'; state: string };
   location?: BuddyLocation;
   editing: boolean;
+  inspection?: {
+    id: number;
+    label: string;
+    state: 'running' | 'completed' | 'failed';
+  };
   result?: { label: string; paths: string[]; verified: boolean };
 }
 export interface BuddySnapshot {
@@ -24,6 +29,7 @@ export interface BuddySnapshot {
 }
 /** Presentation only: no engine, commands, grants, credentials or model text. */
 export class BuddyStore {
+  private inspectionId = 0;
   private sessions = new Map<string, BuddySession>();
   private ordering = new Map<
     string,
@@ -130,6 +136,25 @@ export class BuddyStore {
     session.editing = active;
     this.changed();
   }
+  /** Read receipts are distinct from agent tasks and do not imply verification. */
+  beginInspection(id: string, label: string): number | undefined {
+    const session = this.sessions.get(id);
+    if (!session?.connected) return;
+    const requestId = ++this.inspectionId;
+    session.inspection = {
+      id: requestId,
+      label: label.slice(0, 128),
+      state: 'running',
+    };
+    this.changed();
+    return requestId;
+  }
+  finishInspection(id: string, requestId: number, succeeded: boolean): void {
+    const session = this.sessions.get(id);
+    if (!session?.connected || session.inspection?.id !== requestId) return;
+    session.inspection.state = succeeded ? 'completed' : 'failed';
+    this.changed();
+  }
   result(id: string, result: NonNullable<BuddySession['result']>): void {
     const session = this.sessions.get(id);
     if (!session?.connected) return;
@@ -154,6 +179,7 @@ export class BuddyStore {
     if (!session) return;
     session.connected = false;
     session.editing = false;
+    delete session.inspection;
     delete session.location;
     this.changed();
   }

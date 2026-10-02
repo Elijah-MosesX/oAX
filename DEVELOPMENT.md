@@ -40,7 +40,7 @@ It verifies provider preflight, restricted thread configuration, model response,
 
 ## CLI and boundaries
 
-`node dist/cli.cjs --help` is the implemented contract: `init`, `analyze`/`onboard`, `rename`, `demo`, and internal private `serve`. Exit codes: 0 success, 1 operation failure, 2 unsupported command. Rename positions are zero-based and writes require the exact preview hash. Workspace tests are not executed by rename. Internal `serve` requires a parent-generated connection token and opens no TCP listener.
+`node dist/cli.cjs --help` is the implemented contract: `init`, `analyze`/`onboard`, `explain`, `review`, `verify`, `rename`, `demo`, and internal private `serve`. Exit codes: 0 success, 1 operation failure, 2 unsupported command. Rename positions are zero-based and writes require the exact preview hash. Workspace tests are not executed by rename. Internal `serve` requires a parent-generated connection token and opens no TCP listener.
 
 The TypeScript checker handles local relative imports without reading libraries outside indexed snapshots. Discovery skips dependencies, generated/private directories, environment files, and symbolic links, with 2,000-file, 128-KiB-file, and 8-MiB-total limits. Selected editor snapshots replace disk for context/graph queries. SQLite uses migration version 1, foreign keys, indexes, and transactions. Changes reuse unchanged ASTs/file records but rebuild semantic relationships globally for correctness; this is not a fully incremental semantic engine.
 
@@ -49,3 +49,5 @@ Core packages do not import VS Code APIs. Provider RPC stays in `packages/codex`
 Preserve unrelated changes and update PROGRESS after each session. Remote history is maintained through the authorized GitHub connector because this machine's pre-existing Git CLI account cannot fetch the selected private repository. Do not force-push independent local history or change credentials to work around that limitation.
 
 Selected saved Node test files can be run through the separate VS Code approval command. This invokes the host Node executable with fixed --test arguments, a restricted environment, five-second timeout and 64-KiB output limit. It does not run package scripts. Browser setup and scoped inspection are documented in docs/browser.md. All .oax state is local and ignored, including persisted graph evidence and the optional browser cache.
+
+CLI explain reads a saved file and defaults to mock. --codex requires an absolute pinned executable and returns the inspectable context before transmission; --approve must match its hash. CLI review collects structural relationships and context without model claims. CLI verify previews a fixed Node-test plan, then --approve enables that exact operation; stdout retains captured failure diagnostics and exit code 1 reflects failed checks. Integration acceptance exercises the real built CLI with passing/failing synthetic tests and no provider usage.

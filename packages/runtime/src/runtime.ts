@@ -4,6 +4,7 @@ import { SpatialStore } from '@oax/spatial';
 import { CodeGraph, digest } from '@oax/codegraph';
 import { Indexer } from '@oax/indexer';
 import { GitHistory } from '@oax/git';
+import { GitHubReader } from '@oax/github';
 import { readFile } from 'node:fs/promises';
 import { workspacePath } from '@oax/context';
 import { renamePlan, applyRename, type RenamePlan } from './refactor.js';
@@ -34,6 +35,8 @@ interface Session {
   indexer?: Indexer;
   plan?: RenamePlan;
   checks?: CheckPlan;
+  github?: GitHubReader;
+  githubExpiresAt?: number;
 }
 interface Task {
   id: string;
@@ -83,6 +86,7 @@ export class Runtime {
       emit: (event: Event) => void;
       timeoutMs?: number;
       externalText?: boolean;
+      githubTransport?: typeof fetch;
     },
   ) {}
   async dispatch(input: unknown): Promise<Response> {
@@ -160,7 +164,76 @@ export class Runtime {
         const session = sessionId ? this.sessions.get(sessionId) : undefined;
         if (!session || !sessionId)
           throw new OaxError('SESSION_NOT_FOUND', 'Unknown session');
-        if (req.method === 'repository.onboard') {
+        if (req.method.startsWith('github.')) {
+          if (
+            session.task &&
+            !['completed', 'failed', 'cancelled'].includes(session.task.state)
+          )
+            throw new OaxError('TASK_BUSY', 'A task is active');
+          if (req.method === 'github.connect') {
+            const { repository, accessToken } = payloadSchemas[
+              'github.connect'
+            ].parse(req.payload);
+            const connection = new GitHubReader(
+              repository,
+              accessToken,
+              this.permissions,
+              {
+                principal: 'developer',
+                workspaceId: this.options.workspaceId,
+                sessionId,
+                taskId: `github:${sessionId}`,
+              },
+              this.options.githubTransport,
+            );
+            this.permissions.grant({
+              ...connection.action(''),
+              id: randomUUID(),
+              decision: 'allow',
+              expiresAt: Date.now() + 10000,
+            });
+            try {
+              payload = await connection.verify();
+            } catch (error) {
+              connection.close();
+              throw error;
+            }
+            session.github?.close();
+            session.github = connection;
+            session.githubExpiresAt = Date.now() + 3600000;
+          } else if (req.method === 'github.disconnect') {
+            payloadSchemas['github.disconnect'].parse(req.payload);
+            session.github?.close();
+            delete session.github;
+            delete session.githubExpiresAt;
+            payload = { disconnected: true };
+          } else if (req.method === 'github.history') {
+            const { commit } = payloadSchemas['github.history'].parse(
+              req.payload,
+            );
+            if (
+              !session.github ||
+              !session.githubExpiresAt ||
+              session.githubExpiresAt <= Date.now()
+            ) {
+              session.github?.close();
+              delete session.github;
+              delete session.githubExpiresAt;
+              throw new OaxError(
+                'PERMISSION_DENIED',
+                'Connect an approved GitHub repository first',
+              );
+            }
+            const route = `commits/${commit}/pulls?per_page=5`;
+            this.permissions.grant({
+              ...session.github.action(route),
+              id: randomUUID(),
+              decision: 'allow',
+              expiresAt: Math.min(Date.now() + 10000, session.githubExpiresAt),
+            });
+            payload = await session.github.associatedPullRequests(commit);
+          }
+        } else if (req.method === 'repository.onboard') {
           if (
             session.task &&
             !['completed', 'failed', 'cancelled'].includes(session.task.state)
@@ -670,6 +743,7 @@ export class Runtime {
     await this.options.engine.close(session.engine);
     this.spatial.close(id);
     session.graph?.close();
+    session.github?.close();
     this.permissions.close(id);
     this.sessions.delete(id);
   }

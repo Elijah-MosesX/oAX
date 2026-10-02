@@ -46,6 +46,7 @@
     "prettier": "3.6.2",
     "tsx": "4.20.6",
     "typescript": "5.9.3",
-    "typescript-eslint": "8.71.0"
+    "typescript-eslint": "8.71.0",
+    "@oax/github": "workspace:*"
   }
 }

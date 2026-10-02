@@ -1,7 +1,13 @@
 import { downloadAndUnzipVSCode } from '@vscode/test-electron';
 import { spawn } from 'node:child_process';
 import path from 'node:path';
-const executable = await downloadAndUnzipVSCode('1.105.0');
+const selectedExecutable = process.env.OAX_VSCODE_EXECUTABLE;
+if (selectedExecutable && !path.isAbsolute(selectedExecutable))
+  throw new Error(
+    'OAX_VSCODE_EXECUTABLE must be an absolute editor executable',
+  );
+const executable =
+  selectedExecutable ?? (await downloadAndUnzipVSCode('1.105.0'));
 const packaged = process.env.OAX_PACKAGED_TEST === '1';
 // Launch without a shell so Windows workspace paths containing spaces stay intact.
 const child = spawn(

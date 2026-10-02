@@ -469,6 +469,110 @@ export function activate(context: vscode.ExtensionContext): void {
         observe();
       }
     }),
+    vscode.commands.registerCommand('oax.connectGitHub', async () => {
+      const editor = vscode.window.activeTextEditor;
+      if (!editor) throw new Error('Open a trusted local workspace file first');
+      if (busy) throw new Error('An oAX task is active');
+      const captured = snapshot(editor);
+      const repository = await vscode.window.showInputBox({
+        prompt: 'Select exactly one GitHub repository: owner/name',
+        validateInput: (value) =>
+          /^[A-Za-z0-9][A-Za-z0-9-]*\/[A-Za-z0-9][A-Za-z0-9_.-]*$/.test(value)
+            ? undefined
+            : 'Use owner/name',
+      });
+      if (!repository) return;
+      const key = `github.${createHash('sha256').update(`${captured.root}:${repository}`).digest('hex')}`;
+      const saved = await context.secrets.get(key);
+      const token =
+        saved ??
+        (await vscode.window.showInputBox({
+          prompt:
+            'Fine-grained GitHub token scoped to this repository with metadata and pull-request read access. Token stays outside context/config/logs.',
+          password: true,
+          ignoreFocusOut: true,
+        }));
+      if (!token) return;
+      const approved = await vscode.window.showInformationMessage(
+        `Connect read-only GitHub evidence for ${repository}?`,
+        {
+          modal: true,
+          detail:
+            'Allows metadata verification and up to five PR associations per requested commit for this workspace/session for one hour. Only fixed-origin GET requests are exposed. No source upload, posting, push or model transmission. A supplied token may have broader permissions; configure read-only repository scope.',
+        },
+        'Connect read-only',
+      );
+      if (approved !== 'Connect read-only') return;
+      const { client, sessionId } = await connect(captured.root);
+      const result = await client.call(
+        'github.connect',
+        { repository, accessToken: token, approved: true },
+        sessionId,
+      );
+      if (!saved) {
+        const remember = await vscode.window.showQuickPick(
+          ['Use for this session', 'Remember in VS Code secret storage'],
+          { placeHolder: 'Credential retention' },
+        );
+        if (remember === 'Remember in VS Code secret storage')
+          await context.secrets.store(key, token);
+      }
+      output.appendLine(`Verified read-only GitHub connection: ${repository}`);
+      output.show(true);
+      return result;
+    }),
+    vscode.commands.registerCommand('oax.githubHistory', async () => {
+      const editor = vscode.window.activeTextEditor;
+      if (!editor) throw new Error('Select saved tracked code first');
+      if (busy) throw new Error('An oAX task is active');
+      const captured = snapshot(editor);
+      const { client, sessionId } = await connect(captured.root);
+      const history = (await client.call(
+        'history.query',
+        { observation: captured.observation },
+        sessionId,
+      )) as import('@oax/git').HistoryEvidence;
+      const commit = history.commits[0]?.sha;
+      if (!commit) throw new Error('No local commit evidence for this file');
+      const evidence = (await client.call(
+        'github.history',
+        { commit },
+        sessionId,
+      )) as import('../../../packages/github/src/index.js').GitHubEvidence;
+      output.clear();
+      output.appendLine(
+        `GitHub evidence: ${evidence.repository} commit ${commit}`,
+      );
+      for (const pr of evidence.pullRequests)
+        output.appendLine(
+          `${pr.url}\n${pr.title} [${pr.state}]\n${pr.excerpt}`,
+        );
+      if (!evidence.pullRequests.length)
+        output.appendLine(
+          'No associated PRs returned; no historical cause inferred.',
+        );
+      evidence.limitations.forEach((limit) =>
+        output.appendLine(`Limitation: ${limit}`),
+      );
+      output.show(true);
+      return evidence;
+    }),
+    vscode.commands.registerCommand('oax.disconnectGitHub', async () => {
+      const editor = vscode.window.activeTextEditor;
+      if (!editor) return;
+      const captured = snapshot(editor);
+      const { client, sessionId } = await connect(captured.root);
+      await client.call('github.disconnect', {}, sessionId);
+      const repository = await vscode.window.showInputBox({
+        prompt:
+          'Optional: owner/name whose remembered token should also be removed (leave blank to keep it)',
+      });
+      if (repository)
+        await context.secrets.delete(
+          `github.${createHash('sha256').update(`${captured.root}:${repository}`).digest('hex')}`,
+        );
+      output.appendLine('GitHub runtime connection released.');
+    }),
     vscode.commands.registerCommand('oax.explainHistory', async () => {
       const editor = vscode.window.activeTextEditor;
       if (!editor) return;

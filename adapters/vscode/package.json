@@ -27,6 +27,18 @@
     },
     "commands": [
       {
+        "command": "oax.connectGitHub",
+        "title": "oAX: Connect Read-Only GitHub Evidence"
+      },
+      {
+        "command": "oax.githubHistory",
+        "title": "oAX: Show Associated GitHub PR Evidence"
+      },
+      {
+        "command": "oax.disconnectGitHub",
+        "title": "oAX: Disconnect GitHub Evidence"
+      },
+      {
         "command": "oax.onboardRepository",
         "title": "oAX: Repository Walkthrough"
       },

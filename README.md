@@ -46,6 +46,8 @@ Positions are zero-based. `init` preserves valid configuration; `analyze` builds
 
 [Development](DEVELOPMENT.md), [architecture](ARCHITECTURE.md), [security](SECURITY.md), [protocol](docs/protocol.md), [provider verification](docs/codex-integration.md), and the full [blueprint](oAX.md) describe setup, implemented boundaries, and planned capabilities.
 
-The first distribution target is a local VS Code extension and CLI. GitHub product integration, general agent refactoring, voice, additional interfaces, team services, and cloud deployment remain separate work. Optional Chrome DevTools inspection is available through a separate, origin-scoped CLI adapter; see [browser setup](docs/browser.md). MIT license preserved.
+The first distribution target is a local VS Code extension and CLI. Broader GitHub issue/review/check intelligence, general agent refactoring, voice, additional interfaces, team services, and cloud deployment remain separate work. Optional Chrome DevTools inspection is available through a separate, origin-scoped CLI adapter; see [browser setup](docs/browser.md). MIT license preserved.
 
 CLI explain defaults to a labeled mock. For live text, add --codex with an absolute Codex 0.159.2 executable; this prints a bounded context preview first. Add --approve with that context hash to authorize transmission. CLI review returns labeled structural evidence, not a model quality verdict. Verification streams pass/fail diagnostics and returns exit code 1 on failed checks. See --help for exact arguments.
+
+Optional read-only GitHub PR association commands are implemented with selected-repository grants and password/secret-storage handling. Live product authentication has not been verified; see [GitHub setup](docs/github.md). Chat connector access does not authenticate the product.

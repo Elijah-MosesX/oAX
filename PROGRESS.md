@@ -16,7 +16,7 @@
 | Graph/context      | SQLite, TS/JS checker, local-relative imports, bounded provenance and redaction             | Project configuration, external dependencies and broader languages         |
 | Codex              | 0.159.2 restricted text adapter; real synthetic explain and context-consent denial passed   | General provider editing remains disabled until enforcement is established |
 | Refactor/checks    | Saved-file semantic rename, exact approval/baselines, separate approved Node tests          | General edit plans and richer review workflows                             |
-| History/onboarding | Local commits/blame and evidence-based walkthrough                                          | Product GitHub authentication and PR/issue evidence                        |
+| History/onboarding | Local commits/blame and evidence-based walkthrough                                          | Live scoped GitHub acceptance; broader issue/review evidence               |
 | Browser            | Optional pinned MCP inspection, dedicated profile, origin/page grants; real fixtures passed | Source-map/context integration                                             |
 | Distribution       | Local VSIX and built-checkout CLI; content allowlist and notices                            | Supported release policy and hosted CI evidence                            |
 
@@ -105,9 +105,9 @@ The tracker retains its original milestone numbering, which differs from the att
 
 ## First vertical-slice acceptance test
 
-- [ ] Open and index a real repository.
-- [ ] Capture the active file and selected symbol.
-- [ ] Resolve direct callers or dependencies.
+- [x] Open and index a real repository (oAX self-analysis).
+- [x] Capture the active file and selected symbol (versioned editor acceptance).
+- [x] Resolve direct callers or dependencies within the supported local-relative module model.
 - [ ] Explain the symbol through Codex using relevant context.
 - [ ] Show the agent cursor during investigation.
 - [ ] Request a refactor and show an impact summary.
@@ -120,7 +120,7 @@ The tracker retains its original milestone numbering, which differs from the att
 
 ## Quality and security gates
 
-- [ ] Protocol validation and unit tests pass.
+- [x] Protocol validation and unit tests pass.
 - [ ] Runtime, adapter, and Codex integration tests pass.
 - [ ] Indexing updates incrementally.
 - [ ] High-impact operations require explicit approval.
@@ -143,13 +143,14 @@ The tracker retains its original milestone numbering, which differs from the att
 
 ## Blockers and open questions
 
-| Item                                 | State                                                 | Next action                                                                                                       |
-| ------------------------------------ | ----------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| Git CLI authentication               | Existing CLI identity lacks access to selected remote | Use connected GitHub account for branch sync; authenticate correct account before fetching shared history locally |
-| Codex transport and tool enforcement | Not implemented; disabled                             | Pin installed version, generate schemas, implement deterministic provider tests before opt-in live use            |
-| Evaluation repositories              | Not selected                                          | Choose small and medium sample repositories                                                                       |
-| Evaluation thresholds                | Not defined                                           | Establish baseline and release targets                                                                            |
-| GitHub authentication                | Not selected                                          | Choose secure local auth approach                                                                                 |
+| Item                           | State                                                                                                     | Next action                                                                               |
+| ------------------------------ | --------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| Git CLI authentication         | Existing CLI account lacks selected private-repository access; connector sync works                       | Keep remote ancestry through connector; no credential changes                             |
+| Installed VS Code 1.138.0      | Running CodeSetup updater holds installation mutex and prevents UI launch                                 | Let setup finish, then run installed-version acceptance; pinned 1.105.0 acceptance passes |
+| General provider tools         | Restricted text integration is live verified; tools deliberately unavailable                              | Establish enforcement before enabling model edits/commands                                |
+| Product GitHub live acceptance | GET-only adapter and credential UI implemented; HTTP fixtures pass                                        | Connect a selected-repository read-only token through the extension, not chat/config      |
+| Broader evaluation             | Deterministic fixtures and oAX self-index exist; thresholds/representative quality evaluation remain open | Establish measured release gates and user acceptance                                      |
+| Public release                 | No public publication; support/reporting policy not configured                                            | Owner must select maintained support/private reporting before public release              |
 
 ## Work log
 
@@ -230,10 +231,14 @@ Copy this block after every implementation session:
 
 **Delivery:** Preserve the remote MIT license and main ancestry. Sync reviewed sources/documents through the authorized GitHub connector because the existing Git CLI login cannot fetch this private repository. Do not push the independent local root history. The user's raw oAX-Complete.md, ZIP/PDF attachments, credentials, browser profiles, local state and generated binaries are excluded from commits.
 
-**Next concrete action:** Complete product GitHub read integration and broaden the installable local workflow/evaluation evidence before considering additional deployment surfaces. No full-platform or public-release completion is claimed.
+**Next concrete action:** Verify live scoped GitHub reads and broaden the installable local workflow/evaluation evidence before considering additional deployment surfaces. No full-platform or public-release completion is claimed.
 
 **Final checkpoint checks:** Frozen lockfile installation passed across 14 workspace projects. After the diff-preview and query-limit changes, build/typecheck/lint, 31 unit tests, three stdio integration tests and VSIX packaging passed again. The installed VSIX contents were loaded in the isolated VS Code 1.105.0 development host and passed unsaved context, relationships, reconnection, onboarding and unchanged-selection assertions (exit 0). The eight-entry 1.73-MB package contains both bundles, manifest, README, MIT license and TypeScript/Zod notices. CLI self-analysis succeeded with 46 supported files and 785 symbols. Formatting passed. Schema generation initially failed after introducing top-level await under CommonJS; an async main wrapper fixed it, and generation/typecheck/lint/format checks then passed. Hosted CI is defined but no hosted result is claimed.
 
 **GitHub checkpoint:** Implementation commit [47e270f2eeee49d27c4fee9f4d85387dcda282de](https://github.com/Elijah-MosesX/oAX/commit/47e270f2eeee49d27c4fee9f4d85387dcda282de) is synced to [codex/local-intelligence-preview](https://github.com/Elijah-MosesX/oAX/tree/codex/local-intelligence-preview). Its 107-file tree c64f84dac825a8ff4a1ae4c55839d3f0e1040533 exactly matches local snapshot 2599600. Parent 377ad0ccc2ae7f8ada093f1d6b69c0aa04ca805f and MIT blob ed15f3baa74f98072ea443230ff29686eec8fe39 are preserved; main was not changed.
 
 **CLI follow-through:** Added saved-file `explain` (mock by default; optional pinned Codex with exact context consent), `review` (explicit structural evidence, no fabricated quality verdict), and `verify` (exact Node-test preview/approval). SIGINT cancels tasks. Failed checks retain captured stdout diagnostics and exit 1. Build/typecheck/lint passed; integration acceptance now passes 4/4 including the built CLI, actual successful/failing Node checks, wrong-hash denial, path escape and unchanged source. Initial test assertions incorrectly assumed caller ordering and TAP output; they were corrected to assert actual caller membership and reporter-independent pass/fail counts. No live-model test was needed for this CLI-only change; restricted live runtime evidence remains recorded above.
+
+**Scoped GitHub continuation:** Implemented packages/github and VS Code selected-repository connect/PR evidence/disconnect commands. Fine-grained token entry uses password input with optional VS Code SecretStorage. Runtime credentials/one-hour authorization remain session scoped; fixed-origin GET requests, exact resource grants, eight-second timeout, redirect rejection, 64-KiB response cap and credential redaction gate metadata/commit-to-PR evidence. No writes/model transmission exist. Official REST API 2026-03-10 and VS Code APIs were checked. Deterministic HTTP fixture tests prove no network without grants, repository/session scope, rejected unapproved connections, bounded responses, constructed references, credential non-disclosure and disconnect. Build/typecheck/lint and 33 unit tests passed; four stdio/CLI integration tests passed. Live authenticated product/credential UI are pending because product credentials must be connected separately from this chat. Issues/reviews/checks, pagination and evaluation of historical causes remain incomplete.
+
+**Final GitHub-slice verification:** After echoed-token redaction and expiry cleanup, 33/33 unit tests, typecheck/lint/build, format checking, frozen installation across 15 workspaces, packaging and audit all passed. Four integration tests passed before this final redaction-only change. The final installed VSIX passed the isolated VS Code 1.105.0 development-host assertions again, including onboarding and preserved selection. Package SHA-256: 56edcb4dee26703a4378ab6eebf76ab76f4f012550229a006313217f6e97271c. Testing the installed VS Code 1.138.0 executable failed before extension activation because CodeSetup still held its update mutex after 30 seconds; read-only process inspection confirmed active setup processes. The updater was not interrupted or modified. No installed-1.138.0 or live GitHub acceptance is claimed.

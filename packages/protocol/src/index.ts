@@ -13,6 +13,7 @@ export const CAPABILITIES = [
   'agent.cursor.v1',
   'context.preview.v1',
   'git.history.v1',
+  'github.history.v1',
   'refactor.rename.v1',
   'verification.node-test.v1',
   'repository.onboard.v1',
@@ -165,6 +166,18 @@ export const payloadSchemas = {
   'session.open': z.strictObject({}),
   'spatial.observe': z.strictObject({ observation: observationSchema }),
   'history.query': z.strictObject({ observation: observationSchema }),
+  'github.connect': z.strictObject({
+    repository: z
+      .string()
+      .max(200)
+      .regex(/^[A-Za-z0-9][A-Za-z0-9-]*\/[A-Za-z0-9][A-Za-z0-9_.-]*$/),
+    accessToken: z.string().min(1).max(4096).regex(/^\S+$/),
+    approved: z.literal(true),
+  }),
+  'github.history': z.strictObject({
+    commit: z.string().regex(/^[a-f0-9]{40,64}$/i),
+  }),
+  'github.disconnect': z.strictObject({}),
   'repository.onboard': z.strictObject({ observation: observationSchema }),
   'verification.prepare': z.strictObject({ observation: observationSchema }),
   'verification.run': z.strictObject({

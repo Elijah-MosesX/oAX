@@ -5,6 +5,7 @@ export type Capability =
   | 'terminal.execute'
   | 'provider.context'
   | 'git.read'
+  | 'github.read'
   | 'browser.read'
   | 'browser.navigate';
 export interface Action {

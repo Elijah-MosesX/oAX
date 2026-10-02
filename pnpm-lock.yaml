@@ -26,6 +26,9 @@ importers:
       '@oax/git':
         specifier: workspace:*
         version: link:packages/git
+      '@oax/github':
+        specifier: workspace:*
+        version: link:packages/github
       '@oax/indexer':
         specifier: workspace:*
         version: link:services/indexer
@@ -171,6 +174,18 @@ importers:
         specifier: workspace:*
         version: link:../protocol
 
+  packages/github:
+    dependencies:
+      '@oax/context':
+        specifier: workspace:*
+        version: link:../context
+      '@oax/permissions':
+        specifier: workspace:*
+        version: link:../permissions
+      '@oax/protocol':
+        specifier: workspace:*
+        version: link:../protocol
+
   packages/permissions:
     dependencies:
       '@oax/protocol':
@@ -194,6 +209,9 @@ importers:
       '@oax/git':
         specifier: workspace:*
         version: link:../git
+      '@oax/github':
+        specifier: workspace:*
+        version: link:../github
       '@oax/indexer':
         specifier: workspace:*
         version: link:../../services/indexer

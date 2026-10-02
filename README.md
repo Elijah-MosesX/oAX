@@ -1,8 +1,14 @@
 # oAX
 
-A spatially aware codebase onboarding, analysis, and refactoring platform, with Codex behind a provider boundary.
+oAX is a spatially aware developer platform for understanding repositories, explaining code, tracing history, and making reviewed changes. Its direction is one shared runtime, protocol, codebase graph, context engine, and permission system across IDE extensions, desktop applications, the CLI, GitHub-integrated agents, and web/enterprise interfaces. Codex is the primary agent engine behind a provider adapter.
 
-This local development preview supports versioned VS Code observations, deterministic TypeScript/JavaScript symbols and relationships, bounded context, optional Codex explanations, local Git evidence, and a reviewed symbol-rename workflow. It is not the complete platform or a public release. See [PROGRESS.md](PROGRESS.md) for verified results and remaining work.
+The platform is being built end to end, with each supported workflow verified before it is advertised. The latest implementation and installation instructions are on [codex/local-intelligence-preview](https://github.com/Elijah-MosesX/oAX/tree/codex/local-intelligence-preview). Its [README support matrix](https://github.com/Elijah-MosesX/oAX/blob/codex/local-intelligence-preview/README.md) and [PROGRESS verification tracker](https://github.com/Elijah-MosesX/oAX/blob/codex/local-intelligence-preview/PROGRESS.md) distinguish implemented, tested, and remaining capabilities. Universal IDE compatibility and enterprise deployment remain goals requiring further implementation and acceptance.
+
+Interfaces and deployment are separate: the current runtime runs locally; managed, hybrid, and self-hosted team deployments must add identity, isolation, installation, and recovery controls. The shared architecture does not require every developer to connect to one server. Python is used for the Jev planner, Java for the JetBrains prototype, and Go remains an available worker implementation choice. These language choices do not imply semantic graph support for every language.
+
+## Main-branch snapshot
+
+The instructions below describe the older source currently merged into `main`. For the newer live editing, Buddy, additional-editor, desktop, PWA and browser integrations, use the implementation branch linked above. This README update does not merge those code changes or declare a production release.
 
 ## Build and use locally
 

@@ -17,6 +17,7 @@ export const CAPABILITIES = [
   'github.history.v1',
   'refactor.rename.v1',
   'refactor.selection-edit.v1',
+  'refactor.review.v1',
   'verification.node-test.v1',
   'repository.onboard.v1',
 ] as const;
@@ -129,6 +130,14 @@ const eventBase = {
 export const eventSchema = z.union([
   z.strictObject({
     ...eventBase,
+    method: z.literal('agent.activity'),
+    payload: z.strictObject({
+      kind: z.enum(['turn', 'message', 'tool']),
+      state: z.enum(['started', 'completed', 'failed', 'cancelled', 'denied']),
+    }),
+  }),
+  z.strictObject({
+    ...eventBase,
     method: z.literal('task.state'),
     payload: z.strictObject({
       state: z.enum(taskStates),
@@ -161,6 +170,7 @@ export const messageSchema = z.union([
   eventSchema,
 ]);
 export const payloadSchemas = {
+  'review.get': z.strictObject({}),
   initialize: z.strictObject({
     token: z.string().min(32).max(128),
     capabilities: z.array(z.string().max(128)).max(32),
@@ -178,6 +188,9 @@ export const payloadSchemas = {
     approved: z.literal(true),
   }),
   'github.history': z.strictObject({
+    commit: z.string().regex(/^[a-f0-9]{40,64}$/i),
+  }),
+  'github.trace': z.strictObject({
     commit: z.string().regex(/^[a-f0-9]{40,64}$/i),
   }),
   'github.disconnect': z.strictObject({}),

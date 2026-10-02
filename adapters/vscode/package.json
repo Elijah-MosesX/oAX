@@ -28,6 +28,10 @@
     },
     "commands": [
       {
+        "command": "oax.reviewLastEdit",
+        "title": "oAX: Review Last Applied Edit and Test Evidence"
+      },
+      {
         "command": "oax.refactorSelection",
         "title": "oAX: Refactor Selection with Codex Preview"
       },

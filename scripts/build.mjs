@@ -1,5 +1,14 @@
 import { build } from 'esbuild';
 await build({
+  entryPoints: ['tests/editor/live-extension.ts'],
+  outfile: 'dist/live-editor.cjs',
+  bundle: true,
+  platform: 'node',
+  target: 'node22',
+  format: 'cjs',
+  external: ['vscode'],
+});
+await build({
   entryPoints: ['apps/cli/src/browser.ts'],
   outfile: 'dist/browser.cjs',
   bundle: true,

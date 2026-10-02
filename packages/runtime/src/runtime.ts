@@ -16,6 +16,7 @@ import {
   type RenamePlan,
 } from './refactor.js';
 import { onboarding } from './onboarding.js';
+import { inspectReview, reviewMatches, type EditReview } from './review.js';
 import {
   prepareChecks,
   executeChecks,
@@ -52,6 +53,7 @@ interface Session {
   };
   closing?: boolean;
   plan?: RenamePlan;
+  review?: EditReview;
   checks?: CheckPlan;
   github?: GitHubReader;
   githubExpiresAt?: number;
@@ -234,7 +236,10 @@ export class Runtime {
             delete session.github;
             delete session.githubExpiresAt;
             payload = { disconnected: true };
-          } else if (req.method === 'github.history') {
+          } else if (
+            req.method === 'github.history' ||
+            req.method === 'github.trace'
+          ) {
             const { commit } = payloadSchemas['github.history'].parse(
               req.payload,
             );
@@ -258,7 +263,29 @@ export class Runtime {
               decision: 'allow',
               expiresAt: Math.min(Date.now() + 10000, session.githubExpiresAt),
             });
-            payload = await session.github.associatedPullRequests(commit);
+            payload =
+              req.method === 'github.history'
+                ? await session.github.associatedPullRequests(commit)
+                : await session.github.trace(commit, (route) => {
+                    if (
+                      !session.github ||
+                      !session.githubExpiresAt ||
+                      session.githubExpiresAt <= Date.now()
+                    )
+                      throw new OaxError(
+                        'PERMISSION_DENIED',
+                        'GitHub connection expired',
+                      );
+                    this.permissions.grant({
+                      ...session.github.action(route),
+                      id: randomUUID(),
+                      decision: 'allow',
+                      expiresAt: Math.min(
+                        Date.now() + 10000,
+                        session.githubExpiresAt,
+                      ),
+                    });
+                  });
           }
         } else if (req.method === 'repository.onboard') {
           if (
@@ -344,7 +371,7 @@ export class Runtime {
               decision: 'allow',
               expiresAt: plan.expiresAt,
             });
-            task.done = this.checks(req, sessionId, task, plan);
+            task.done = this.checks(req, sessionId, session, task, plan);
             payload = { taskId: task.id };
           }
         } else if (
@@ -423,13 +450,28 @@ export class Runtime {
                 expiresAt: plan.expiresAt,
               });
             delete session.plan;
+            delete session.review;
             payload = await applyRename(
               this.options.root,
               plan,
               this.permissions,
               scope,
             );
+            session.review = {
+              planId: plan.id,
+              approvedHash: plan.hash,
+              appliedAt: new Date().toISOString(),
+              changes: plan.changes,
+              verification: plan.verification,
+            };
           }
+        } else if (req.method === 'review.get') {
+          if (!session.review)
+            throw new OaxError(
+              'REVIEW_NOT_FOUND',
+              'No completed edit in this session',
+            );
+          payload = await inspectReview(this.options.root, session.review);
         } else if (req.method === 'history.query') {
           const { observation } = payloadSchemas['history.query'].parse(
             req.payload,
@@ -464,6 +506,16 @@ export class Runtime {
               observation.selection,
             ),
           );
+          if (
+            (await readFile(
+              await workspacePath(this.options.root, observation.path),
+              'utf8',
+            )) !== disk
+          )
+            throw new OaxError(
+              'DISK_SNAPSHOT_MISMATCH',
+              'Selected file changed during history retrieval; retry',
+            );
         } else if (req.method === 'context.preview') {
           if (
             session.task &&
@@ -674,7 +726,10 @@ export class Runtime {
                 'Engine output limit exceeded',
               );
             emit('agent.delta', { text: event.text });
-          } else completed = true;
+          } else if (event.type === 'activity') {
+            emit('agent.activity', { kind: event.kind, state: event.state });
+          } else if (event.type === 'completed') completed = true;
+          else throw new OaxError('ENGINE_PROTOCOL', 'Unknown engine event');
         }
       } finally {
         void iterator.return?.().catch(() => {});
@@ -708,6 +763,7 @@ export class Runtime {
   private async checks(
     req: Request,
     sessionId: string,
+    session: Session,
     task: Task,
     plan: CheckPlan,
   ): Promise<void> {
@@ -744,6 +800,17 @@ export class Runtime {
       move('gathering_context');
       move('planning');
       move('executing');
+      const review = session.review;
+      if (review)
+        review.check = {
+          planId: plan.id,
+          approvedHash: plan.hash,
+          sourceHash: plan.sourceHash,
+          path: plan.path,
+          state: 'running',
+          output: '',
+          matchedBefore: await reviewMatches(this.options.root, review),
+        };
       const result = await executeChecks(
         plan,
         this.permissions,
@@ -754,8 +821,20 @@ export class Runtime {
           taskId: task.id,
         },
         task.controller.signal,
-        (text) => emit('agent.delta', { text }),
+        (text) => {
+          if (review?.check)
+            review.check.output = (review.check.output + text).slice(0, 8000);
+          emit('agent.delta', { text });
+        },
       );
+      if (review?.check) {
+        review.check.exitCode = result.exitCode;
+        review.check.matchedAfter = await reviewMatches(
+          this.options.root,
+          review,
+        );
+        review.check.state = result.exitCode === 0 ? 'passed' : 'failed';
+      }
       move('verifying');
       if (result.exitCode !== 0)
         throw new OaxError(
@@ -765,6 +844,11 @@ export class Runtime {
       move('completed');
     } catch (error) {
       const state = task.controller.signal.aborted ? 'cancelled' : 'failed';
+      if (session.review?.check?.planId === plan.id) {
+        session.review.check.state = state;
+        session.review.check.error =
+          error instanceof OaxError ? error.code : 'CHECK_FAILED';
+      }
       if (canTransition(task.state, state))
         move(
           state,

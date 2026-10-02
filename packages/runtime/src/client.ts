@@ -131,7 +131,9 @@ export class RuntimeClient {
     const result = new Promise<Response>((resolve, reject) => {
       const timer = setTimeout(
         () => this.fail(new OaxError('TIMEOUT', 'Runtime request timed out')),
-        10_000,
+        req.method === 'github.trace' || req.method === 'history.query'
+          ? 90_000
+          : 10_000,
       );
       this.pending.set(req.id, { resolve, reject, timer });
     });

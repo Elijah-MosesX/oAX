@@ -91,7 +91,9 @@ test('runtime GitHub connections isolate sessions and require explicit connectio
     return Response.json(
       String(input).endsWith('/owner/repo')
         ? { full_name: 'owner/repo', private: true }
-        : [],
+        : String(input).includes('/check-runs?')
+          ? { check_runs: [] }
+          : [],
     );
   };
   const runtime = new Runtime({
@@ -149,9 +151,13 @@ test('runtime GitHub connections isolate sessions and require explicit connectio
     assert.equal(calls, 1);
     assert.equal((await call('github.history', { commit }, session)).ok, true);
     assert.equal(calls, 2);
+    assert.equal((await call('github.trace', { commit }, other)).ok, false);
+    assert.equal(calls, 2);
+    assert.equal((await call('github.trace', { commit }, session)).ok, true);
+    assert.equal(calls, 4);
     assert.equal((await call('github.disconnect', {}, session)).ok, true);
     assert.equal((await call('github.history', { commit }, session)).ok, false);
-    assert.equal(calls, 2);
+    assert.equal(calls, 4);
     assert.ok(!JSON.stringify(runtime.permissions.audit).includes(secret));
   } finally {
     await runtime.stop();

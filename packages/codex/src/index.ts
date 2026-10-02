@@ -44,16 +44,27 @@ export class CodexAgentEngine implements AgentEngine {
       throw new OaxError('SESSION_NOT_FOUND', 'Provider session closed');
     try {
       await client.connect();
-      const queue: string[] = [];
+      const queue: AgentEvent[] = [];
       let ended = false;
       let failure: unknown;
       let wake: (() => void) | undefined;
       const work = client
-        .explain(JSON.stringify(context), signal, (text) => {
-          for (let offset = 0; offset < text.length; offset += 16000)
-            queue.push(text.slice(offset, offset + 16000));
-          wake?.();
-        })
+        .explain(
+          JSON.stringify(context),
+          signal,
+          (text) => {
+            for (let offset = 0; offset < text.length; offset += 16000)
+              queue.push({
+                type: 'delta',
+                text: text.slice(offset, offset + 16000),
+              });
+            wake?.();
+          },
+          (event) => {
+            queue.push({ type: 'activity', ...event });
+            wake?.();
+          },
+        )
         .then(
           () => {
             ended = true;
@@ -66,8 +77,8 @@ export class CodexAgentEngine implements AgentEngine {
           },
         );
       while (!ended || queue.length) {
-        const text = queue.shift();
-        if (text !== undefined) yield { type: 'delta', text };
+        const event = queue.shift();
+        if (event !== undefined) yield event;
         else
           await new Promise<void>((resolve) => {
             wake = resolve;

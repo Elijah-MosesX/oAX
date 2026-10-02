@@ -57,7 +57,7 @@ export function selectionEditPlan(
       beforeHash: digest(observation.text),
     },
   ];
-  if (Buffer.byteLength(observation.text) + Buffer.byteLength(after) > 100000)
+  if (Buffer.byteLength(JSON.stringify(changes)) > 100000)
     throw new OaxError('REFACTOR_LIMIT', 'Edit preview exceeds limits');
   return renamePlanSchema.parse({
     id,
@@ -77,13 +77,7 @@ export function renamePlan(
   if (
     !changes.length ||
     changes.length > 20 ||
-    changes.reduce(
-      (size, change) =>
-        size +
-        Buffer.byteLength(change.before) +
-        Buffer.byteLength(change.after),
-      0,
-    ) > 100000
+    Buffer.byteLength(JSON.stringify(changes)) > 100000
   )
     throw new OaxError('REFACTOR_LIMIT', 'Rename preview exceeds limits');
   return renamePlanSchema.parse({

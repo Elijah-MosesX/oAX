@@ -23,10 +23,24 @@ async function main() {
     console.log(
       `Codex ${preflight.version} authenticated; no repository content sent.`,
     );
+    const activities: { kind: string; state: string }[] = [];
     const answer = await client.explain(
       'Explain this synthetic TypeScript function in one sentence: export function add(a: number, b: number) { return a + b; }',
+      undefined,
+      undefined,
+      (event) => activities.push(event),
     );
     assert.match(answer, /add|sum|addition|plus/i);
+    assert.ok(
+      activities.some(
+        (event) => event.kind === 'turn' && event.state === 'completed',
+      ),
+    );
+    assert.ok(
+      activities.some(
+        (event) => event.kind === 'message' && event.state === 'started',
+      ),
+    );
     console.log(
       'Live synthetic explain completed; text-only session policy verified.',
     );

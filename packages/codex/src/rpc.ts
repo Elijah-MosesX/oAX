@@ -36,6 +36,8 @@ export class CodexRpc {
           const message = inputMessage as Record<string, unknown>;
           if (typeof message.method === 'string') {
             if (message.id !== undefined) {
+              for (const listener of this.listeners)
+                listener({ method: 'oax/serverRequestDenied', params: {} });
               // No provider-originated tool or approval request can grant execution.
               await writer.send({
                 id: message.id,

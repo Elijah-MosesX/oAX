@@ -20,6 +20,8 @@ The developer's authorization to implement/test/sync oAX is separate from produc
 
 ## Permission model
 
+Git and GitHub write capabilities are distinct from their read capabilities. Neither read-only adapter exposes a mutation method. Connected GitHub history authorizes only bounded fixed-origin GET routes, with exact grants checked at each read. Unavailable results remain explicit, and untrusted issue/PR text cannot grant execution. The selected code's historical evidence is never automatically sent to a provider. Review snapshots and outputs remain session-local and disappear on reconnect/closure; passing tests do not imply sandboxing or comprehensive dependency verification.
+
 Separate reading, editing, executing, Git mutations, and remote actions. Policies must be evaluated at the actual tool or operation boundary.
 
 | Operation                                           | Initial policy                       | Scope and requirements                                   |

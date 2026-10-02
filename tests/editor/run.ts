@@ -17,6 +17,10 @@ async function waitForSpatial(
   );
 }
 export async function run(): Promise<void> {
+  if (process.env.OAX_LIVE_EDITOR_TEST === '1') {
+    await (await import('./live.js')).runLive();
+    return;
+  }
   const folder = vscode.workspace.workspaceFolders?.[0];
   assert.ok(folder);
   const document = await vscode.workspace.openTextDocument(

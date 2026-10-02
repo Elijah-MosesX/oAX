@@ -67,11 +67,55 @@ function snapshot(editor: vscode.TextEditor) {
 }
 export function activate(context: vscode.ExtensionContext): {
   inspectSpatial: () => SpatialInspection;
+  inspectInteraction: () => { title: string; activeLabel: string } | undefined;
 } {
+  let interaction: { title: string; activeLabel: string } | undefined;
+  const confirm = (
+    title: string,
+    detail: string,
+    action: string,
+    extra?: string,
+  ): Promise<string | undefined> =>
+    new Promise((resolve) => {
+      output.appendLine(`${title}\n${detail}`);
+      output.show(true);
+      const pick = vscode.window.createQuickPick();
+      pick.title = title;
+      pick.ignoreFocusOut = true;
+      pick.items = [
+        { label: 'Cancel', detail: 'No authorization granted' },
+        { label: action, detail },
+      ];
+      if (extra) pick.items = [...pick.items, { label: extra }];
+      pick.activeItems = [pick.items[0]!];
+      interaction = { title, activeLabel: 'Cancel' };
+      let settled = false;
+      const finish = (answer?: string) => {
+        if (settled) return;
+        settled = true;
+        interaction = undefined;
+        pick.dispose();
+        resolve(answer);
+      };
+      pick.onDidChangeActive((items) => {
+        if (interaction) interaction.activeLabel = items[0]?.label ?? '';
+      });
+      pick.onDidAccept(() => {
+        const label = pick.selectedItems[0]?.label;
+        finish(label === action || label === extra ? label : undefined);
+      });
+      pick.onDidHide(() => finish());
+      pick.show();
+    });
   let spatial: SpatialView | undefined;
   let agentCursor: SpatialInspection['cursor'];
   const output = vscode.window.createOutputChannel('oAX');
   const previews = new Map<string, string>();
+  const reviews = new Map<
+    string,
+    { client: RuntimeClient; sessionId: string }
+  >();
+  let lastReviewRoot: string | undefined;
   context.subscriptions.push(
     vscode.workspace.registerTextDocumentContentProvider('oax-preview', {
       provideTextDocumentContent: (uri) => previews.get(uri.toString()) ?? '',
@@ -108,6 +152,12 @@ export function activate(context: vscode.ExtensionContext): {
         client.subscribe((event) => {
           if (event.method === 'task.state')
             status.text = `$(hubot) oAX: ${event.payload.state}`;
+          if (event.method === 'agent.activity') {
+            output.appendLine(
+              `[Codex ${event.payload.kind}: ${event.payload.state}]`,
+            );
+            status.text = `$(hubot) oAX: ${event.payload.kind} ${event.payload.state}`;
+          }
           if (event.method === 'agent.cursor.changed') {
             for (const editor of vscode.window.visibleTextEditors) {
               if (
@@ -359,18 +409,16 @@ export function activate(context: vscode.ExtensionContext): {
       const captured = snapshot(editor);
       busy = true;
       try {
-        const { client, sessionId } = await connect(captured.root);
+        const { client, sessionId } =
+          reviews.get(captured.root) ?? (await connect(captured.root));
         const plan = (await client.call(
           'verification.prepare',
           { observation: captured.observation },
           sessionId,
         )) as import('../../../packages/runtime/src/verification.js').CheckPlan;
-        const approved = await vscode.window.showInformationMessage(
+        const approved = await confirm(
           'Run this exact Node test command?',
-          {
-            modal: true,
-            detail: `${plan.executable}\n${JSON.stringify(plan.args)}\nWorking directory: ${plan.cwd}\n${plan.disclosure}`,
-          },
+          `${plan.executable}\n${JSON.stringify(plan.args)}\nWorking directory: ${plan.cwd}\n${plan.disclosure}`,
           'Run tests',
         );
         if (approved !== 'Run tests') return;
@@ -408,6 +456,8 @@ export function activate(context: vscode.ExtensionContext): {
             } finally {
               subscription.dispose();
               observed();
+              if (reviews.has(captured.root))
+                await vscode.commands.executeCommand('oax.reviewLastEdit');
             }
           },
         );
@@ -421,12 +471,22 @@ export function activate(context: vscode.ExtensionContext): {
       if (!editor || editor.selection.isEmpty || editor.document.isDirty)
         throw new Error('Select saved code in a trusted workspace first');
       if (busy) throw new Error('An oAX task is active');
-      const instruction = await vscode.window.showInputBox({
-        prompt: 'Describe the change to the selected code',
-        ignoreFocusOut: true,
-        validateInput: (value) =>
-          value.length > 1000 ? 'Use at most 1000 characters' : undefined,
-      });
+      const selectedChange = await confirm(
+        'Choose a refactor objective',
+        'Investigate and fix a bug in the selected code. You will review context and the proposed diff separately.',
+        'Fix a bug in the selection',
+        'Describe a change',
+      );
+      if (!selectedChange) return;
+      const instruction =
+        selectedChange === 'Fix a bug in the selection'
+          ? selectedChange
+          : await vscode.window.showInputBox({
+              prompt: 'Describe the change to the selected code',
+              ignoreFocusOut: true,
+              validateInput: (value) =>
+                value.length > 1000 ? 'Use at most 1000 characters' : undefined,
+            });
       if (!instruction) return;
       const executable = await providerExecutable(
         vscode.workspace
@@ -451,13 +511,9 @@ export function activate(context: vscode.ExtensionContext): {
         output.appendLine(JSON.stringify(preview.context, null, 2));
         output.show(true);
         if (
-          (await vscode.window.showInformationMessage(
+          (await confirm(
             'Send the displayed context to Codex to propose an edit?',
-            {
-              modal: true,
-              detail:
-                'Model usage may apply. Provider tools are disabled. No source file is written until you review and approve the resulting diff.',
-            },
+            'Model usage may apply. Provider tools are disabled. No source file is written until you review and approve the resulting diff.',
             'Send context',
           )) !== 'Send context'
         )
@@ -521,12 +577,9 @@ export function activate(context: vscode.ExtensionContext): {
         output.appendLine(plan.verification);
         output.appendLine(`Preview hash: ${plan.hash}`);
         if (
-          (await vscode.window.showInformationMessage(
+          (await confirm(
             'Apply this exact Codex proposal?',
-            {
-              modal: true,
-              detail: `Writes only ${change.path}. ${plan.verification}\nThe saved baseline is rechecked. Completed writes are not automatically rolled back.`,
-            },
+            `Writes only ${change.path}. Plan ${plan.hash}. ${plan.verification}\nThe saved baseline is rechecked. Completed writes are not automatically rolled back.`,
             'Apply edit',
           )) !== 'Apply edit'
         )
@@ -548,10 +601,13 @@ export function activate(context: vscode.ExtensionContext): {
           sessionId,
         );
         output.appendLine(JSON.stringify(result));
+        reviews.set(captured.root, { client, sessionId });
+        lastReviewRoot = captured.root;
         output.appendLine(
           'Run Selected Node Tests with Approval to verify a relevant saved test file.',
         );
         output.show(true);
+        await vscode.commands.executeCommand('oax.reviewLastEdit');
         return result;
       } finally {
         busy = false;
@@ -650,6 +706,9 @@ export function activate(context: vscode.ExtensionContext): {
           sessionId,
         );
         output.appendLine(JSON.stringify(result));
+        reviews.set(captured.root, { client, sessionId });
+        lastReviewRoot = captured.root;
+        await vscode.commands.executeCommand('oax.reviewLastEdit');
         return result;
       } finally {
         busy = false;
@@ -685,7 +744,7 @@ export function activate(context: vscode.ExtensionContext): {
         {
           modal: true,
           detail:
-            'Allows metadata verification and up to five PR associations per requested commit for this workspace/session for one hour. Only fixed-origin GET requests are exposed. No source upload, posting, push or model transmission. A supplied token may have broader permissions; configure read-only repository scope.',
+            'Allows repository metadata, commit-associated PRs, reviews, comments, referenced issues and checks for this workspace/session for one hour. Requests and result sizes are bounded. Only fixed-origin GET requests are exposed. No source upload, posting, push or model transmission. Configure a repository-scoped read-only token.',
         },
         'Connect read-only',
       );
@@ -719,22 +778,39 @@ export function activate(context: vscode.ExtensionContext): {
         { observation: captured.observation },
         sessionId,
       )) as import('@oax/git').HistoryEvidence;
-      const commit = history.commits[0]?.sha;
+      const commit = history.selectedCommits[0];
       if (!commit) throw new Error('No local commit evidence for this file');
       const evidence = (await client.call(
-        'github.history',
+        'github.trace',
         { commit },
         sessionId,
-      )) as import('../../../packages/github/src/index.js').GitHubEvidence;
+      )) as import('../../../packages/github/src/index.js').HistoricalTrace;
       output.clear();
       output.appendLine(
-        `GitHub evidence: ${evidence.repository} commit ${commit}`,
+        `Selected-line GitHub evidence: ${evidence.association.repository} commit ${commit}`,
       );
-      for (const pr of evidence.pullRequests)
+      output.appendLine(
+        'Remote trace covers the first selected blame commit only; other selected commits may require separate investigation.',
+      );
+      output.appendLine(
+        `Selected ${history.path}; local HEAD ${history.head}.\n${history.blame}`,
+      );
+      for (const pr of evidence.association.pullRequests)
         output.appendLine(
           `${pr.url}\n${pr.title} [${pr.state}]\n${pr.excerpt}`,
         );
-      if (!evidence.pullRequests.length)
+      output.appendLine(
+        JSON.stringify(
+          {
+            checks: evidence.checks,
+            discussions: evidence.discussions,
+            unavailable: evidence.unavailable,
+          },
+          null,
+          2,
+        ),
+      );
+      if (!evidence.association.pullRequests.length)
         output.appendLine(
           'No associated PRs returned; no historical cause inferred.',
         );
@@ -776,6 +852,19 @@ export function activate(context: vscode.ExtensionContext): {
         output.appendLine(`${commit.sha} ${commit.date} ${commit.subject}`),
       );
       output.appendLine(evidence.blame);
+      output.appendLine(
+        JSON.stringify(
+          {
+            head: evidence.head,
+            branches: evidence.branches,
+            status: evidence.status,
+            diff: evidence.diff,
+            selectedCommits: evidence.selectedCommits,
+          },
+          null,
+          2,
+        ),
+      );
       evidence.limitations.forEach((limit) =>
         output.appendLine(`Limitation: ${limit}`),
       );
@@ -804,12 +893,9 @@ export function activate(context: vscode.ExtensionContext): {
         output.clear();
         output.appendLine(JSON.stringify(preview.context, null, 2));
         output.show(true);
-        const approved = await vscode.window.showInformationMessage(
+        const approved = await confirm(
           'Send this context to Codex using your existing provider login?',
-          {
-            modal: true,
-            detail: `Model usage may apply. Selected ${preview.context.path} at version ${preview.context.documentVersion}${preview.context.dirty ? ' (unsaved buffer)' : ''}; ${preview.context.excerpt.length} selected characters, with caller excerpts from: ${preview.context.related?.map((item) => item.path).join(', ') || 'none'}.\nProvider tools and environment access are disabled.`,
-          },
+          `Model usage may apply. Selected ${preview.context.path} at version ${preview.context.documentVersion}${preview.context.dirty ? ' (unsaved buffer)' : ''}; ${preview.context.excerpt.length} selected characters, with caller excerpts from: ${preview.context.related?.map((item) => item.path).join(', ') || 'none'}.\nProvider tools and environment access are disabled.`,
           'Send context',
         );
         if (approved !== 'Send context') return;
@@ -861,14 +947,80 @@ export function activate(context: vscode.ExtensionContext): {
       return state;
     }),
     vscode.commands.registerCommand('oax.reconnect', async () => {
+      reviews.clear();
+      lastReviewRoot = undefined;
       deactivate();
       observed = undefined;
       spatial = undefined;
       agentCursor = undefined;
       observe();
     }),
+    vscode.commands.registerCommand('oax.reviewLastEdit', async () => {
+      const root =
+        vscode.window.activeTextEditor?.document.uri.scheme === 'file'
+          ? vscode.workspace.getWorkspaceFolder(
+              vscode.window.activeTextEditor.document.uri,
+            )?.uri.fsPath
+          : lastReviewRoot;
+      const connection = root ? reviews.get(root) : undefined;
+      if (!connection)
+        throw new Error('No applied oAX edit in this workspace session');
+      const report = (await connection.client.call(
+        'review.get',
+        {},
+        connection.sessionId,
+      )) as Awaited<
+        ReturnType<
+          typeof import('../../../packages/runtime/src/review.js').inspectReview
+        >
+      >;
+      const uri = vscode.Uri.from({
+        scheme: 'oax-preview',
+        path: `/${report.planId}/review.json`,
+      });
+      const summary = {
+        ...report,
+        changes: report.changes.map(({ path, beforeHash, after }) => ({
+          path,
+          beforeHash,
+          afterHash: createHash('sha256').update(after).digest('hex'),
+        })),
+      };
+      previews.set(uri.toString(), JSON.stringify(summary, null, 2));
+      // Unique revision URI prevents cached report documents from hiding updated test evidence.
+      const reportUri = uri.with({
+        query: createHash('sha256')
+          .update(JSON.stringify(summary))
+          .digest('hex'),
+      });
+      previews.set(reportUri.toString(), JSON.stringify(summary, null, 2));
+      const document = await vscode.workspace.openTextDocument(reportUri);
+      await vscode.window.showTextDocument(document, {
+        preview: true,
+        preserveFocus: true,
+        viewColumn: vscode.ViewColumn.Beside,
+      });
+      output.appendLine(
+        `Review ${report.planId}: ${report.verified ? 'approved tests passed for matching edited files' : report.current ? 'edit current; verification incomplete or failed' : 'edited files changed; prior verification is stale'}`,
+      );
+      for (const change of report.changes) {
+        const before = vscode.Uri.from({
+          scheme: 'oax-preview',
+          path: `/${report.planId}/applied-before/${change.path}`,
+        });
+        const after = vscode.Uri.from({
+          scheme: 'oax-preview',
+          path: `/${report.planId}/applied-after/${change.path}`,
+        });
+        previews.set(before.toString(), change.before);
+        previews.set(after.toString(), change.after);
+      }
+      return report;
+    }),
   );
   return {
+    inspectInteraction: () =>
+      interaction ? structuredClone(interaction) : undefined,
     inspectSpatial: () =>
       structuredClone({
         ...(spatial ? { spatial } : {}),

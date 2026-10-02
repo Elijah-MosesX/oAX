@@ -28,6 +28,10 @@ The source development workflow uses the supplied F5 launch configuration. Comma
 
 ## Opt-in live test
 
+For full editor acceptance, build first, then set `OAX_LIVE_EDITOR_TEST=1` and `OAX_AUTOMATED_LIVE_EDITOR_TEST=1` before running `pnpm test:editor`. This makes real model requests using the existing Codex login and sends only generated synthetic fixtures. The separate development-only harness runs production commands and explicitly selects real approval items through VS Code's command service; production code contains no auto-approval flag. An immutable extension snapshot and separate profile prevent rebuilds from restarting the workflow. Acceptance JSON remains in the generated `.vscode-test/m4-live-*` directory. Clear the variables afterward for deterministic editor checks. To test the installed package, also set `OAX_PACKAGED_TEST=1` after installing the VSIX into the isolated extension directory. No acceptance harness is packaged into the product.
+
+Historical evidence scope, credential setup and deterministic quality scenarios are documented in docs/history.md. `github.trace` and `history.query` use bounded 90-second client request deadlines; individual Git/GitHub reads retain shorter timeouts.
+
 This test sends only synthetic TypeScript through an existing login, may consume usage, and does not change credentials:
 
 ```powershell

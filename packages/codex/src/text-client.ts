@@ -9,6 +9,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { OaxError } from '@oax/protocol';
 import { CodexRpc } from './rpc.js';
+import { activity, type ProviderActivity } from './events.js';
 export const SUPPORTED_CODEX_VERSION = '0.159.2';
 const disabled = [
   'shell_tool',
@@ -142,6 +143,7 @@ export class CodexTextClient {
     text: string,
     signal?: AbortSignal,
     onDelta?: (text: string) => void,
+    onActivity?: (event: ProviderActivity) => void,
   ): Promise<string> {
     if (!this.rpc || !this.directory || this.threadId)
       throw new OaxError(
@@ -185,7 +187,10 @@ export class CodexTextClient {
     this.threadId = started.thread.id;
     let answer = '';
     return new Promise<string>((resolve, reject) => {
+      let settled = false;
       const finish = (error?: Error) => {
+        if (settled) return;
+        settled = true;
         clearTimeout(timer);
         unsubscribe();
         signal?.removeEventListener('abort', abort);
@@ -203,7 +208,40 @@ export class CodexTextClient {
         );
       }, 60000);
       const unsubscribe = this.rpc!.subscribe((event) => {
+        if (settled) return;
+        if (event.method === 'oax/serverRequestDenied') {
+          onActivity?.({ kind: 'tool', state: 'denied' });
+          return finish(
+            new OaxError(
+              'PROVIDER_POLICY',
+              'Provider requested an unavailable capability',
+            ),
+          );
+        }
         if (event.params.threadId !== this.threadId) return;
+        if (
+          this.turnId &&
+          event.params.turnId &&
+          event.params.turnId !== this.turnId
+        )
+          return;
+        try {
+          const translated = activity(event);
+          if (translated) onActivity?.(translated);
+          if (translated?.state === 'denied')
+            return finish(
+              new OaxError(
+                'PROVIDER_POLICY',
+                'Unexpected provider activity; text session interrupted',
+              ),
+            );
+        } catch (error) {
+          return finish(
+            error instanceof Error
+              ? error
+              : new OaxError('PROVIDER_PROTOCOL', 'Invalid activity'),
+          );
+        }
         if (event.method === 'item/agentMessage/delta') {
           if (typeof event.params.delta !== 'string')
             return finish(

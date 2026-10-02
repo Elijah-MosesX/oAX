@@ -22,6 +22,10 @@ VSIX packaging uses an allowlisted staging directory and two bundles; the CLI cu
 
 ## Architectural direction
 
+Applied-edit review is session-scoped and bounded. It retains the exact approved plan, before/after snapshots, test-plan identity, source hash, exit status and bounded redacted output. `review.get` rechecks changed files and the saved test before reporting verification. Matching files before/after execution and a passing approved command are required; dependency or transient changes are not tracked. Provider turn/message activity and denied tool attempts are sanitized into `agent.activity`, without arguments, credentials or reasoning. Provider tools remain disabled. Production approvals use VS Code Quick Picks with Cancel selected initially and full details in output; a read-only interaction inspector lets acceptance exercise actual choices through VS Code's command service.
+
+Historical intelligence now separates selected-line blame commits from broader file history. Fixed read-only Git operations expose bounded branches, selected-file status/diff and HEAD. An approved GitHub connection supplies resource-scoped grants to bounded PR, review, timeline-comment, issue-reference and check-run GETs. Textual issue references are heuristic; remote partial failures are explicit. Product Git/GitHub mutation capabilities are distinct and remain unavailable. See docs/history.md for implemented limits and validation.
+
 oAX is the context and interaction layer; Codex is its primary agent engine. The core runtime is independent of editor APIs and provider wire protocols. The first deployment is local, with a VS Code adapter and CLI.
 
 ## Proposed module boundaries

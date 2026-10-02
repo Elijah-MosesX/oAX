@@ -67,24 +67,30 @@ The tracker retains its original milestone numbering, which differs from the att
 
 ## Milestone 4 — Codex, context, and editing
 
+2026-10-02 work in progress: added sanitized Codex turn/message activity and denied-tool events, a session-scoped applied-edit review record, exact approval hashes, captured before/after content, Node test exit/output evidence, and stale source/test detection. VS Code now exposes Review Last Applied Edit and Test Evidence and attaches selected Node tests to the edit session. These changes are local and not yet synced or marked complete.
+
+Intermediate verification: typecheck/lint/build passed; unit tests passed 43/43 and integration tests passed 6/6, including exact edit/test approval rejection, real failed/passing Node checks, review freshness and session isolation. Additional test-freshness and preview-budget hardening followed those test runs and still require final regression verification.
+
+Live editor acceptance remains incomplete. VS Code 1.105.0 rejects modal dialogs in extension-test mode, so a separate development-only synthetic acceptance harness was prepared to exercise production commands and real dialogs without adding an approval bypass to oAX. Computer Use was stopped by the user with the physical Escape key before this visible run could be completed. The owned synthetic host was closed. No live Explain → refactor → approve → test → review success is claimed. Next: finish regression checks, run the authorized synthetic live editor acceptance, verify the installed VSIX, update architecture/development documentation and sync the reviewed source to GitHub.
+
 - [x] Implement bounded context selection and inspectable `ContextSlice` (initial callers scope).
-- [ ] Translate Codex lifecycle and tool events into oAX events.
+- [x] Translate Codex lifecycle and tool events into oAX events (text-only provider; denied tools are observable).
 - [x] Implement agent session lifecycle, interruption, and cleanup.
 - [x] Enforce exact-plan approvals for supported rename writes and Node test execution.
-- [ ] Implement explain-symbol and refactor workflows.
-- [ ] Run relevant tests, capture diffs, and present review results.
-- [ ] Complete the first end-to-end VS Code demo.
+- [x] Implement explain-symbol and refactor workflows (saved single-selection model edits and semantic rename).
+- [x] Run relevant tests, capture diffs, and present review results.
+- [x] Complete the first end-to-end VS Code demo (real provider/editor acceptance, not a substituted mock).
 
 **Exit criteria:** Explain → refactor → approve → test → review works in VS Code.
 
 ## Milestone 5 — Git and GitHub intelligence
 
-- [ ] Read local branches, status, diffs, blame, and commit history.
-- [ ] Integrate GitHub authentication and repository metadata.
-- [ ] Retrieve PRs, issues, reviews, and checks.
-- [ ] Link code to commits, PRs, and relevant discussions.
-- [ ] Enforce distinct Git and GitHub write permissions.
-- [ ] Evaluate historical-context answer quality.
+- [x] Read local branches, selected-file status/diff, selected-line blame, and bounded file history.
+- [x] Integrate GitHub authentication and repository metadata (explicit repository-scoped token; deterministic acceptance).
+- [x] Retrieve bounded PRs, referenced issues, reviews, discussion comments and check runs.
+- [x] Link selected-line commits to PR associations and relevant discussions; issue references remain heuristic.
+- [x] Enforce distinct Git and GitHub write permissions; read-only adapters expose no mutations.
+- [x] Evaluate historical-context evidence quality with deterministic provenance/permission fixtures.
 
 **Exit criteria:** oAX traces selected code through relevant repository history.
 
@@ -298,3 +304,15 @@ Copy this block after every implementation session:
 **Final installed acceptance:** The exact final VSIX was installed into the isolated extension profile and passed VS Code 1.105.0 acceptance, exit 0. pnpm format:check passed. The final built CLI persisted the actual repository graph: 63 source files, 1111 symbols, 137 resolved imports and 182 explicitly unresolved imports. The bounded walkthrough correctly reported truncation of heuristic lists. The supported subset and unresolved external-library/project cases are documented rather than inferred as working.
 
 **M3 source delivery:** Commit 27d5e597e7b0f606fbce825d4298712104f4ee2b is verified on codex/local-intelligence-preview and visibly accessible in the authenticated browser. Its tree 3d809217fbcc42def05c250cb93288e976041a4b exactly matches local snapshot a311201, covering 17 reviewed changed files. It preserves remote parent 522d948e4ee45e1ca53363c97e206c1fc5f2f86f and the existing license; main's independent merge history was preserved. No force push, merge or publication occurred. The original oAX-Complete.md attachment remains untracked and unchanged. Delivery evidence follows as a documentation-only commit.
+
+### 2026-10-02 — Milestone 4 exit verified and initial Milestone 5 historical intelligence
+
+**M4 implemented and verified:** Sanitized Codex lifecycle/message and denied-tool events now reach oAX. Exact approved plans retain captured diffs, test-plan/source identity, actual exit status and bounded redacted output. Review checks edited-file and saved-test freshness. Production approval Quick Picks start on Cancel, show full details in output, and require an explicit selected action. The inspection API is read-only; automated approval exists solely in the excluded development acceptance harness. Custom refactor instructions and a bug-fix objective are supported. Provider tools remain disabled; only the runtime applies approved edits and executes approved checks.
+
+**M4 exit evidence:** pnpm test:live passed existing-login preflight, real synthetic explanation/activity translation, exact context consent, real model proposal, wrong-hash denial, approved write and a separately approved real Node test. Full editor acceptance passed on VS Code 1.105.0 from both the source snapshot and the installed final VSIX. Production commands executed Explain -> refactor -> explicitly select native approval -> test -> review, with real Codex 0.159.2, exit 0, matching before/after hashes, verified review and preserved developer selection. Evidence files: .vscode-test/m4-live-wrvZZ7/acceptance.json and .vscode-test/m4-live-oeHnz4/acceptance.json. Only synthetic context was transmitted. Earlier Windows helper owner mismatch and modal-test restrictions were resolved for acceptance by using actual VS Code Quick Pick commands, not a production authorization bypass. A Thenable typing error in the harness was corrected; final typecheck passed.
+
+**M5 implemented:** Fixed read-only Git operations now return HEAD, bounded branches, selected-file status/diff, file history and selected-line origin commits. Uncommitted lines do not invent origins. GitHub trace retrieves bounded PR associations, reviews, timeline comments, same-repository referenced issues and check runs. Issue references remain textual heuristics, remote failures are explicit, and each request requires its scoped read grant. Git/GitHub write capabilities are distinct; neither adapter exposes a mutation method. VS Code GitHub sign-in and this chat's connector remain separate from product authentication.
+
+**Final verification:** pnpm schemas, typecheck, lint, build, format:check and diff --check passed. pnpm test passed 44/44; pnpm test:integration passed 7/7. Real Git fixtures verify an unrelated newer file commit does not replace selected-line provenance, uncommitted origin handling, status/diff reads and write denial over stdio. Actual oAX selected offset code traced to local commit/blame evidence. Deterministic GitHub fixtures verify PR/review/comment/issue/check evidence, reference deduplication, redaction, session scope and read-to-write denial. Actual graph regression indexed 71 source files / 1243 symbols. Deterministic VS Code spatial acceptance also passed. Final eight-entry local VSIX SHA-256: 29f97973763dcc88f110496ade3cd3b6df90bd4d0d5cd9d3dd98294754bfa027; isolated installation and live editor acceptance passed. No acceptance harness is packaged.
+
+**Remaining limitations:** M4 exit is verified for the supported saved single-selection workflow, not arbitrary commands or multi-file model editing. M5 selected-code local history exit and deterministic remote contracts are verified; live authenticated GitHub product/credential-UI acceptance still needs an explicitly configured read-only product connection. Pagination, OAuth/GitHub Apps and live-model historical narrative evaluation remain pending. The quality evaluation measures evidence correctness, not unmeasured model acceptance. Session review/audit remains memory-only. No general no-error, sandbox, full-platform or public-release claim is made. Next: verify live product GitHub evidence with a configured repository-scoped credential, then continue the next supported milestone.

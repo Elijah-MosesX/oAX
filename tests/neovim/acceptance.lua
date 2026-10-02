@@ -1,0 +1,43 @@
+local oax = require('oax')
+local repo = vim.env.OAX_REPO
+local fixture = repo .. '/tests/fixtures/workspace'
+vim.cmd.edit(vim.fn.fnameescape(fixture .. '/example.ts'))
+vim.api.nvim_buf_set_lines(0, 0, -1, false, {'// emoji 😀', 'export function unsavedMarker() { return 42; }', 'export function caller() { return unsavedMarker(); }'})
+vim.api.nvim_win_set_cursor(0, {2, 17})
+local before = vim.api.nvim_win_get_cursor(0)
+oax.setup({root = fixture, cli = repo .. '/dist/cli.cjs', node = vim.env.OAX_NODE})
+assert(vim.wait(60000, function() return oax.inspect().connected end, 20), 'Bridge did not connect')
+local snapshot = oax.capture()
+assert(snapshot.dirty and snapshot.cursor.line == 1 and snapshot.cursor.column == 17)
+local result
+oax.request('graph.query', {observation = snapshot, relationship = 'callers'}, function(message) result = message end)
+assert(vim.wait(30000, function() return result ~= nil end, 20), 'No graph response')
+assert(result.ok, vim.inspect(result))
+assert(result.payload.node.name == 'unsavedMarker')
+assert(result.payload.relationships[1].node.name == 'caller')
+assert(result.payload.relationships[1].edge.resolution == 'semantic')
+assert(vim.deep_equal(before, vim.api.nvim_win_get_cursor(0)), 'Developer cursor moved')
+-- An actual characterwise Unicode selection must use UTF-16, end-exclusive columns.
+vim.api.nvim_win_set_cursor(0, {1, 9})
+vim.cmd('normal! v')
+local unicode = oax.capture()
+assert(unicode.selection.start.column == 9 and unicode.selection['end'].column == 11, vim.inspect(unicode.selection))
+vim.cmd('normal! \027')
+vim.api.nvim_win_set_cursor(0, {2, 17})
+local explained
+vim.cmd('normal! V')
+oax.request('selection.explain', {observation = oax.capture(), objective = 'Explain explicitly using mock'}, function(message) explained = message end)
+assert(vim.wait(30000, function() return explained ~= nil end, 20), 'No explanation')
+assert(explained.ok and explained.payload:find('Mock engine', 1, true), vim.inspect(explained))
+local events = oax.inspect().events
+assert(events[1].method == 'task.state' and events[1].payload.state == 'created')
+assert(events[#events].method == 'task.state' and events[#events].payload.state == 'completed')
+vim.cmd('normal! \027')
+local denied
+oax.request('refactor.apply', {}, function(message) denied = message end)
+assert(vim.wait(10000, function() return denied ~= nil end, 20))
+assert(not denied.ok and denied.error.code == 'UNSUPPORTED_METHOD', vim.inspect(denied))
+oax.close()
+assert(not oax.inspect().connected)
+print('NEOVIM ACCEPTANCE PASSED: real editor -> authenticated runtime -> unsaved semantic graph -> ordered mock lifecycle; UTF-16 selection, denied writes, unchanged cursor and cleanup')
+vim.cmd('qa!')

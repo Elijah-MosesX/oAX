@@ -2081,3 +2081,7 @@ Once that loop is stable, every additional feature has a clear place in the arch
 An optional Chrome DevTools MCP adapter extends source intelligence with authorized browser evidence. Keep its wire details and lifecycle behind a tool adapter; scope each operation to an approved development origin and dedicated profile. Browser context is untrusted, cannot change policy, and requires separate authorization from provider context transmission. Disable unnecessary tools, personal profiles, telemetry and CrUX requests; bound and redact captured evidence.
 
 The local preview implements a pinned, origin-scoped read-only CLI inspection adapter with real loopback tests. Source-map relationships, browser evidence in ContextSlice, approved browser-driven fixes and repeated application verification remain planned. This addition does not replace the core spatial/context/runtime/Codex architecture or authorize remote submissions.
+
+## Verified implementation checkpoint — 2026-10-02
+
+The local preview now includes the supported TS/JS vertical slice, Buddy, durable source-free authorization journals and a Neovim adapter using the same runtime/protocol. JetBrains Java source compiles against its SDK, while packaging/live IDE acceptance remains separate. Python/Java/Go semantic analysis and voice are planned implementation work, not advertised capabilities. See [PROGRESS](PROGRESS.md), [language boundaries](docs/polyglot.md) and [audit](docs/audit.md) for evidence and remaining release gates. The blueprint above remains the intended full product scope.

@@ -22,6 +22,26 @@ export const CAPABILITIES = [
   'repository.onboard.v1',
 ] as const;
 const id = z.string().min(1).max(128);
+export const EDITOR_READ_METHODS = [
+  'spatial.observe',
+  'graph.query',
+  'index.status',
+  'context.preview',
+  'repository.onboard',
+  'history.query',
+  'selection.explain',
+  'task.cancel',
+] as const;
+export const editorBootstrapSchema = z.strictObject({
+  contract: z.literal('editor-read-only.v1'),
+  workspaceId: id,
+  sessionId: id,
+  methods: z
+    .array(z.enum(EDITOR_READ_METHODS))
+    .min(1)
+    .max(EDITOR_READ_METHODS.length),
+  engine: z.literal('mock'),
+});
 export const positionSchema = z.strictObject({
   line: z.number().int().min(0),
   column: z.number().int().min(0),

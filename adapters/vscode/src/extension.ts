@@ -69,14 +69,18 @@ function snapshot(editor: vscode.TextEditor) {
 }
 export function activate(context: vscode.ExtensionContext): {
   inspectSpatial: () => SpatialInspection;
-  inspectInteraction: () => { title: string; activeLabel: string } | undefined;
+  inspectInteraction: () =>
+    | { title: string; activeLabel: string; detail: string }
+    | undefined;
   inspectBuddy: () => BuddySnapshot;
 } {
   const buddy = new BuddyStore();
   let connectionGeneration = 0;
   const buddyView = new BuddyView(buddy);
   let pendingPrompt: vscode.QuickPick<vscode.QuickPickItem> | undefined;
-  let interaction: { title: string; activeLabel: string } | undefined;
+  let interaction:
+    | { title: string; activeLabel: string; detail: string }
+    | undefined;
   const confirm = (
     title: string,
     detail: string,
@@ -95,7 +99,7 @@ export function activate(context: vscode.ExtensionContext): {
       ];
       if (extra) pick.items = [...pick.items, { label: extra }];
       pick.activeItems = [pick.items[0]!];
-      interaction = { title, activeLabel: 'Cancel' };
+      interaction = { title, activeLabel: 'Cancel', detail };
       pendingPrompt = pick;
       buddy.showPrompt({ title, action });
       let settled = false;
@@ -739,10 +743,12 @@ export function activate(context: vscode.ExtensionContext): {
         output.clear();
         output.appendLine(plan.verification);
         output.appendLine(`Preview hash: ${plan.hash}`);
+        const impact = `Impact summary: replaces only the captured selection in ${change.path}; preserves unselected text. ${preview.context.related?.length ?? 0} bounded caller/context locations were inspected. External consumers and dynamic dispatch are not proven; passing checks require separate approval.`;
+        output.appendLine(impact);
         if (
           (await confirm(
             'Apply this exact Codex proposal?',
-            `Writes only ${change.path}. Plan ${plan.hash}. ${plan.verification}\nThe saved baseline is rechecked. Completed writes are not automatically rolled back.`,
+            `${impact}\nWrites only ${change.path}. Plan ${plan.hash}. ${plan.verification}\nThe saved baseline is rechecked. Completed writes are not automatically rolled back.`,
             'Apply edit',
           )) !== 'Apply edit'
         )

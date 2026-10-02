@@ -22,7 +22,7 @@ import {
   executeChecks,
   type CheckPlan,
 } from './verification.js';
-import { PermissionEngine } from '@oax/permissions';
+import { PermissionEngine, type AuditRecord } from '@oax/permissions';
 import {
   CAPABILITIES,
   VERSION,
@@ -96,7 +96,7 @@ export class Runtime {
   private seen = new Set<string>();
   private spatial = new SpatialStore();
   private sequence = 0;
-  readonly permissions = new PermissionEngine();
+  readonly permissions: PermissionEngine;
   constructor(
     private readonly options: {
       root: string;
@@ -108,8 +108,11 @@ export class Runtime {
       externalText?: boolean;
       githubTransport?: typeof fetch;
       watchIntervalMs?: number;
+      audit?: (record: AuditRecord) => void;
     },
-  ) {}
+  ) {
+    this.permissions = new PermissionEngine(Date.now, options.audit);
+  }
   async dispatch(input: unknown): Promise<Response> {
     let req: Request | undefined;
     const base = () => ({

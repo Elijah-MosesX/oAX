@@ -17,6 +17,9 @@ interface Pending {
   timer: NodeJS.Timeout;
 }
 export class RuntimeClient {
+  get identity(): string {
+    return this.workspaceId;
+  }
   private child: ChildProcessWithoutNullStreams;
   private writer: FrameWriter;
   private pending = new Map<string, Pending>();

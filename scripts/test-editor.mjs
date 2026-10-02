@@ -60,8 +60,12 @@ if (live) {
     'export function add(a, b) { return a - b; }\n// unrelated fixture content\n',
   );
   await writeFile(
+    path.join(workspace, 'consumer.mjs'),
+    "import { add } from './example.mjs';\nexport function total(a, b) { return add(a, b); }\n",
+  );
+  await writeFile(
     path.join(workspace, 'example.test.mjs'),
-    "import { test } from 'node:test';\nimport assert from 'node:assert/strict';\nimport { add } from './example.mjs';\ntest('addition', () => assert.equal(add(2, 3), 5));\n",
+    "import { test } from 'node:test';\nimport assert from 'node:assert/strict';\nimport { total } from './consumer.mjs';\ntest('addition', () => assert.equal(total(2, 3), 5));\n",
   );
   console.log(
     `Live editor acceptance sends only synthetic fixture context. Evidence directory: ${workspace}`,

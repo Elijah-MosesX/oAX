@@ -1,7 +1,10 @@
 import * as vscode from 'vscode';
 import assert from 'node:assert/strict';
 import path from 'node:path';
-import { readFile, writeFile } from 'node:fs/promises';
+import { readFile, writeFile, readdir } from 'node:fs/promises';
+import type { SpatialInspection } from '../../adapters/vscode/src/extension.js';
+let investigationCursor: SpatialInspection['cursor'];
+let impactSummary: string | undefined;
 import type { inspectReview } from '../../packages/runtime/src/review.js';
 type Report = Awaited<ReturnType<typeof inspectReview>>;
 async function command<T>(
@@ -23,8 +26,9 @@ async function command<T>(
   if (process.env.OAX_AUTOMATED_LIVE_EDITOR_TEST === '1') {
     const extension = vscode.extensions.getExtension<{
       inspectBuddy: () => import('@oax/buddy').BuddySnapshot;
+      inspectSpatial: () => SpatialInspection;
       inspectInteraction: () =>
-        | { title: string; activeLabel: string }
+        | { title: string; activeLabel: string; detail: string }
         | undefined;
     }>('oax-dev.oax-vscode');
     assert.ok(extension);
@@ -32,6 +36,8 @@ async function command<T>(
     for (const title of titles) {
       const deadline = Date.now() + 70000;
       while (extension.exports.inspectInteraction()?.title !== title) {
+        const cursor = extension.exports.inspectSpatial().cursor;
+        if (cursor) investigationCursor = cursor;
         if (finished)
           throw (
             failure ??
@@ -46,6 +52,13 @@ async function command<T>(
         'Cancel',
         'Approval must default to cancellation',
       );
+      if (title === 'Apply this exact Codex proposal?') {
+        impactSummary = extension.exports.inspectInteraction()?.detail;
+        assert.match(
+          impactSummary ?? '',
+          /Impact summary:.*captured selection/,
+        );
+      }
       assert.equal(
         extension.exports.inspectBuddy().prompt?.title,
         title,
@@ -85,6 +98,19 @@ export async function runLive(): Promise<void> {
     document.lineAt(0).text.length,
   );
   const selection = editor.selection;
+  const relationships =
+    await vscode.commands.executeCommand<import('@oax/codegraph').GraphResult>(
+      'oax.find.callers',
+    );
+  assert.ok(
+    relationships?.relationships.some(
+      (relation) =>
+        relation.node?.path === 'consumer.mjs' &&
+        relation.edge.resolution === 'semantic',
+    ),
+    'Representative cross-module caller required',
+  );
+  assert.ok(editor.selection.isEqual(selection));
   console.log('M4 LIVE: waiting for real Explain context consent');
   const answer = await command<string>('oax.explainSelection', [
     'Send this context to Codex using your existing provider login?',
@@ -171,6 +197,49 @@ export async function runLive(): Promise<void> {
   assert.equal(verifiedBuddy?.result?.verified, true);
   assert.equal(buddy.prompt, undefined);
   assert.ok(
+    investigationCursor,
+    'Actual accepted investigation cursor required',
+  );
+  assert.equal(investigationCursor.path, 'example.mjs');
+  const auditDirectory = path.join(root, '.oax', 'audit');
+  const audit = (
+    await Promise.all(
+      (await readdir(auditDirectory))
+        .filter((name) => name.endsWith('.jsonl'))
+        .map(async (name) =>
+          (await readFile(path.join(auditDirectory, name), 'utf8'))
+            .trim()
+            .split('\n')
+            .filter(Boolean)
+            .map((line) => JSON.parse(line)),
+        ),
+    )
+  ).flat();
+  for (const capability of [
+    'provider.context',
+    'workspace.write',
+    'terminal.execute',
+  ]) {
+    assert.ok(
+      audit.some(
+        (record) =>
+          record.action.capability === capability &&
+          record.outcome === 'granted',
+      ),
+    );
+    assert.ok(
+      audit.some(
+        (record) =>
+          record.action.capability === capability &&
+          record.outcome === 'completed',
+      ),
+    );
+  }
+  assert.ok(
+    !JSON.stringify(audit).includes(original),
+    'Audit must not contain source',
+  );
+  assert.ok(
     vscode.workspace.textDocuments.some(
       (doc) =>
         doc.uri.scheme === 'oax-preview' &&
@@ -184,12 +253,16 @@ export async function runLive(): Promise<void> {
     JSON.stringify(
       {
         editorVersion: vscode.version,
-        provider: 'live Codex 0.159.2',
+        provider: 'live Codex; exact supported-version preflight passed',
         workflow: 'explain-refactor-approve-test-review',
         answer,
         report,
         preservedSelection: true,
         buddy,
+        investigationCursor,
+        impactSummary,
+        audit,
+        relationships,
       },
       null,
       2,

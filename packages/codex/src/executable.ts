@@ -27,6 +27,6 @@ export async function providerExecutable(configured?: string): Promise<string> {
     }
   }
   throw new Error(
-    'Codex is not configured. Set oax.codexExecutable to an absolute Codex 0.159.2 executable in user settings and sign in using the official Codex client. No mock fallback is used.',
+    'Codex is not configured. Set oax.codexExecutable to an absolute verified Codex executable in user settings and sign in using the official Codex client. See docs/codex-integration.md for exact supported versions. No mock fallback is used.',
   );
 }

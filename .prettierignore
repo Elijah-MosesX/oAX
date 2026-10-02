@@ -6,4 +6,8 @@ node_modules
 oAX.md
 AGENTS.md
 .oax
+.tools
+**/.gradle
+**/.intellijPlatform
+adapters/jetbrains/build
 oAX-Complete.md

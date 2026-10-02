@@ -16,6 +16,11 @@ test('built CLI explains, provides labeled structural evidence, and gates real N
       windowsHide: true,
     });
   try {
+    const diagnostics = JSON.parse((await run(['doctor'])).stdout);
+    assert.equal(diagnostics.compatibleNode, true);
+    assert.equal(diagnostics.editorContract, 'editor-read-only.v1');
+    assert.ok(!diagnostics.editorMethods.includes('refactor.apply'));
+    await assert.rejects(run(['doctor', root, 'unexpected']), /INVALID_ARGS/);
     const code =
       'export function sum() { return 2; }\nfunction caller() { return sum(); }';
     await writeFile(path.join(root, 'a.ts'), code);

@@ -20,6 +20,8 @@ The developer's authorization to implement/test/sync oAX is separate from produc
 
 ## Permission model
 
+Prototype editor companions are private parent-owned stdio processes with an explicit trusted root and a read-only method allowlist. The runtime token stays inside RuntimeClient. Editors receive only workspace/session identity and documented capabilities; these identifiers are not network credentials. Wrong scope, duplicate requests, unsupported methods, malformed parameters, invalid versions and bounded framing fail closed. No provider, write, execution or GitHub credential surface is exposed. Tool/cache directories `.tools` and `.gradle` are excluded from both indexing and context, including explicit overlays. Desktop/web evaluation adds no listening endpoint. Voice remains requested future implementation with no microphone capture enabled.
+
 Buddy is a presentation projection. Its prompt entry only reopens the existing Cancel-default decision UI; it cannot authorize or execute. It retains no model deltas, source content, tool arguments, credential values or provider error details. Results come from actual runtime receipts, and verification is labeled as the last observed saved-file review. Cursor navigation is opt-in and rechecks the accepted open-document hash/version before revealing a range without changing selection. Hiding the view does not alter runtime policy or task state. Voice is deferred and no microphone capture or voice transmission is enabled. Workspace names, paths and session identifiers appear in the native view; existing output/review privacy limitations still apply.
 
 Git and GitHub write capabilities are distinct from their read capabilities. Neither read-only adapter exposes a mutation method. Connected GitHub history authorizes only bounded fixed-origin GET routes, with exact grants checked at each read. Unavailable results remain explicit, and untrusted issue/PR text cannot grant execution. The selected code's historical evidence is never automatically sent to a provider. Review snapshots and outputs remain session-local and disappear on reconnect/closure; passing tests do not imply sandboxing or comprehensive dependency verification.
@@ -69,6 +71,8 @@ Never commit access tokens, API keys, passwords, private keys, or authenticated 
 Prefer short-lived and least-privilege credentials. An oAX GitHub App should request only permissions needed for enabled features. Rotate and revoke exposed credentials immediately; deleting a committed secret does not revoke it or remove it from history.
 
 ## Data, logs, and retention
+
+Production companions now persist permission grants/refusals and action outcomes to source-free, resource-hashed `.oax/audit` journals with fail-closed pre-execution flushing. Journals survive session closure; grants do not. Retention is manual and each process journal is bounded to 4 MiB. Directory redirects are rejected. Windows ACLs are inherited; no tamper resistance or comprehensive race/OS isolation is claimed. See [audit storage and deletion](docs/audit.md).
 
 Minimize provider context and retain provenance without unnecessary code copies. Define configurable retention for graph caches, context snapshots, and session logs. Provide a documented deletion procedure and explain its limits for provider or remote retention.
 

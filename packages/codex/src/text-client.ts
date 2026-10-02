@@ -11,6 +11,16 @@ import { OaxError } from '@oax/protocol';
 import { CodexRpc } from './rpc.js';
 import { activity, type ProviderActivity } from './events.js';
 export const SUPPORTED_CODEX_VERSION = '0.159.2';
+// Exact installed alpha verified against the same generated RPC contracts.
+export const SUPPORTED_CODEX_VERSIONS = [
+  SUPPORTED_CODEX_VERSION,
+  '0.159.0-alpha.12.1',
+] as const;
+export function supportedCodexVersion(output: string): string | undefined {
+  return SUPPORTED_CODEX_VERSIONS.find(
+    (version) => output.trim() === `codex-cli ${version}`,
+  );
+}
 const disabled = [
   'shell_tool',
   'unified_exec',
@@ -56,7 +66,8 @@ export class CodexTextClient {
       timeout: 10000,
       maxBuffer: 4096,
     });
-    if (result.stdout.trim() !== `codex-cli ${SUPPORTED_CODEX_VERSION}`)
+    const version = supportedCodexVersion(result.stdout);
+    if (!version)
       throw new OaxError(
         'PROVIDER_VERSION',
         'Unsupported Codex version; regenerate and verify contracts before enabling',
@@ -130,7 +141,7 @@ export class CodexTextClient {
         { refreshToken: false },
       );
       return {
-        version: SUPPORTED_CODEX_VERSION,
+        version,
         authenticated:
           account.account !== null && account.account !== undefined,
       };

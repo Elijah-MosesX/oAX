@@ -11,16 +11,16 @@
 
 | Workstream         | Verified status                                                                             | Next action                                                                |
 | ------------------ | ------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
-| Protocol/runtime   | Validated envelopes, scoped sessions, plans, events, cleanup and cancellation               | Persistent audit/retention and replay design                               |
+| Protocol/runtime   | Validated envelopes, scoped sessions, plans, events, cleanup and cancellation               | Retention/replay design; persistent metadata now tested                    |
 | VS Code            | Versioned unsaved context, semantic relationships, cursor/status, approval commands         | Broader interaction acceptance and accessibility                           |
-| Graph/context      | SQLite, TS/JS checker, bounded project aliases/workspace exports, real-repository queries   | Project references, external dependencies and Python/Java parser support   |
-| Codex              | 0.159.2 restricted text adapter; real synthetic explain and context-consent denial passed   | General provider editing remains disabled until enforcement is established |
+| Graph/context      | SQLite, TS/JS checker, bounded project aliases/workspace exports, real-repository queries   | Project references, external dependencies and Python/Java/Go parsers       |
+| Codex              | Exact-version restricted text adapter; installed live explanation/edit acceptance passed    | General provider editing remains disabled until enforcement is established |
 | Refactor/checks    | Saved-file semantic rename, exact approval/baselines, separate approved Node tests          | General edit plans and richer review workflows                             |
 | History/onboarding | Local commits/blame and evidence-based walkthrough                                          | Live scoped GitHub acceptance; broader issue/review evidence               |
 | Browser            | Optional pinned MCP inspection, dedicated profile, origin/page grants; real fixtures passed | Source-map/context integration                                             |
 | Distribution       | Local VSIX and built-checkout CLI; content allowlist and notices                            | Supported release policy and hosted CI evidence                            |
 
-M1 foundation and M2 spatial intelligence are complete with verified editor acceptance. M3 meets its actual-repository graph exit criteria in the documented TS/JS scope. M4's real Codex Explain -> refactor -> approve -> test -> review exit is verified from source and the installed VSIX. M5's selected-code local-history exit and deterministic GitHub contracts are verified; live scoped product GitHub authentication remains unverified. M6 Buddy meets its native text experience exit criteria, including final installed-VSIX live acceptance. The first distribution target is local VS Code and CLI; team/cloud/other IDEs and voice remain pending. This does not claim the full platform is complete.
+M1 foundation and M2 spatial intelligence are complete with verified editor acceptance. M3 meets its actual-repository graph exit criteria in the documented TS/JS scope. M4's real Codex Explain -> refactor -> approve -> test -> review exit is verified from source and the installed VSIX. M5's selected-code local-history exit and deterministic GitHub contracts are verified; live scoped product GitHub authentication remains unverified. M6 Buddy meets its native text experience exit criteria, including final installed-VSIX live acceptance. The first distribution target is local VS Code and CLI; Neovim is verified; live JetBrains, Python/Java/Go semantic indexing, voice and team/cloud remain pending. This does not claim the full platform is complete.
 
 M3 codebase intelligence now meets its exit criteria for the documented initial TS/JS scope: this actual oAX repository is indexed and callers, importers and implementations are answered from deterministic graph evidence. The current module scope additionally covers common Node ESM/CJS extensions, bounded project aliases and exact workspace package exports. Broader language/project support and production release maturity remain separate work.
 
@@ -34,7 +34,7 @@ The tracker retains its original milestone numbering, which differs from the att
 - [x] Define the oAX protocol message envelope and versioning.
 - [x] Implement events, spatial types, capability negotiation, and schema validation.
 - [x] Implement the runtime process, ordered event delivery, workspace identity, and session manager.
-- [x] Implement scoped permission enforcement and in-memory action audit records for enabled operations (persistent audit remains future work).
+- [x] Implement scoped permission enforcement and in-memory action audit records for enabled operations (production source-free persistence verified in the later acceptance slice).
 - [x] Define the product-neutral `AgentEngine` interface.
 - [x] Inspect official Codex app-server documentation and define its adapter boundary; restricted live text was subsequently implemented and verified in a later slice.
 - [x] Create a minimal VS Code extension and authenticated private stdio runtime connection.
@@ -73,7 +73,7 @@ The next three paragraphs retain the earlier work-in-progress checkpoint. The ch
 
 Intermediate verification: typecheck/lint/build passed; unit tests passed 43/43 and integration tests passed 6/6, including exact edit/test approval rejection, real failed/passing Node checks, review freshness and session isolation. Additional test-freshness and preview-budget hardening followed those test runs and still require final regression verification.
 
-Live editor acceptance remains incomplete. VS Code 1.105.0 rejects modal dialogs in extension-test mode, so a separate development-only synthetic acceptance harness was prepared to exercise production commands and real dialogs without adding an approval bypass to oAX. Computer Use was stopped by the user with the physical Escape key before this visible run could be completed. The owned synthetic host was closed. No live Explain → refactor → approve → test → review success is claimed. Next: finish regression checks, run the authorized synthetic live editor acceptance, verify the installed VSIX, update architecture/development documentation and sync the reviewed source to GitHub.
+Historical checkpoint before the successful M4 acceptance recorded below: live editor acceptance was incomplete. VS Code 1.105.0 rejects modal dialogs in extension-test mode, so a separate development-only synthetic acceptance harness was prepared to exercise production commands and real dialogs without adding an approval bypass to oAX. Computer Use was stopped by the user with the physical Escape key before this visible run could be completed. The owned synthetic host was closed. No live Explain → refactor → approve → test → review success is claimed. Next: finish regression checks, run the authorized synthetic live editor acceptance, verify the installed VSIX, update architecture/development documentation and sync the reviewed source to GitHub.
 
 - [x] Implement bounded context selection and inspectable `ContextSlice` (initial callers scope).
 - [x] Translate Codex lifecycle and tool events into oAX events (text-only provider; denied tools are observable).
@@ -109,28 +109,28 @@ Live editor acceptance remains incomplete. VS Code 1.105.0 rejects modal dialogs
 
 ## Milestone 7 — Multi-IDE and expanded surfaces
 
-- [ ] Stabilize the protocol for additional adapters.
-- [ ] Prototype JetBrains and Neovim adapters.
-- [ ] Improve CLI workflows.
-- [ ] Evaluate desktop and web interfaces.
-- [ ] Add cross-adapter compatibility tests.
+- [x] Stabilize the protocol for additional adapters.
+- [x] Prototype JetBrains and Neovim adapters.
+- [x] Improve CLI workflows.
+- [x] Evaluate desktop and web interfaces.
+- [x] Add cross-adapter compatibility tests.
 
-**Exit criteria:** A second editor reuses the same runtime and protocol.
+**Exit criteria:** A second editor reuses the same runtime and protocol. Verified in actual Neovim 0.11.5. JetBrains Java source compiles against its SDK; Gradle packaging and live IDE acceptance remain unverified. Desktop/web were evaluated, not deployed.
 
 ## First vertical-slice acceptance test
 
 - [x] Open and index a real repository (oAX self-analysis).
 - [x] Capture the active file and selected symbol (versioned editor acceptance).
 - [x] Resolve direct callers or dependencies within the supported local-relative module model.
-- [ ] Explain the symbol through Codex using relevant context.
-- [ ] Show the agent cursor during investigation.
-- [ ] Request a refactor and show an impact summary.
-- [ ] Request and record write permission.
-- [ ] Apply approved edits and run tests.
-- [ ] Present the diff and test results for review.
-- [ ] Preserve an audit trail of actions and permissions.
+- [x] Explain the symbol through Codex using relevant context.
+- [x] Show the agent cursor during investigation.
+- [x] Request a refactor and show an impact summary.
+- [x] Request and record write permission.
+- [x] Apply approved edits and run tests.
+- [x] Present the diff and test results for review.
+- [x] Preserve an audit trail of actions and permissions.
 
-**Release gate:** All steps are demonstrated reliably on a representative repository.
+**Release gate:** The supported local TS/JS vertical slice is demonstrated on a controlled multi-file repository with real Codex and installed VS Code approvals, and self-analysis separately verifies the actual oAX repository graph. This does not establish general multi-file editing, Python/Java/Go semantic support, external customer-repository acceptance or a supported public release. See the latest evidence below and docs/polyglot.md.
 
 ## Quality and security gates
 
@@ -340,3 +340,23 @@ Copy this block after every implementation session:
 **Remaining work:** Live scoped GitHub product authentication, manual screen-reader/usability assessment, broader languages, general multi-file model edits, persistent audit/retention, voice backend selection and later interfaces remain separate work. Buddy's retained verification is a last observed saved-file review; external changes require fresh review. The next concrete action is live GitHub evidence acceptance once a product credential is configured, followed by the next selected milestone. No full-platform, zero-error, OS-sandbox or release claim is made.
 
 **M6 source sync:** GitHub review branch `codex/local-intelligence-preview` is verified at `bcbc50eca12ba48a2be1bbedbf6b9eb11cbe92d1`. Its tree `57c19a829d78f4734d7546f6e83365efe31aab97` exactly matches tested local commit `ddfc90bdc1cbc653d0a08e4d58f6d21a67158d1a` (20 changed files). The non-force update preserves remote parent `186873a0dd62bb04ff773d1fa65ea9970a8d2f29`. No merge, credential/access change, publication or deployment occurred. The original untracked `oAX-Complete.md` attachment remains unchanged. This sync record follows as a documentation-only commit.
+
+### 2026-10-02 — Milestone 7 and first vertical-slice audit acceptance
+
+**M7 implementation:** Added a versioned strict editor bootstrap schema, canonical narrow capability list and private read-only editor bridge over the existing RuntimeClient/Runtime. Requests validate workspace/session, correlation, versions, parameters, duplicate IDs, concurrency and payload limits. Neovim captures actual current unsaved text, document versions, visible text windows, end-exclusive visual selections and UTF-16 positions. It consumes actual ordered events without moving the developer cursor. Reconnection generation guards and close cleanup protect subsequent sessions. CLI doctor reports real toolchain compatibility without contacting a model. Desktop/web boundaries were evaluated; no new network listener or application is deployed.
+
+**M7 acceptance:** Actual Neovim 0.11.5 headless acceptance passed unsaved semantic callers, a Unicode visual selection, actual runtime/mock lifecycle, unsupported-write denial, preserved cursor and cleanup. Direct-vs-bridge integration compares deterministic evidence and rejects invalid scope/parameters/duplicate IDs/future protocol versions. Portable tools and Gradle caches are excluded from graph discovery, context and packages. JetBrains Java action compiled twice directly with Java 21 against IDEA Community 2025.2.1 SDK, including bounded framing and session correlation. Gradle 8.14.3/platform plugin 2.9.0 reached compileJava but failed in the Java worker with Unable to establish loopback connection / Invalid argument: connect. No firewall, credentials or global configuration was changed. No JetBrains plugin ZIP or live IDE result is claimed.
+
+**Release-gate gap fixed:** Production companions now inject an exclusive source-free JSONL audit sink. It persists grant/refusal, permission allow/deny and action completed/failed outcomes with scope, timestamps, monotonic sequence and hashed resource identity. Recording failures prevent subsequent execution. Journals are flushed and bounded to 4 MiB per process; grants remain memory-only. Tests prove post-close persistence, denied execution, outcome order, absence of raw resource/error content, refusal of redirected private directories and failure-before-execution when the sink closes. Retention is manual; Windows ACLs are inherited; no tamper resistance or OS sandbox is claimed.
+
+**Live vertical slice:** Final installed VSIX acceptance passed on VS Code 1.105.0 using actual installed Codex 0.159.0-alpha.12.1. Evidence: .vscode-test/m4-live-6uHss9/acceptance.json. A three-file synthetic module/consumer/test repository verifies semantic cross-file caller evidence before Explain; bounded relevant context reaches the real provider; an accepted source-hash investigation cursor remains separate; a concrete impact summary accompanies the exact diff; actual Cancel-default write/test prompts are explicitly selected by the excluded development harness; approved edits preserve unrelated content; real Node tests exit 0; current review shows matching diffs/tests; 282 source-free audit entries retain grants and outcomes. Only synthetic context was transmitted. All listed vertical-slice steps are evidenced within the documented subset. Broader customer workloads and language/release gates remain open.
+
+**Provider compatibility:** The first fresh live run correctly failed before transmission because the official installed binary now reports 0.159.0-alpha.12.1 instead of 0.159.2. Official App Server documentation was checked, experimental contracts regenerated locally, and initialization/thread start/turn start/interrupt/configuration/thread/sandbox/user-input contracts match the earlier generated contracts byte-for-byte. Only these two exact versions are accepted; unknown patch/alpha versions fail closed. Effective disabled tools, environments, MCP, instruction sources and context consent remain checked at runtime. The subsequent installed live workflow passed. This is experimental preview compatibility, not a wildcard or production certification.
+
+**Checks:** Pinned Node 24.19.0 and pnpm 11.25.0 via workspace-local Corepack; typecheck, lint, build, schemas and formatting passed during the slice. Unit suite: 52/52. Integration suite: 8/8, including actual oAX at 80 source files / 1413 symbols. Neovim acceptance passed after audit integration. Normal VS Code Buddy regression passed before the audit addition; final live installed acceptance covers the updated runtime. Initial non-escalated checks failed due sandbox dependency discovery/Node user-info restrictions, before tests executed; authorized pinned-toolchain checks then passed. Final package/format follow-through and source sync are recorded below after completion.
+
+**Voice and polyglot status:** Voice was assessed in M6, not implemented; the user's request explicitly places it on the implementation backlog. No microphone capture or deployment is enabled. Java is used for the compiled adapter, while Python/Java/Go semantic workers remain unimplemented. docs/polyglot.md defines a shared schema/snapshot/evidence boundary rather than claiming support from language names. Continue with actual JetBrains packaging/IDE acceptance, a scoped additional-language parser slice, live product GitHub authentication and voice backend/control acceptance. The local preview is not the entire platform or a public release.
+
+**Final review corrections:** An attempted adapter-response session field was rejected by the existing strict protocol 0.1 schema. It was removed: the Java client now checks correlation/workspace on its session-owned connection, while requests/events carry session identity. A regression assertion preserves that contract. The newly added JetBrains cache exclusion initially used mixed case even though discovery compares lowercase names; the actual fixture caught it and the exclusion was corrected. Subsequent typecheck/lint/build and all 52 unit tests passed; final integration/Neovim outcomes follow. These failed attempts were not treated as acceptance.
+
+**Final verified snapshot:** After the response-contract/cache corrections, typecheck, lint and build passed; 52/52 unit tests and 8/8 integration tests passed, with this actual repository at 81 indexed source files / 1418 symbols. Actual Neovim acceptance passed again. Direct Java SDK compilation passed after the final contract correction. Formatting and diff checks passed. The final eight-entry VSIX SHA-256 is 81b5a49d6b2e2eec15f687c3c6df414168b0557144b092094d63ba2ff70ad00d. Isolated installation succeeded and the exact final package passed actual Codex -> native approval -> edit -> real Node tests -> current diff review with cursor, impact and audit assertions on VS Code 1.105.0; evidence .vscode-test/m4-live-TDTHiL/acceptance.json. Two preceding multi-file live acceptances also passed (.vscode-test/m4-live-6uHss9 and m4-live-hHR3oh). The last normal installed Buddy/spatial regression also passed. Only synthetic context was transmitted; no unrelated source was edited or credentials changed. This is an unreleased local preview, not deployment.

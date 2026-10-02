@@ -90,9 +90,16 @@ function excluded(resource: string): boolean {
     .split(/[\\/]/)
     .some(
       (p) =>
-        ['.git', '.oax', 'node_modules', '.aws', '.codex'].includes(
-          p.toLowerCase(),
-        ) ||
+        [
+          '.git',
+          '.oax',
+          'node_modules',
+          '.aws',
+          '.codex',
+          '.tools',
+          '.gradle',
+          '.intellijplatform',
+        ].includes(p.toLowerCase()) ||
         /^\.env(?:\.|$)/i.test(p) ||
         /\.(pem|key)$/i.test(p),
     );

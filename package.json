@@ -20,7 +20,8 @@
     "demo": "node dist/cli.cjs demo",
     "schemas": "tsx scripts/schemas.ts",
     "package:local": "node scripts/package.mjs",
-    "test:live": "tsx scripts/test-live-codex.ts"
+    "test:live": "tsx scripts/test-live-codex.ts",
+    "test:neovim": "node scripts/test-neovim.mjs"
   },
   "devDependencies": {
     "@oax/browser": "workspace:*",

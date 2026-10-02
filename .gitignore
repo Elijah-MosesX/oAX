@@ -8,6 +8,10 @@ dist/
 *.vsix
 .vscode-test/
 coverage/
+.tools/
+**/.gradle/
+**/.intellijPlatform/
+adapters/jetbrains/build/
 desktop.ini
 agents.md-main.zip
 oAX.pdf

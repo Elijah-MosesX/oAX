@@ -1,0 +1,10 @@
+{
+  "name": "@oax/git",
+  "version": "0.1.0",
+  "private": true,
+  "exports": "./src/index.ts",
+  "dependencies": {
+    "@oax/context": "workspace:*",
+    "@oax/protocol": "workspace:*"
+  }
+}

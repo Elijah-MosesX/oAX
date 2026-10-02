@@ -1,0 +1,21 @@
+# oAX protocol 0.1 local preview
+
+Transport is newline-delimited JSON over authenticated private parent/child stdio. oAX envelopes are distinct from the provider's JSON-RPC wire protocol. No listening socket exists.
+
+Requests carry unique IDs, version, method, UTC timestamp, workspace/session identity and validated payload. Responses correlate to requests and discriminate success from structured error. Events carry session/task scope, correlation and increasing connection-wide sequence; events may precede acceptance responses. Reconnection starts fresh state; replay is not implemented.
+
+The parent generates a 256-bit connection token. `initialize` authenticates and negotiates capabilities; `session.open` creates isolated state. Implemented methods are `spatial.observe`, `context.preview`, `graph.query`, `selection.explain`, `refactor.prepare`, `refactor.apply`, `verification.prepare`, `verification.run`, `history.query`, `repository.onboard`, `task.cancel`, and `session.close`. Method schemas are generated alongside envelope, spatial, rename-plan and check-plan schemas.
+
+Coordinates use zero-based UTF-16 positions and end-exclusive ranges. URI/path identity, document version, buffer bounds, realpath containment and exclusions are checked at runtime. A selected unsaved snapshot overlays disk for that session. Older or conflicting versions fail. Other dirty editors are not included. Relationships preserve semantic, syntactic, heuristic or unresolved labels; responses return at most 100 relationships. Cursor events include source hashes; the editor refuses stale decorations.
+
+Context is bounded to 8,192 excerpt code units and 16,000 serialized UTF-8 bytes, including at most six caller excerpts. Provenance, hashes, limitations, truncation and conservative token redaction are recorded. External transmission requires consent matching the context hash at execution. Repository text cannot grant permissions.
+
+Rename and Node-test previews have `awaiting_approval` state, exact content/operation hashes and expiration. Applying a rename requires a matching pending plan, saved document, path grants and unchanged file baselines. Node verification authorizes one exact executable/argument/cwd/source-hash plan, with a five-second timeout and bounded output. Test code executes with local-account rights. Denied, stale or mismatched requests fail before execution. Cancellation does not roll back completed writes.
+
+Task transitions are created → gathering_context → planning → awaiting_approval/executing → verifying → completed, with failed/cancelled exits from active states. Preapproved tasks can skip awaiting_approval. Mock completion checks stream termination; Node verification reports actual process exit status. Live text tasks use a restricted provider adapter rather than provider editing tools.
+
+Limits include 256-KiB UTF-8 frames, 131,072-code-unit buffers, 2,048-code-unit objectives, 100 open files/visible ranges, eight sessions, 4,096 request IDs, one active task per session, 64-KiB task output and a 1-MiB outbound queue. Awaited writes and serial ingress apply backpressure. Request timeout is ten seconds; mock runtime tasks use thirty seconds, external text seventy seconds and client tasks seventy-five seconds. Malformed framing disconnects; unsupported versions/methods, wrong identities, duplicates, invalid parameters and limits return actionable errors.
+
+`pnpm schemas` derives JSON schemas from the Zod source of truth. Cross-field ranges, workspace containment, freshness and grants remain additional execution checks.
+
+Optional `github.connect` carries the selected repository, transient credential and explicit approval over private stdio; it returns verified metadata without credentials. `github.history` accepts a complete commit SHA in the approved repository; `github.disconnect` releases connection state. These operations use `github.history.v1` capability and do not expose writes. Credentials are excluded from context/audit/output; raw payload logging is not implemented.

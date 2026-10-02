@@ -1,0 +1,23 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "types": ["node", "vscode"],
+    "noEmit": true
+  },
+  "include": [
+    "packages/**/*.ts",
+    "apps/**/*.ts",
+    "adapters/**/*.ts",
+    "tests/**/*.ts",
+    "scripts/**/*.ts",
+    "services/**/*.ts"
+  ]
+}

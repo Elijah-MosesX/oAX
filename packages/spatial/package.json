@@ -1,0 +1,9 @@
+{
+  "name": "@oax/spatial",
+  "version": "0.1.0",
+  "private": true,
+  "exports": "./src/index.ts",
+  "dependencies": {
+    "@oax/protocol": "workspace:*"
+  }
+}

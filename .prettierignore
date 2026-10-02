@@ -1,0 +1,9 @@
+pnpm-lock.yaml
+dist
+node_modules
+.pnpm-store
+.vscode-test
+oAX.md
+AGENTS.md
+.oax
+oAX-Complete.md

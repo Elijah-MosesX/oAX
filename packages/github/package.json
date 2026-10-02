@@ -1,0 +1,11 @@
+{
+  "name": "@oax/github",
+  "version": "0.1.0",
+  "private": true,
+  "exports": "./src/index.ts",
+  "dependencies": {
+    "@oax/context": "workspace:*",
+    "@oax/permissions": "workspace:*",
+    "@oax/protocol": "workspace:*"
+  }
+}

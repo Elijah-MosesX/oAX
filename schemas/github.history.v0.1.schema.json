@@ -1,0 +1,9 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "commit": { "type": "string", "pattern": "^[a-f0-9]{40,64}$" }
+  },
+  "required": ["commit"],
+  "additionalProperties": false
+}

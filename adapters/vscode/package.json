@@ -1,0 +1,101 @@
+{
+  "name": "oax-vscode",
+  "displayName": "oAX",
+  "description": "Spatial code intelligence and optional Codex explanations",
+  "version": "0.1.0",
+  "private": true,
+  "publisher": "oax-dev",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.105.0"
+  },
+  "main": "./dist/extension.cjs",
+  "activationEvents": [
+    "onCommand:oax.explainSelection"
+  ],
+  "contributes": {
+    "configuration": {
+      "title": "oAX",
+      "properties": {
+        "oax.codexExecutable": {
+          "type": "string",
+          "default": "",
+          "scope": "application",
+          "description": "Absolute path to the supported Codex 0.159.2 executable. Configure in user settings. Live explanations require context consent."
+        }
+      }
+    },
+    "commands": [
+      {
+        "command": "oax.connectGitHub",
+        "title": "oAX: Connect Read-Only GitHub Evidence"
+      },
+      {
+        "command": "oax.githubHistory",
+        "title": "oAX: Show Associated GitHub PR Evidence"
+      },
+      {
+        "command": "oax.disconnectGitHub",
+        "title": "oAX: Disconnect GitHub Evidence"
+      },
+      {
+        "command": "oax.onboardRepository",
+        "title": "oAX: Repository Walkthrough"
+      },
+      {
+        "command": "oax.runNodeTests",
+        "title": "oAX: Run Selected Node Tests with Approval"
+      },
+      {
+        "command": "oax.refactorRename",
+        "title": "oAX: Rename Symbol with Preview"
+      },
+      {
+        "command": "oax.explainHistory",
+        "title": "oAX: Show Git History Evidence"
+      },
+      {
+        "command": "oax.explainLive",
+        "title": "oAX: Explain Selection (Codex)"
+      },
+      {
+        "command": "oax.find.callers",
+        "title": "oAX: Find Callers"
+      },
+      {
+        "command": "oax.find.imports",
+        "title": "oAX: Find Importers"
+      },
+      {
+        "command": "oax.find.implements",
+        "title": "oAX: Find Implementations"
+      },
+      {
+        "command": "oax.find.tests",
+        "title": "oAX: Find Related Tests"
+      },
+      {
+        "command": "oax.reconnect",
+        "title": "oAX: Reconnect Runtime"
+      },
+      {
+        "command": "oax.explainSelection",
+        "title": "oAX: Explain Selection (Mock)"
+      }
+    ]
+  },
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": false
+    },
+    "virtualWorkspaces": {
+      "supported": false
+    }
+  },
+  "dependencies": {
+    "@oax/git": "workspace:*",
+    "@oax/codegraph": "workspace:*",
+    "@oax/protocol": "workspace:*",
+    "@oax/runtime": "workspace:*"
+  }
+}

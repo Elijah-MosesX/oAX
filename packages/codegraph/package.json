@@ -1,0 +1,10 @@
+{
+  "name": "@oax/codegraph",
+  "version": "0.1.0",
+  "private": true,
+  "exports": "./src/index.ts",
+  "dependencies": {
+    "@oax/protocol": "workspace:*",
+    "typescript": "5.9.3"
+  }
+}

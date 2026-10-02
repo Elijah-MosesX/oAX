@@ -3,11 +3,18 @@ import { buildContext, validateObservation, redactContext } from '@oax/context';
 import { SpatialStore } from '@oax/spatial';
 import { CodeGraph, digest } from '@oax/codegraph';
 import { Indexer } from '@oax/indexer';
+import { WorkspaceWatcher } from '@oax/watcher';
+import type { SourceSnapshot } from '@oax/codegraph';
 import { GitHistory } from '@oax/git';
 import { GitHubReader } from '@oax/github';
 import { readFile } from 'node:fs/promises';
 import { workspacePath } from '@oax/context';
-import { renamePlan, applyRename, type RenamePlan } from './refactor.js';
+import {
+  renamePlan,
+  selectionEditPlan,
+  applyRename,
+  type RenamePlan,
+} from './refactor.js';
 import { onboarding } from './onboarding.js';
 import {
   prepareChecks,
@@ -33,6 +40,17 @@ interface Session {
   task?: Task;
   graph?: CodeGraph;
   indexer?: Indexer;
+  watcher?: WorkspaceWatcher;
+  overlay?: SourceSnapshot;
+  indexQueue?: Promise<void>;
+  indexState?: {
+    generation: number;
+    files: number;
+    symbols: number;
+    updatedAt: string;
+    error?: string;
+  };
+  closing?: boolean;
   plan?: RenamePlan;
   checks?: CheckPlan;
   github?: GitHubReader;
@@ -87,6 +105,7 @@ export class Runtime {
       timeoutMs?: number;
       externalText?: boolean;
       githubTransport?: typeof fetch;
+      watchIntervalMs?: number;
     },
   ) {}
   async dispatch(input: unknown): Promise<Response> {
@@ -164,7 +183,15 @@ export class Runtime {
         const session = sessionId ? this.sessions.get(sessionId) : undefined;
         if (!session || !sessionId)
           throw new OaxError('SESSION_NOT_FOUND', 'Unknown session');
-        if (req.method.startsWith('github.')) {
+        if (req.method === 'index.status') {
+          payloadSchemas['index.status'].parse(req.payload);
+          payload = session.indexState
+            ? {
+                state: session.indexState.error ? 'error' : 'ready',
+                ...session.indexState,
+              }
+            : { state: 'inactive', generation: 0 };
+        } else if (req.method.startsWith('github.')) {
           if (
             session.task &&
             !['completed', 'failed', 'cancelled'].includes(session.task.state)
@@ -322,6 +349,7 @@ export class Runtime {
           }
         } else if (
           req.method === 'refactor.prepare' ||
+          req.method === 'refactor.propose' ||
           req.method === 'refactor.apply'
         ) {
           if (
@@ -340,10 +368,20 @@ export class Runtime {
           if (observation.dirty || disk !== observation.text)
             throw new OaxError(
               'EDIT_CONFLICT',
-              'Save the selected file and keep it unchanged before renaming',
+              'Save the selected file and keep it unchanged before editing',
             );
           this.spatial.update(sessionId, observation);
-          if (req.method === 'refactor.prepare') {
+          if (req.method === 'refactor.propose') {
+            const params = payloadSchemas['refactor.propose'].parse(
+              req.payload,
+            );
+            session.plan = selectionEditPlan(
+              randomUUID(),
+              observation,
+              params.proposal,
+            );
+            payload = session.plan;
+          } else if (req.method === 'refactor.prepare') {
             await this.intelligence(session, observation);
             const params = payloadSchemas['refactor.prepare'].parse(
               req.payload,
@@ -367,7 +405,7 @@ export class Runtime {
             )
               throw new OaxError(
                 'PERMISSION_DENIED',
-                'Approve the exact pending rename plan',
+                'Approve the exact pending edit plan',
               );
             const scope = {
               principal: 'local-editor',
@@ -737,6 +775,9 @@ export class Runtime {
     }
   }
   private async closeSession(id: string, session: Session): Promise<void> {
+    session.closing = true;
+    await session.watcher?.close();
+    await session.indexQueue;
     session.task?.controller.abort();
     await this.options.engine.interrupt(session.engine);
     await session.task?.done;
@@ -833,14 +874,57 @@ export class Runtime {
   ): Promise<void> {
     session.graph ??= new CodeGraph();
     session.indexer ??= new Indexer(this.options.root, session.graph);
-    await session.indexer.refresh([
-      {
-        path: observation.path,
-        text: observation.text,
-        version: observation.documentVersion,
-        dirty: observation.dirty,
+    session.overlay = {
+      path: observation.path,
+      text: observation.text,
+      version: observation.documentVersion,
+      dirty: observation.dirty,
+    };
+    await this.refreshIndex(session, [session.overlay]);
+    if (!session.watcher && !session.closing) {
+      session.watcher = new WorkspaceWatcher(
+        {
+          refresh: () =>
+            this.refreshIndex(
+              session,
+              session.overlay?.dirty ? [session.overlay] : [],
+            ),
+        },
+        () => {},
+        () => {
+          if (session.indexState)
+            session.indexState.error =
+              'Background refresh failed; query again to retry with current context.';
+        },
+        this.options.watchIntervalMs ?? 1000,
+      );
+      session.watcher.start();
+    }
+  }
+  private refreshIndex(
+    session: Session,
+    overlays: SourceSnapshot[],
+  ): Promise<{ changed: number; files: number; symbols: number }> {
+    const operation = (session.indexQueue ?? Promise.resolve()).then(
+      async () => {
+        if (session.closing)
+          throw new OaxError('SESSION_CLOSED', 'Index session is closing');
+        const result = await session.indexer!.refresh(overlays);
+        session.indexState = {
+          generation:
+            (session.indexState?.generation ?? 0) + (result.changed ? 1 : 0),
+          files: result.files,
+          symbols: result.symbols,
+          updatedAt: new Date().toISOString(),
+        };
+        return result;
       },
-    ]);
+    );
+    session.indexQueue = operation.then(
+      () => {},
+      () => {},
+    );
+    return operation;
   }
   async stop(): Promise<void> {
     this.stopped = true;

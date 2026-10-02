@@ -10,11 +10,13 @@ export const CAPABILITIES = [
   'task.cancel.v1',
   'spatial.observe.v1',
   'codegraph.relationships.v1',
+  'codegraph.watch.v1',
   'agent.cursor.v1',
   'context.preview.v1',
   'git.history.v1',
   'github.history.v1',
   'refactor.rename.v1',
+  'refactor.selection-edit.v1',
   'verification.node-test.v1',
   'repository.onboard.v1',
 ] as const;
@@ -165,6 +167,7 @@ export const payloadSchemas = {
   }),
   'session.open': z.strictObject({}),
   'spatial.observe': z.strictObject({ observation: observationSchema }),
+  'index.status': z.strictObject({}),
   'history.query': z.strictObject({ observation: observationSchema }),
   'github.connect': z.strictObject({
     repository: z
@@ -187,6 +190,10 @@ export const payloadSchemas = {
   'refactor.prepare': z.strictObject({
     observation: observationSchema,
     newName: z.string().min(1).max(128),
+  }),
+  'refactor.propose': z.strictObject({
+    observation: observationSchema,
+    proposal: z.string().min(1).max(20000),
   }),
   'refactor.apply': z.strictObject({
     planId: id,

@@ -23,7 +23,7 @@ test('built CLI explains, provides labeled structural evidence, and gates real N
       path.join(root, 'a.test.ts'),
       'import {test} from "node:test"; import assert from "node:assert/strict"; import {sum} from "./a.ts"; test("sum", () => assert.equal(sum(), 2));',
     );
-    const answer = await run(['explain', 'a.ts']);
+    const answer = await run(['explain', 'a.ts', '--mock']);
     assert.match(answer.stdout, /Mock engine/);
     assert.match(answer.stdout, /function sum/);
     const review = JSON.parse((await run(['review', 'a.ts'])).stdout);

@@ -55,9 +55,9 @@ The tracker retains its original milestone numbering, which differs from the att
 - [x] Create SQLite node and edge tables.
 - [x] Implement file discovery and initial TS/JS language detection.
 - [x] Integrate deterministic TypeScript compiler/language-service parsing (initial language scope).
-- [ ] Extract symbols, imports, exports, calls, and dependencies.
+- [x] Extract symbols, imports, exports, re-exports, calls, and local-relative module dependencies in the initial TS/JS scope; full project/external dependency resolution remains pending.
 - [x] Implement graph queries for callers, imports, implementations, and heuristic tests.
-- [ ] Add an incremental file watcher and indexing tests.
+- [x] Attach bounded session background polling with serialized refreshes, dirty overlays, status/error reporting, invalidation and cleanup tests; semantic edges still reconcile globally.
 
 **Exit criteria:** oAX indexes a real repository and answers structural questions from its graph.
 
@@ -258,3 +258,17 @@ Copy this block after every implementation session:
 **Packaged M2 acceptance:** The rebuilt eight-entry VSIX was installed into the isolated extension directory and passed the expanded VS Code 1.105.0 acceptance again (exit 0). No live-provider/GitHub/browser requests were required by this spatial-only change. The installed editor updater limitation remains separate from the verified baseline.
 
 **M2 delivery:** Synced implementation commit 97be10933cfc7451b15b5d80ec535b68bf34a79f to codex/local-intelligence-preview. Remote tree 510400c72b6eec5f91f6e00ad8ff18eb9de5fd9f matches local snapshot 823ff25 exactly. It preserves parent 7c302252c5e2a5c96363a08c8f73c6e3406528fd and remote main ancestry; no force push or publication. Updated VSIX SHA-256 is 10469d568f22076789bd3821b35667ce5ff378284e53d2b6e4aacc2e8ccaa411. Read-only process inspection still found the user's running CodeSetup processes; no updater/process changes were made. The raw oAX-Complete.md attachment remains preserved and untracked.
+
+### 2026-10-02 — Real Explain defaults, continuous indexing and Codex selection editing
+
+**Error diagnosis:** The user's in-app GitHub commit page first displayed 504 Gateway Time-out, then 404 after reload with a Sign in link. The authenticated GitHub connector confirmed the private commit exists. Browser cookies and connector authentication are separate; the signed-out browser cannot view this private repository. The precise gateway timeout cause is not established. No credentials or access controls were changed.
+
+**Implemented:** Public VS Code Explain/status-bar and CLI explain select real Codex. Official Windows executable discovery is constrained to the vendor installation directory; explicit absolute paths still override it and pinned-version/auth checks remain mandatory. There is no automatic mock fallback. Deterministic tests call a hidden editor mock command or explicit CLI --mock. Context is displayed before transmission consent. Session watchers serialize observation/background refreshes, preserve the selected dirty overlay, invalidate changes/renames/deletions, expose index.status and stop before graph disposal. Named/local alias exports, re-exports and unresolved modules retain deterministic evidence.
+
+**Actual model editing:** Refactor Selection with Codex Preview collects a requested change, obtains exact context consent, generates strict JSON through the text-only provider, and stages a single captured-selection replacement. Model data cannot select another path, execute commands or grant permissions. Native diff approval is separate from transmission consent. Saved document/disk baselines, expiration, exact hash and scoped write grants remain enforced. A proposal is unverified until separately authorized checks pass. Multi-file model editing and file creation/deletion remain pending.
+
+**Verified:** pnpm schemas, typecheck, lint and build passed. pnpm test passed 37/37; pnpm test:integration passed 4/4. pnpm test:editor passed on VS Code 1.105.0. New fixtures verify export alias targets/deletion, autonomous background updates with dirty overlay preservation, malformed/extra-field proposal rejection, wrong-hash denial, concurrent edits, Unicode/CRLF preservation and approval replay denial. The authorized pnpm test:live passed real synthetic explanation and a complete synthetic Codex fix -> no-write preview -> wrong-hash denial -> exact approved write -> separately approved Node test. No real repository content was sent in live acceptance.
+
+**Limits and next actions:** Live editor modal interaction is implemented but not yet verified end to end; runtime live editing/verification is verified. Supported graph scope remains local-relative TS/JS. Provider tools remain disabled. Broader GitHub evidence, persistent audit/retention, project configuration, richer Buddy/voice, team/cloud and supported-release operations remain incomplete. Continue with broader edit impact/verification and interaction acceptance; keep release claims separate from implemented slices.
+
+**Repository/package acceptance:** Final typecheck, lint, format:check and build passed. The built CLI indexed this actual repository: 54 source files and 972 symbols, with 36 resolved and 248 unresolved imports under the explicitly limited local-relative model (workspace aliases/external dependencies are not resolved). The rebuilt eight-entry VSIX was installed into the isolated acceptance profile and passed VS Code 1.105.0 acceptance, exit 0. SHA-256: d09e26d1e7e8cd916ba6e9dc701e34cb1559f650e9daa11f7d2b122a8d68f94a. No user updater, credentials, access controls, publication or deployment were changed.

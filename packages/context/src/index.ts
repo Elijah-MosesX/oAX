@@ -128,7 +128,7 @@ export async function workspacePath(
     throw new OaxError('PATH_DENIED', 'Resolved resource is excluded');
   return target;
 }
-function offset(text: string, position: Position): number {
+export function offset(text: string, position: Position): number {
   const lines = text.split('\n');
   const line = lines[position.line];
   if (line === undefined || position.column > line.replace(/\r$/, '').length)

@@ -44,9 +44,8 @@ export async function run(): Promise<void> {
     replacement.split('\n')[0]!.length,
   );
   const selected = editor.selection;
-  const answer = await vscode.commands.executeCommand<string>(
-    'oax.explainSelection',
-  );
+  const answer =
+    await vscode.commands.executeCommand<string>('oax.explainMock');
   assert.ok(answer?.includes('[Mock engine'));
   assert.ok(answer.includes(replacement.split('\n')[0]!));
   assert.ok(answer.includes('(unsaved buffer)'));

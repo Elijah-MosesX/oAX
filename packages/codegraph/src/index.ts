@@ -27,6 +27,8 @@ export interface GraphNode {
 export type Relationship =
   | 'contains'
   | 'imports'
+  | 'exports'
+  | 'reexports'
   | 'calls'
   | 'implements'
   | 'extends'
@@ -269,7 +271,48 @@ export class CodeGraph {
         const declaration = this.declarations.get(node);
         if (declaration) {
           add(owner, declaration.id, 'contains', 'syntactic', node);
+          if (
+            ts.getCombinedModifierFlags(node as ts.Declaration) &
+            ts.ModifierFlags.Export
+          )
+            add(fileId(file), declaration.id, 'exports', 'semantic', node);
           owner = declaration.id;
+        }
+        if (ts.isExportDeclaration(node)) {
+          if (
+            node.moduleSpecifier &&
+            ts.isStringLiteral(node.moduleSpecifier)
+          ) {
+            const resolved = resolve(node.moduleSpecifier.text, file);
+            add(
+              fileId(file),
+              resolved ? fileId(resolved) : null,
+              'reexports',
+              resolved ? 'semantic' : 'unresolved',
+              node.moduleSpecifier,
+            );
+          }
+          if (node.exportClause && ts.isNamedExports(node.exportClause))
+            for (const exported of node.exportClause.elements) {
+              const resolved = target(exported.name);
+              add(
+                fileId(file),
+                resolved?.id ?? null,
+                'exports',
+                resolved ? 'semantic' : 'unresolved',
+                exported,
+              );
+            }
+        }
+        if (ts.isExportAssignment(node)) {
+          const resolved = target(node.expression);
+          add(
+            fileId(file),
+            resolved?.id ?? null,
+            'exports',
+            resolved ? 'semantic' : 'unresolved',
+            node.expression,
+          );
         }
         if (
           ts.isImportDeclaration(node) &&

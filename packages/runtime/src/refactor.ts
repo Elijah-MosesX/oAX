@@ -1,9 +1,9 @@
 import { open, lstat, readFile } from 'node:fs/promises';
 import type { FileHandle } from 'node:fs/promises';
 import { constants } from 'node:fs';
-import { workspacePath } from '@oax/context';
+import { workspacePath, offset } from '@oax/context';
 import { digest } from '@oax/codegraph';
-import { OaxError, renamePlanSchema } from '@oax/protocol';
+import { OaxError, renamePlanSchema, z, type Observation } from '@oax/protocol';
 import { PermissionEngine, type Action } from '@oax/permissions';
 export interface RenameChange {
   path: string;
@@ -18,6 +18,56 @@ export interface RenamePlan {
   changes: RenameChange[];
   verification: string;
   state: 'awaiting_approval';
+}
+/** Model output is untrusted data: it cannot choose paths, commands or grants. */
+export function selectionEditPlan(
+  id: string,
+  observation: Observation,
+  output: string,
+): RenamePlan {
+  const parsed = z
+    .strictObject({
+      replacement: z.string().min(1).max(16384),
+      explanation: z.string().min(1).max(1024),
+    })
+    .safeParse(JSON.parse(output));
+  if (!parsed.success)
+    throw new OaxError(
+      'INVALID_PROPOSAL',
+      'Expected only replacement and explanation strings',
+    );
+  const start = offset(observation.text, observation.selection.start);
+  const end = offset(observation.text, observation.selection.end);
+  if (end <= start || observation.dirty)
+    throw new OaxError(
+      'EDIT_CONFLICT',
+      'Select saved code before preparing an edit',
+    );
+  const after =
+    observation.text.slice(0, start) +
+    parsed.data.replacement +
+    observation.text.slice(end);
+  if (after === observation.text)
+    throw new OaxError('EMPTY_EDIT', 'The proposal makes no change');
+  const changes = [
+    {
+      path: observation.path,
+      before: observation.text,
+      after,
+      beforeHash: digest(observation.text),
+    },
+  ];
+  if (Buffer.byteLength(observation.text) + Buffer.byteLength(after) > 100000)
+    throw new OaxError('REFACTOR_LIMIT', 'Edit preview exceeds limits');
+  return renamePlanSchema.parse({
+    id,
+    hash: digest(JSON.stringify(changes)),
+    changes,
+    expiresAt: Date.now() + 60000,
+    state: 'awaiting_approval',
+    verification:
+      'Unverified Codex proposal. Review the exact diff and run separately authorized checks. No syntax, behavior or compatibility result is claimed.',
+  });
 }
 export function renamePlan(
   id: string,

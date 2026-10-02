@@ -89,6 +89,9 @@ importers:
       '@oax/codegraph':
         specifier: workspace:*
         version: link:../../packages/codegraph
+      '@oax/codex':
+        specifier: workspace:*
+        version: link:../../packages/codex
       '@oax/git':
         specifier: workspace:*
         version: link:../../packages/git
@@ -224,6 +227,9 @@ importers:
       '@oax/spatial':
         specifier: workspace:*
         version: link:../spatial
+      '@oax/watcher':
+        specifier: workspace:*
+        version: link:../../services/watcher
 
   packages/spatial:
     dependencies:

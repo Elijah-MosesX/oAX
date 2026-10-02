@@ -11,6 +11,7 @@ import {
 import type { Observation } from '@oax/protocol';
 import { initializeWorkspace, analyzeWorkspace } from './workspace.js';
 import { CodexAgentEngine } from '@oax/codex';
+import { providerExecutable } from '@oax/codex/executable';
 import { workspacePath } from '@oax/context';
 import { OaxError } from '@oax/protocol';
 import type { RenamePlan } from '../../../packages/runtime/src/refactor.js';
@@ -21,9 +22,14 @@ async function inspectOrVerify(
 ): Promise<void> {
   const resource = args.shift();
   let provider: string | undefined, approved: string | undefined;
+  let mock = false;
   while (args.length) {
-    const flag = args.shift(),
-      value = args.shift();
+    const flag = args.shift();
+    if (flag === '--mock' && command === 'explain' && !mock) {
+      mock = true;
+      continue;
+    }
+    const value = args.shift();
     if (flag === '--codex' && command === 'explain' && value && !provider)
       provider = value;
     else if (flag === '--approve' && command !== 'review' && value && !approved)
@@ -34,10 +40,10 @@ async function inspectOrVerify(
         'Unexpected or duplicate argument; use --help',
       );
   }
-  if (!resource || (approved && command === 'explain' && !provider))
+  if (!resource || (command === 'explain' && mock && (approved || provider)))
     throw new OaxError(
       'INVALID_ARGS',
-      'Specify a workspace path; explain approval requires --codex',
+      'Specify a workspace path; --mock cannot be combined with provider transmission',
     );
   if (provider && !path.isAbsolute(provider))
     throw new OaxError(
@@ -46,6 +52,8 @@ async function inspectOrVerify(
     );
   const root = await realpath(process.cwd());
   const absolute = await workspacePath(root, resource);
+  if (command === 'explain' && !mock)
+    provider = await providerExecutable(provider);
   const text = await readFile(absolute, 'utf8');
   const lines = text.split('\n');
   const observation: Observation = {
@@ -346,7 +354,7 @@ const main = async () => {
   }
   if (!command || command === '--help' || command === 'help') {
     process.stdout.write(
-      'oAX local development CLI (default engine: mock)\nUsage: node dist/cli.cjs init [workspace-root]\n       node dist/cli.cjs analyze [workspace-root]\n       node dist/cli.cjs onboard [workspace-root]\n       node dist/cli.cjs rename <path> <zero-based-line> <zero-based-column> <new-name> [--apply <preview-hash>]\n       node dist/cli.cjs explain <path> [--codex <absolute-executable> [--approve <context-hash>]]\n       node dist/cli.cjs review <path>\n       node dist/cli.cjs verify <saved-test-path> [--approve <plan-hash>]\n       node dist/cli.cjs demo\n       node dist/cli.cjs serve <workspace-root> <workspace-id>\ninit preserves config; analyze builds a local TypeScript/JavaScript SQLite graph. Rename previews before writes and verifies syntax; workspace tests are not run.\nserve is a private stdio interface requiring OAX_CONNECTION_TOKEN; no TCP port is opened.\nExit codes: 0 success, 1 operation failed, 2 unsupported command.\n',
+      'oAX CLI (Explain uses Codex; explicit --mock is development-only)\nUsage: node dist/cli.cjs init [workspace-root]\n       node dist/cli.cjs analyze [workspace-root]\n       node dist/cli.cjs onboard [workspace-root]\n       node dist/cli.cjs rename <path> <zero-based-line> <zero-based-column> <new-name> [--apply <preview-hash>]\n       node dist/cli.cjs explain <path> [--codex <absolute-executable>] [--approve <context-hash>]\n       node dist/cli.cjs review <path>\n       node dist/cli.cjs verify <saved-test-path> [--approve <plan-hash>]\n       node dist/cli.cjs serve <workspace-root> <workspace-id>\ninit preserves config; analyze builds a local TypeScript/JavaScript SQLite graph. Rename previews before writes and verifies syntax; workspace tests are not run.\nserve is a private stdio interface requiring OAX_CONNECTION_TOKEN; no TCP port is opened.\nExit codes: 0 success, 1 operation failed, 2 unsupported command.\n',
     );
     return;
   }

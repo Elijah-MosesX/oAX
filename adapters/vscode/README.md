@@ -1,5 +1,7 @@
 # oAX for VS Code
 
+**Show Buddy** opens the native oAX Buddy pane in Explorer. It shows separate workspace/provider sessions, actual activity, pending prompts, output and the last observed edit/test review. Prompt clicks reopen the real decision UI with Cancel selected. Location clicks reveal a snapshot-validated range while preserving your selection. **Hide Buddy** hides presence without stopping tasks. Voice is deferred; microphone capture is not enabled.
+
 Local development preview for trusted, local TypeScript/JavaScript workspaces. Requires VS Code 1.105.0 or newer with a compatible Node runtime; 1.105.0 is the verified host. This is not a Marketplace release.
 
 Install the locally built VSIX using **Extensions: Install from VSIX...**, then select code and run **oAX: Explain Selection** for a real Codex explanation. **Find Callers**, **Find Importers**, **Find Implementations**, and **Find Related Tests** return deterministic source evidence. Related tests use filename heuristics. Module resolution covers relative imports, bounded project aliases and exact workspace package exports. Full project configuration and external dependencies remain unsupported. Background indexing preserves the selected unsaved snapshot; **Show Index Status** reports refresh status and failures.

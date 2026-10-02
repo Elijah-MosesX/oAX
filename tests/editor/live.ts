@@ -9,9 +9,20 @@ async function command<T>(
   titles: string[],
 ): Promise<T | undefined> {
   const running = Promise.resolve(vscode.commands.executeCommand<T>(name));
-  void running.catch(() => {});
+  let finished = false;
+  let failure: unknown;
+  void running.then(
+    () => {
+      finished = true;
+    },
+    (error) => {
+      failure = error;
+      finished = true;
+    },
+  );
   if (process.env.OAX_AUTOMATED_LIVE_EDITOR_TEST === '1') {
     const extension = vscode.extensions.getExtension<{
+      inspectBuddy: () => import('@oax/buddy').BuddySnapshot;
       inspectInteraction: () =>
         | { title: string; activeLabel: string }
         | undefined;
@@ -21,6 +32,11 @@ async function command<T>(
     for (const title of titles) {
       const deadline = Date.now() + 70000;
       while (extension.exports.inspectInteraction()?.title !== title) {
+        if (finished)
+          throw (
+            failure ??
+            new Error(`Command ended before approval UI for ${title}`)
+          );
         if (Date.now() >= deadline)
           throw new Error(`No approval UI for ${title}`);
         await new Promise((resolve) => setTimeout(resolve, 50));
@@ -29,6 +45,11 @@ async function command<T>(
         extension.exports.inspectInteraction()?.activeLabel,
         'Cancel',
         'Approval must default to cancellation',
+      );
+      assert.equal(
+        extension.exports.inspectBuddy().prompt?.title,
+        title,
+        'Buddy must reflect the actual production prompt',
       );
       await vscode.commands.executeCommand(
         'workbench.action.quickOpenSelectNext',
@@ -74,6 +95,20 @@ export async function runLive(): Promise<void> {
   );
   assert.ok(editor.selection.isEqual(selection));
   assert.equal(await readFile(file, 'utf8'), original);
+  const extension = vscode.extensions.getExtension<{
+    inspectBuddy: () => import('@oax/buddy').BuddySnapshot;
+  }>('oax-dev.oax-vscode');
+  assert.ok(extension);
+  const explained = extension.exports
+    .inspectBuddy()
+    .sessions.find((session) => session.provider === 'Codex');
+  assert.equal(explained?.phase, 'completed');
+  assert.equal(
+    explained?.result?.verified,
+    undefined,
+    'Explain completion is not test verification',
+  );
+  assert.equal(extension.exports.inspectBuddy().prompt, undefined);
   await vscode.window.showTextDocument(document);
   console.log(
     'M4 LIVE: describe the addition fix and approve context, then inspect and approve the diff',
@@ -97,6 +132,13 @@ export async function runLive(): Promise<void> {
   let report =
     await vscode.commands.executeCommand<Report>('oax.reviewLastEdit');
   assert.ok(report?.current && !report.verified);
+  assert.equal(
+    extension.exports
+      .inspectBuddy()
+      .sessions.find((session) => session.id === explained?.id)?.result
+      ?.verified,
+    false,
+  );
   assert.equal(report.changes[0]?.before, original);
   assert.equal(report.changes[0]?.after, edited);
   assert.ok(
@@ -121,6 +163,13 @@ export async function runLive(): Promise<void> {
   );
   assert.equal(report.check?.exitCode, 0);
   assert.equal(report.check?.state, 'passed');
+  const buddy = extension.exports.inspectBuddy();
+  const verifiedBuddy = buddy.sessions.find(
+    (session) => session.id === explained?.id,
+  );
+  assert.equal(verifiedBuddy?.phase, 'completed');
+  assert.equal(verifiedBuddy?.result?.verified, true);
+  assert.equal(buddy.prompt, undefined);
   assert.ok(
     vscode.workspace.textDocuments.some(
       (doc) =>
@@ -140,6 +189,7 @@ export async function runLive(): Promise<void> {
         answer,
         report,
         preservedSelection: true,
+        buddy,
       },
       null,
       2,

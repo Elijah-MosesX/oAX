@@ -6,6 +6,8 @@ This local development preview supports versioned VS Code observations, determin
 
 ## Build and use locally
 
+**oAX: Show Buddy** opens an accessible native Explorer pane with workspace/provider presence, actual task and tool activity, pending approval prompts, output, edit/test review status and observed code locations. **Hide Buddy** changes presentation only. Buddy does not control the agent or grant permissions; voice is assessed and deferred. See [Buddy behavior](docs/buddy.md).
+
 Use Node **24.19.0** and pnpm **11.25.0**:
 
 ```powershell

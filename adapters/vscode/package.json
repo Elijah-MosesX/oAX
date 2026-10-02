@@ -94,8 +94,25 @@
       {
         "title": "oAX: Show Continuous Index Status",
         "command": "oax.indexStatus"
+      },
+      {
+        "command": "oax.buddy.show",
+        "title": "oAX: Show Buddy"
+      },
+      {
+        "command": "oax.buddy.hide",
+        "title": "oAX: Hide Buddy"
       }
-    ]
+    ],
+    "views": {
+      "explorer": [
+        {
+          "id": "oax.buddy",
+          "name": "oAX Buddy",
+          "when": "oax.buddy.visible"
+        }
+      ]
+    }
   },
   "capabilities": {
     "untrustedWorkspaces": {
@@ -110,6 +127,7 @@
     "@oax/codegraph": "workspace:*",
     "@oax/protocol": "workspace:*",
     "@oax/runtime": "workspace:*",
-    "@oax/codex": "workspace:*"
+    "@oax/codex": "workspace:*",
+    "@oax/buddy": "workspace:*"
   }
 }

@@ -5,6 +5,7 @@ import { RuntimeClient } from '../../packages/runtime/src/client.js';
 import { capture } from '../../adapters/vscode/src/capture.js';
 import { fixtureRoot, observation } from '../helpers.js';
 import { eventSchema } from '@oax/protocol';
+import { BuddyStore } from '@oax/buddy';
 test('editor translation -> real stdio runtime -> context -> mock -> adapter answer', async () => {
   const client = await RuntimeClient.connect(
     path.resolve('dist/cli.cjs'),
@@ -77,7 +78,24 @@ test('disconnect rejects pending requests and closed clients reject further use'
     fixtureRoot,
   );
   const pending = client.call('session.open', {});
+  const buddy = new BuddyStore();
+  buddy.register('s', fixtureRoot, 'mock');
+  let disconnects = 0;
+  client.onDisconnect(() => {
+    disconnects++;
+    buddy.disconnect('s');
+  });
+  client.dispose();
   client.dispose();
   await assert.rejects(pending);
   await assert.rejects(client.call('session.open', {}));
+  assert.equal(disconnects, 1);
+  assert.equal(buddy.snapshot().sessions[0]?.connected, false);
+  let late = 0;
+  client.onDisconnect(() => late++);
+  assert.equal(
+    late,
+    1,
+    'A late observer must learn that the runtime already disconnected',
+  );
 });

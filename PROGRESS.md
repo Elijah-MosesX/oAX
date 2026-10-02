@@ -20,7 +20,7 @@
 | Browser            | Optional pinned MCP inspection, dedicated profile, origin/page grants; real fixtures passed | Source-map/context integration                                             |
 | Distribution       | Local VSIX and built-checkout CLI; content allowlist and notices                            | Supported release policy and hosted CI evidence                            |
 
-M1 foundation and M2 spatial intelligence are complete with verified editor acceptance. The attached master prompt's M2 selected-symbol/relationship acceptance is also verified within the initial TS/JS local-relative module scope. Later milestones are partial: a limited explain/rename/Node-check workflow exists, not the complete platform. The first distribution target is local VS Code and CLI; team/cloud/other IDEs and animated/voice Buddy are pending.
+M1 foundation and M2 spatial intelligence are complete with verified editor acceptance. M3 meets its actual-repository graph exit criteria in the documented TS/JS scope. M4's real Codex Explain -> refactor -> approve -> test -> review exit is verified from source and the installed VSIX. M5's selected-code local-history exit and deterministic GitHub contracts are verified; live scoped product GitHub authentication remains unverified. M6 Buddy meets its native text experience exit criteria, including final installed-VSIX live acceptance. The first distribution target is local VS Code and CLI; team/cloud/other IDEs and voice remain pending. This does not claim the full platform is complete.
 
 M3 codebase intelligence now meets its exit criteria for the documented initial TS/JS scope: this actual oAX repository is indexed and callers, importers and implementations are answered from deterministic graph evidence. The current module scope additionally covers common Node ESM/CJS extensions, bounded project aliases and exact workspace package exports. Broader language/project support and production release maturity remain separate work.
 
@@ -67,6 +67,8 @@ The tracker retains its original milestone numbering, which differs from the att
 
 ## Milestone 4 — Codex, context, and editing
 
+The next three paragraphs retain the earlier work-in-progress checkpoint. The checked tasks and final 2026-10-02 acceptance work log supersede those temporary blockers.
+
 2026-10-02 work in progress: added sanitized Codex turn/message activity and denied-tool events, a session-scoped applied-edit review record, exact approval hashes, captured before/after content, Node test exit/output evidence, and stale source/test detection. VS Code now exposes Review Last Applied Edit and Test Evidence and attaches selected Node tests to the edit session. These changes are local and not yet synced or marked complete.
 
 Intermediate verification: typecheck/lint/build passed; unit tests passed 43/43 and integration tests passed 6/6, including exact edit/test approval rejection, real failed/passing Node checks, review freshness and session isolation. Additional test-freshness and preview-budget hardening followed those test runs and still require final regression verification.
@@ -96,12 +98,14 @@ Live editor acceptance remains incomplete. VS Code 1.105.0 rejects modal dialogs
 
 ## Milestone 6 — Buddy experience
 
-- [ ] Define Buddy states and map them to actual agent events.
-- [ ] Show agent presence, activity, approval requests, and results.
-- [ ] Connect Buddy to the agent cursor.
-- [ ] Assess optional voice after the core experience is reliable.
+- [x] Define Buddy states and map them to actual agent events.
+- [x] Show agent presence, activity, approval requests, and results.
+- [x] Connect Buddy to the agent cursor.
+- [x] Assess optional voice after the core experience is reliable (deferred with documented controls and acceptance requirements; no capture implemented).
 
 **Exit criteria:** Buddy accurately represents agent state without owning it.
+
+**Acceptance:** Native VS Code pane and status consume the editor-independent read-only projection. Actual editor tests verify accepted cursor linkage, unchanged developer selection, hidden-view execution and reconnect cleanup. The final installed VSIX passed real Codex Explain -> refactor -> actual production approval -> Node tests -> current verified review on VS Code 1.105.0. Buddy matched every production prompt and the final completed/verified result. See [Buddy](docs/buddy.md) and the latest evidence below.
 
 ## Milestone 7 — Multi-IDE and expanded surfaces
 
@@ -318,3 +322,19 @@ Copy this block after every implementation session:
 **Remaining limitations:** M4 exit is verified for the supported saved single-selection workflow, not arbitrary commands or multi-file model editing. M5 selected-code local history exit and deterministic remote contracts are verified; live authenticated GitHub product/credential-UI acceptance still needs an explicitly configured read-only product connection. Pagination, OAuth/GitHub Apps and live-model historical narrative evaluation remain pending. The quality evaluation measures evidence correctness, not unmeasured model acceptance. Session review/audit remains memory-only. No general no-error, sandbox, full-platform or public-release claim is made. Next: verify live product GitHub evidence with a configured repository-scoped credential, then continue the next supported milestone.
 
 **Source sync:** GitHub review branch codex/local-intelligence-preview is verified at 081c362933c9981907a166e363c66b47c68cb9c3. Its tree d51f14530cbce70c0e80ede51f3079bf2e253157 exactly matches tested local commit 7f6b62956b2dc108bc3bde6e2bc3a35861ebb339 (39 changed files). The non-force update preserves remote parent 86cdc3a6ae0db58a50cfb1fcdca7fc9e67632e17 and leaves main unchanged. No merge, credential/access change, publication or deployment occurred. The original untracked oAX-Complete.md attachment remains untouched. This delivery record follows as a documentation-only commit.
+
+### 2026-10-02 — Milestone 6 Buddy exit verified; Milestones 1–5 rechecked
+
+**Implementation:** Added the editor-independent `packages/buddy` projection and a native VS Code tree/status view. Sessions and providers are separate; actual task lifecycle remains authoritative. Completed provider items do not complete a task. Buddy shows real production prompts, observed activity, actual approved-edit receipts and the last observed review. Prompt clicks reopen the Cancel-default UI without accepting it. Location clicks recheck hash/version and preserve developer selection. Hiding Buddy affects presentation only. Source/test changes invalidate known results and clear cursor locations. Reconnect clears old projection state, and late connection failures cannot delete a newer connection. Runtime disconnection observers are separate from task rejection. Voice was assessed and deferred, with controls and acceptance requirements documented; no microphone capture or voice transmission is enabled.
+
+**Milestones 1–5:** Final regression reconfirmed validated stdio/session/event exchange, unsaved spatial context, actual text tabs, graph relationships on this real repository, exact approved edits and real passing/failing Node verification, selected-line local Git history and deterministic GitHub PR/issue/review/check contracts. M4's real provider editor exit was rechecked in the final installed package. M5 live authenticated product GitHub evidence remains unverified and requires a configured repository-scoped product credential; VS Code account sign-in and this chat's connector do not establish it.
+
+**Final checks:** `pnpm typecheck`, `pnpm lint`, `pnpm build`, `pnpm schemas`, `pnpm format:check` and `git diff --check` passed. `pnpm test`: 49/49. `pnpm test:integration`: 7/7, including real repository acceptance at 74 indexed source files / 1336 symbols. Normal `pnpm test:editor` passed native Buddy show/hide commands, continued execution while hidden, exact accepted cursor linkage, unchanged developer selection, changed-buffer invalidation and reconnect cleanup on VS Code 1.105.0. The final broad regression ran after the initialization deadline change.
+
+**Live acceptance:** The final installed VSIX passed with `OAX_PACKAGED_TEST=1 OAX_LIVE_EDITOR_TEST=1 OAX_AUTOMATED_LIVE_EDITOR_TEST=1 pnpm test:editor`. Evidence: `.vscode-test/m4-live-xxEuCP/acceptance.json`. Actual Codex 0.159.2 produced the explanation and approved proposal; the actual production prompts were explicitly selected through VS Code commands by the excluded development harness. Real Node tests exited 0; current matching edit/test review was verified; Buddy had the matching completed task and verified result, no pending prompt, and developer selection was preserved. Only synthetic context was transmitted. This is real acceptance, not a provider mock or production approval bypass. The existing baseline host update-mutex warning did not prevent exit 0.
+
+**Failures and corrections:** One new cursor test fixture omitted the required mode; it was corrected and all 49 tests passed. Initial concurrent real-repository acceptance hit the short control deadline; graph/context reads now have a bounded 30-second budget. A live check timed out at its unchanged five-second execution limit, and a sequential run exposed provider preflight exceeding the old 10-second initialization budget. Initialization now has 60 seconds; ordinary controls remain 10 seconds and historical reads 90 seconds. The harness surfaces early command failures immediately and records Buddy state on failure. Final sequential packaged acceptance and the full regressions passed. No failed run was treated as success.
+
+**Packaging:** `pnpm package:local` passed the eight-file allowlist. Final `dist/oax-vscode-0.1.0.vsix` SHA-256: `d879b0ef5aa4ed5c08eff6186cd427aa2a55ca37b6013b3c68018994281885cf`. Isolated installation succeeded before live acceptance. The development harness is not packaged. The MIT license is unchanged. This remains an unreleased local VS Code/CLI preview.
+
+**Remaining work:** Live scoped GitHub product authentication, manual screen-reader/usability assessment, broader languages, general multi-file model edits, persistent audit/retention, voice backend selection and later interfaces remain separate work. Buddy's retained verification is a last observed saved-file review; external changes require fresh review. The next concrete action is live GitHub evidence acceptance once a product credential is configured, followed by the next selected milestone. No full-platform, zero-error, OS-sandbox or release claim is made.

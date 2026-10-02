@@ -5,6 +5,8 @@ import { RuntimeClient } from '@oax/runtime/client';
 import type { GraphResult, GraphNode } from '@oax/codegraph';
 import { capture, observationSignature } from './capture.js';
 import { providerExecutable } from '@oax/codex/executable';
+import { BuddyStore, buddyLabel, type BuddySnapshot } from '@oax/buddy';
+import { BuddyView } from './buddy.js';
 export interface SpatialView {
   root: string;
   observation: Omit<import('@oax/protocol').Observation, 'text'>;
@@ -68,7 +70,12 @@ function snapshot(editor: vscode.TextEditor) {
 export function activate(context: vscode.ExtensionContext): {
   inspectSpatial: () => SpatialInspection;
   inspectInteraction: () => { title: string; activeLabel: string } | undefined;
+  inspectBuddy: () => BuddySnapshot;
 } {
+  const buddy = new BuddyStore();
+  let connectionGeneration = 0;
+  const buddyView = new BuddyView(buddy);
+  let pendingPrompt: vscode.QuickPick<vscode.QuickPickItem> | undefined;
   let interaction: { title: string; activeLabel: string } | undefined;
   const confirm = (
     title: string,
@@ -89,11 +96,15 @@ export function activate(context: vscode.ExtensionContext): {
       if (extra) pick.items = [...pick.items, { label: extra }];
       pick.activeItems = [pick.items[0]!];
       interaction = { title, activeLabel: 'Cancel' };
+      pendingPrompt = pick;
+      buddy.showPrompt({ title, action });
       let settled = false;
       const finish = (answer?: string) => {
         if (settled) return;
         settled = true;
         interaction = undefined;
+        pendingPrompt = undefined;
+        buddy.showPrompt();
         pick.dispose();
         resolve(answer);
       };
@@ -127,8 +138,135 @@ export function activate(context: vscode.ExtensionContext): {
   );
   status.text = '$(search) oAX: ready';
   status.tooltip = 'oAX Buddy status reflects public runtime events';
-  status.command = 'oax.explainSelection';
+  status.command = 'oax.buddy.show';
   status.show();
+  let buddyVisible = context.workspaceState.get('oax.buddy.visible', true);
+  void vscode.commands.executeCommand(
+    'setContext',
+    'oax.buddy.visible',
+    buddyVisible,
+  );
+  if (!buddyVisible) status.hide();
+  const unsubscribeBuddy = buddy.subscribe(() => {
+    const state = buddy.snapshot();
+    const active = state.sessions.find(
+      (session) =>
+        session.connected &&
+        (session.editing ||
+          !['idle', 'completed', 'failed', 'cancelled'].includes(
+            session.phase,
+          )),
+    );
+    const latest = active ?? state.sessions.at(-1);
+    status.text = `$(hubot) oAX: ${state.prompt ? 'Input requested' : latest ? buddyLabel(latest) : 'Ready'}`;
+  });
+  const applyEdit = async (
+    client: RuntimeClient,
+    sessionId: string,
+    payload: unknown,
+  ) => {
+    buddy.editing(sessionId, true);
+    try {
+      const result = await client.call('refactor.apply', payload, sessionId);
+      buddy.result(sessionId, {
+        label: 'Approved edit applied; review and tests required',
+        paths: (result as { files: string[] }).files,
+        verified: false,
+      });
+      return result;
+    } catch (error) {
+      buddy.result(sessionId, {
+        label: 'Edit failed; inspect workspace for partial changes',
+        paths: [],
+        verified: false,
+      });
+      throw error;
+    } finally {
+      buddy.editing(sessionId, false);
+    }
+  };
+  context.subscriptions.push(
+    buddy,
+    buddyView,
+    { dispose: unsubscribeBuddy },
+    vscode.window.registerTreeDataProvider('oax.buddy', buddyView),
+    vscode.commands.registerCommand('oax.buddy.show', async () => {
+      buddyVisible = true;
+      await context.workspaceState.update('oax.buddy.visible', true);
+      await vscode.commands.executeCommand(
+        'setContext',
+        'oax.buddy.visible',
+        true,
+      );
+      status.show();
+      await vscode.commands.executeCommand('oax.buddy.focus');
+    }),
+    vscode.commands.registerCommand('oax.buddy.hide', async () => {
+      buddyVisible = false;
+      await context.workspaceState.update('oax.buddy.visible', false);
+      await vscode.commands.executeCommand(
+        'setContext',
+        'oax.buddy.visible',
+        false,
+      );
+      status.hide();
+    }),
+    vscode.commands.registerCommand('oax.buddy.prompt', () =>
+      pendingPrompt?.show(),
+    ),
+    vscode.commands.registerCommand('oax.buddy.results', () =>
+      output.show(true),
+    ),
+    vscode.commands.registerCommand(
+      'oax.buddy.location',
+      async (id: string) => {
+        const session = buddy
+          .snapshot()
+          .sessions.find((entry) => entry.id === id);
+        const location = session?.location;
+        if (!session?.connected || !location) return;
+        const file = path.resolve(session.root, location.path);
+        const relative = path.relative(session.root, file);
+        if (
+          path.isAbsolute(relative) ||
+          relative === '..' ||
+          relative.startsWith(`..${path.sep}`)
+        )
+          return;
+        // Existing open document was validated when the runtime cursor was accepted.
+        const document = vscode.workspace.textDocuments.find(
+          (doc) => doc.uri.scheme === 'file' && doc.fileName === file,
+        );
+        if (
+          !document ||
+          (location.documentVersion !== undefined &&
+            document.version !== location.documentVersion) ||
+          createHash('sha256').update(document.getText()).digest('hex') !==
+            location.contentHash
+        ) {
+          buddy.clearLocations();
+          return;
+        }
+        const editor = await vscode.window.showTextDocument(document, {
+          preserveFocus: true,
+        });
+        if (
+          createHash('sha256').update(document.getText()).digest('hex') !==
+          location.contentHash
+        )
+          return;
+        const r = location.range;
+        editor.revealRange(
+          new vscode.Range(
+            r.start.line,
+            r.start.column,
+            r.end.line,
+            r.end.column,
+          ),
+        );
+      },
+    ),
+  );
   const decoration = vscode.window.createTextEditorDecorationType({
     border: '1px solid',
     borderColor: new vscode.ThemeColor('editorInfo.foreground'),
@@ -142,6 +280,7 @@ export function activate(context: vscode.ExtensionContext): {
     const key = `${root}:${providerExecutable ?? 'mock'}`;
     let pending = connections.get(key);
     if (!pending) {
+      const generation = connectionGeneration;
       pending = (async () => {
         const client = await RuntimeClient.connect(
           path.join(context.extensionPath, 'dist', 'runtime.cjs'),
@@ -149,14 +288,29 @@ export function activate(context: vscode.ExtensionContext): {
           process.execPath,
           providerExecutable,
         );
+        const { sessionId } = (await client
+          .call('session.open', {})
+          .catch((error) => {
+            client.dispose();
+            throw error;
+          })) as {
+          sessionId: string;
+        };
+        if (generation !== connectionGeneration) {
+          client.dispose();
+          throw new Error('Runtime connection superseded by reconnect');
+        }
+        buddy.register(sessionId, root, providerExecutable ? 'Codex' : 'mock');
+        client.onDisconnect(() => {
+          buddy.disconnect(sessionId);
+          if (connections.get(key) === pending) connections.delete(key);
+        });
         client.subscribe((event) => {
-          if (event.method === 'task.state')
-            status.text = `$(hubot) oAX: ${event.payload.state}`;
+          buddy.observe(event);
           if (event.method === 'agent.activity') {
             output.appendLine(
               `[Codex ${event.payload.kind}: ${event.payload.state}]`,
             );
-            status.text = `$(hubot) oAX: ${event.payload.kind} ${event.payload.state}`;
           }
           if (event.method === 'agent.cursor.changed') {
             for (const editor of vscode.window.visibleTextEditors) {
@@ -193,16 +347,16 @@ export function activate(context: vscode.ExtensionContext): {
                 range: r,
                 contentHash: event.payload.contentHash,
               };
+              buddy.locationAccepted(event);
             }
           }
         });
-        const { sessionId } = (await client.call('session.open', {})) as {
-          sessionId: string;
-        };
         return { client, sessionId };
       })();
       connections.set(key, pending);
-      pending.catch(() => connections.delete(key));
+      pending.catch(() => {
+        if (connections.get(key) === pending) connections.delete(key);
+      });
     }
     return pending;
   };
@@ -217,7 +371,6 @@ export function activate(context: vscode.ExtensionContext): {
       ) {
         spatial = undefined;
         observed = undefined;
-        status.text = '$(search) oAX: ready';
         return;
       }
       if (busy) return;
@@ -247,7 +400,6 @@ export function activate(context: vscode.ExtensionContext): {
           focused: result.focused,
         };
         observed = signature;
-        status.text = `$(search) oAX: ${result.focused?.name ?? 'ready'}`;
       } catch {
         /* A subsequent explicit command reports actionable errors. */
       }
@@ -264,14 +416,25 @@ export function activate(context: vscode.ExtensionContext): {
     vscode.workspace.onDidOpenTextDocument(observe),
     vscode.workspace.onDidCloseTextDocument(observe),
     vscode.workspace.onDidSaveTextDocument(observe),
-    vscode.workspace.onDidChangeTextDocument(() => {
+    vscode.workspace.onDidChangeTextDocument((event) => {
       for (const editor of vscode.window.visibleTextEditors)
         editor.setDecorations(decoration, []);
       agentCursor = undefined;
+      buddy.clearLocations();
+      const folder = vscode.workspace.getWorkspaceFolder(event.document.uri);
+      if (folder && event.document.uri.scheme === 'file')
+        buddy.invalidate(
+          folder.uri.fsPath,
+          path
+            .relative(folder.uri.fsPath, event.document.fileName)
+            .split(path.sep)
+            .join('/'),
+        );
       observe();
     }),
     {
       dispose: () => {
+        connectionGeneration++;
         clearTimeout(timer);
         deactivate();
       },
@@ -591,15 +754,11 @@ export function activate(context: vscode.ExtensionContext): {
           throw new Error(
             'The document changed after the preview; prepare a new proposal',
           );
-        const result = await client.call(
-          'refactor.apply',
-          {
-            observation: snapshot(editor).observation,
-            planId: plan.id,
-            approvedHash: plan.hash,
-          },
-          sessionId,
-        );
+        const result = await applyEdit(client, sessionId, {
+          observation: snapshot(editor).observation,
+          planId: plan.id,
+          approvedHash: plan.hash,
+        });
         output.appendLine(JSON.stringify(result));
         reviews.set(captured.root, { client, sessionId });
         lastReviewRoot = captured.root;
@@ -673,12 +832,9 @@ export function activate(context: vscode.ExtensionContext): {
             { preview: true, preserveFocus: true },
           );
         }
-        const approved = await vscode.window.showInformationMessage(
+        const approved = await confirm(
           'Apply the displayed rename preview?',
-          {
-            modal: true,
-            detail: `Writes ${plan.changes.map((change) => change.path).join(', ')}. Baselines are rechecked. ${plan.verification}\nI/O failures can leave partial edits; review the result before committing.`,
-          },
+          `Writes ${plan.changes.map((change) => change.path).join(', ')}. Baselines are rechecked. ${plan.verification}\nI/O failures can leave partial edits; review the result before committing.`,
           'Apply rename',
         );
         if (approved !== 'Apply rename') return;
@@ -696,15 +852,11 @@ export function activate(context: vscode.ExtensionContext): {
             );
         }
         const fresh = snapshot(editor);
-        const result = await client.call(
-          'refactor.apply',
-          {
-            planId: plan.id,
-            approvedHash: plan.hash,
-            observation: fresh.observation,
-          },
-          sessionId,
-        );
+        const result = await applyEdit(client, sessionId, {
+          planId: plan.id,
+          approvedHash: plan.hash,
+          observation: fresh.observation,
+        });
         output.appendLine(JSON.stringify(result));
         reviews.set(captured.root, { client, sessionId });
         lastReviewRoot = captured.root;
@@ -739,13 +891,9 @@ export function activate(context: vscode.ExtensionContext): {
           ignoreFocusOut: true,
         }));
       if (!token) return;
-      const approved = await vscode.window.showInformationMessage(
+      const approved = await confirm(
         `Connect read-only GitHub evidence for ${repository}?`,
-        {
-          modal: true,
-          detail:
-            'Allows repository metadata, commit-associated PRs, reviews, comments, referenced issues and checks for this workspace/session for one hour. Requests and result sizes are bounded. Only fixed-origin GET requests are exposed. No source upload, posting, push or model transmission. Configure a repository-scoped read-only token.',
-        },
+        'Allows repository metadata, commit-associated PRs, reviews, comments, referenced issues and checks for this workspace/session for one hour. Requests and result sizes are bounded. Only fixed-origin GET requests are exposed. No source upload, posting, push or model transmission. Configure a repository-scoped read-only token.',
         'Connect read-only',
       );
       if (approved !== 'Connect read-only') return;
@@ -947,6 +1095,9 @@ export function activate(context: vscode.ExtensionContext): {
       return state;
     }),
     vscode.commands.registerCommand('oax.reconnect', async () => {
+      connectionGeneration++;
+      pendingPrompt?.hide();
+      buddy.reset();
       reviews.clear();
       lastReviewRoot = undefined;
       deactivate();
@@ -974,6 +1125,20 @@ export function activate(context: vscode.ExtensionContext): {
           typeof import('../../../packages/runtime/src/review.js').inspectReview
         >
       >;
+      buddy.result(connection.sessionId, {
+        label: report.verified
+          ? 'Approved tests passed for matching edit'
+          : !report.current || (report.check && !report.checkCurrent)
+            ? 'Evidence stale; review source and tests'
+            : report.check?.state === 'failed'
+              ? 'Approved tests failed'
+              : 'Edit current; verification incomplete',
+        paths: [
+          ...report.changes.map((change) => change.path),
+          ...(report.check ? [report.check.path] : []),
+        ],
+        verified: report.verified,
+      });
       const uri = vscode.Uri.from({
         scheme: 'oax-preview',
         path: `/${report.planId}/review.json`,
@@ -1019,6 +1184,7 @@ export function activate(context: vscode.ExtensionContext): {
     }),
   );
   return {
+    inspectBuddy: () => buddy.snapshot(),
     inspectInteraction: () =>
       interaction ? structuredClone(interaction) : undefined,
     inspectSpatial: () =>

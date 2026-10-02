@@ -56,6 +56,7 @@ export async function run(): Promise<void> {
   assert.ok(answer.includes(`document version ${document.version}`));
   const extension = vscode.extensions.getExtension<{
     inspectSpatial: () => SpatialInspection;
+    inspectBuddy: () => import('@oax/buddy').BuddySnapshot;
   }>('oax-dev.oax-vscode');
   assert.ok(extension?.isActive);
   const inspect = extension.exports.inspectSpatial;
@@ -66,6 +67,36 @@ export async function run(): Promise<void> {
     createHash('sha256').update(replacement).digest('hex'),
   );
   assert.deepEqual(decorated.cursor!.range.start, { line: 0, column: 0 });
+  const inspectBuddy = extension.exports.inspectBuddy;
+  const buddySession = inspectBuddy().sessions.find(
+    (session) => session.provider === 'mock',
+  );
+  assert.ok(buddySession?.connected);
+  assert.equal(buddySession.phase, 'completed');
+  assert.equal(
+    buddySession.location?.contentHash,
+    decorated.cursor!.contentHash,
+  );
+  assert.deepEqual(buddySession.location?.range, decorated.cursor!.range);
+  await vscode.commands.executeCommand('oax.buddy.show');
+  await vscode.commands.executeCommand('oax.buddy.location', buddySession.id);
+  assert.ok(
+    editor.selection.isEqual(selected),
+    'Revealing Buddy location must preserve developer selection',
+  );
+  await vscode.commands.executeCommand('oax.buddy.hide');
+  const hiddenAnswer =
+    await vscode.commands.executeCommand<string>('oax.explainMock');
+  assert.ok(
+    hiddenAnswer?.includes('[Mock engine'),
+    'Hiding Buddy cannot disable the runtime',
+  );
+  assert.equal(
+    inspectBuddy().sessions.find((session) => session.id === buddySession.id)
+      ?.phase,
+    'completed',
+  );
+  await vscode.commands.executeCommand('oax.buddy.show');
   await waitForSpatial(
     inspect,
     (state) => state.spatial?.observation.documentVersion === document.version,
@@ -119,6 +150,7 @@ export async function run(): Promise<void> {
     undefined,
     'Changing source must clear the prior agent decoration',
   );
+  assert.ok(inspectBuddy().sessions.every((session) => !session.location));
   await waitForSpatial(
     inspect,
     (state) => state.spatial?.observation.documentVersion === document.version,
@@ -140,6 +172,10 @@ export async function run(): Promise<void> {
       'oax.find.callers',
     );
   assert.equal(reconnected?.relationships[0]?.node?.name, 'caller');
+  assert.ok(
+    inspectBuddy().sessions.every((session) => session.id !== buddySession.id),
+    'Reconnect must discard prior Buddy session state',
+  );
   const walkthrough = await vscode.commands.executeCommand<
     import('../../packages/runtime/src/onboarding.js').OnboardingReport
   >('oax.onboardRepository');

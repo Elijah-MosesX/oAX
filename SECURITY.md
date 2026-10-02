@@ -20,6 +20,8 @@ The developer's authorization to implement/test/sync oAX is separate from produc
 
 ## Permission model
 
+Buddy is a presentation projection. Its prompt entry only reopens the existing Cancel-default decision UI; it cannot authorize or execute. It retains no model deltas, source content, tool arguments, credential values or provider error details. Results come from actual runtime receipts, and verification is labeled as the last observed saved-file review. Cursor navigation is opt-in and rechecks the accepted open-document hash/version before revealing a range without changing selection. Hiding the view does not alter runtime policy or task state. Voice is deferred and no microphone capture or voice transmission is enabled. Workspace names, paths and session identifiers appear in the native view; existing output/review privacy limitations still apply.
+
 Git and GitHub write capabilities are distinct from their read capabilities. Neither read-only adapter exposes a mutation method. Connected GitHub history authorizes only bounded fixed-origin GET routes, with exact grants checked at each read. Unavailable results remain explicit, and untrusted issue/PR text cannot grant execution. The selected code's historical evidence is never automatically sent to a provider. Review snapshots and outputs remain session-local and disappear on reconnect/closure; passing tests do not imply sandboxing or comprehensive dependency verification.
 
 Separate reading, editing, executing, Git mutations, and remote actions. Policies must be evaluated at the actual tool or operation boundary.

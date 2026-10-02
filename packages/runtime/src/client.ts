@@ -22,6 +22,7 @@ export class RuntimeClient {
   private pending = new Map<string, Pending>();
   private listeners = new Set<(event: Event) => void>();
   private failures = new Set<(error: Error) => void>();
+  private disconnects = new Set<() => void>();
   private sequence = 0;
   private closed = false;
   private constructor(
@@ -121,6 +122,13 @@ export class RuntimeClient {
     this.child.kill();
     for (const listener of this.failures) listener(error);
     this.failures.clear();
+    for (const listener of this.disconnects) listener();
+    this.disconnects.clear();
+  }
+  onDisconnect(listener: () => void): () => void {
+    if (this.closed) listener();
+    else this.disconnects.add(listener);
+    return () => this.disconnects.delete(listener);
   }
   subscribe(listener: (event: Event) => void): () => void {
     this.listeners.add(listener);
@@ -131,9 +139,22 @@ export class RuntimeClient {
     const result = new Promise<Response>((resolve, reject) => {
       const timer = setTimeout(
         () => this.fail(new OaxError('TIMEOUT', 'Runtime request timed out')),
-        req.method === 'github.trace' || req.method === 'history.query'
-          ? 90_000
-          : 10_000,
+        req.method === 'initialize'
+          ? 60_000
+          : ['github.trace', 'github.history', 'history.query'].includes(
+                req.method,
+              )
+            ? 90_000
+            : [
+                  'spatial.observe',
+                  'graph.query',
+                  'context.preview',
+                  'repository.onboard',
+                  'refactor.prepare',
+                  'index.status',
+                ].includes(req.method)
+              ? 30_000
+              : 10_000,
       );
       this.pending.set(req.id, { resolve, reject, timer });
     });

@@ -13,6 +13,11 @@ export async function activate(): Promise<void> {
       path.join(root, 'failure.json'),
       JSON.stringify({
         error: error instanceof Error ? error.message : 'Acceptance failed',
+        buddy: vscode.extensions
+          .getExtension<{
+            inspectBuddy: () => import('@oax/buddy').BuddySnapshot;
+          }>('oax-dev.oax-vscode')
+          ?.exports?.inspectBuddy(),
       }),
     );
   } finally {

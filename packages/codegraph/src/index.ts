@@ -81,6 +81,7 @@ export class CodeGraph {
   private sources = new Map<string, ts.SourceFile>();
   private signature = '';
   private projectSignature = '';
+  private syntaxSnapshots = new Map<string, SourceSnapshot>();
   limitations = [
     'TypeScript/JavaScript indexed local modules, bounded project aliases and workspace package exports; external packages and computed calls may be unresolved.',
     'Test relationships are filename heuristics and are never reported as semantic coverage.',
@@ -103,6 +104,11 @@ export class CodeGraph {
   update(
     snapshots: SourceSnapshot[],
     metadata: ProjectFile[] = [],
+    syntax: {
+      nodes: GraphNode[];
+      edges: GraphEdge[];
+      limitations: string[];
+    } = { nodes: [], edges: [], limitations: [] },
   ): {
     changed: number;
     files: number;
@@ -111,19 +117,23 @@ export class CodeGraph {
     const files = snapshots
       .filter((s) => supported.test(s.path))
       .sort((a, b) => a.path.localeCompare(b.path));
+    const syntaxFiles = snapshots.filter((s) => /\.(py|go|java)$/.test(s.path));
+    const allFiles = [...files, ...syntaxFiles];
     const projectSignature = metadata
       .slice()
       .sort((a, b) => a.path.localeCompare(b.path))
       .map((s) => `${s.path}:${digest(s.text)}`)
       .join('|');
     const signature =
-      files.map((s) => `${s.path}:${digest(s.text)}`).join('|') +
+      allFiles.map((s) => `${s.path}:${digest(s.text)}`).join('|') +
       '#' +
-      projectSignature;
+      projectSignature +
+      '#' +
+      digest(JSON.stringify(syntax));
     if (signature === this.signature && this.program)
       return {
         changed: 0,
-        files: files.length,
+        files: allFiles.length,
         symbols: this.nodes().filter((n) => n.kind !== 'file').length,
       };
     const changed =
@@ -134,7 +144,13 @@ export class CodeGraph {
       ).length +
       [...this.sources.keys()].filter((p) => !files.some((s) => s.path === p))
         .length +
-      Number(!!this.signature && this.projectSignature !== projectSignature);
+      Number(!!this.signature && this.projectSignature !== projectSignature) +
+      syntaxFiles.filter(
+        (s) => this.syntaxSnapshots.get(s.path)?.text !== s.text,
+      ).length +
+      [...this.syntaxSnapshots.keys()].filter(
+        (p) => !syntaxFiles.some((s) => s.path === p),
+      ).length;
     const previous = this.sources;
     const sources = new Map<string, ts.SourceFile>();
     const declarations = new Map<ts.Node, GraphNode>();
@@ -415,20 +431,43 @@ export class CodeGraph {
           );
       }
     }
+    for (const snapshot of syntaxFiles) {
+      const lines = snapshot.text.split('\n');
+      nodes.push({
+        id: fileId(snapshot.path),
+        path: snapshot.path,
+        name: snapshot.path,
+        kind: 'file',
+        hash: digest(snapshot.text),
+        range: {
+          start: { line: 0, column: 0 },
+          end: {
+            line: lines.length - 1,
+            column: lines[lines.length - 1]!.length,
+          },
+        },
+      });
+    }
+    nodes.push(...syntax.nodes);
+    edges.push(...syntax.edges);
+    limitations.push(...syntax.limitations);
     this.db.exec('BEGIN');
     try {
       this.db.exec('DELETE FROM edges');
       const removed = (
         this.db.prepare('SELECT path FROM files').all() as { path: string }[]
-      ).filter((row) => !sources.has(row.path));
+      ).filter((row) => !allFiles.some((f) => f.path === row.path));
       for (const row of removed)
         this.db.prepare('DELETE FROM files WHERE path=?').run(row.path);
-      for (const snapshot of files) {
+      for (const snapshot of allFiles) {
         const hash = digest(snapshot.text);
         const old = this.db
           .prepare('SELECT hash FROM files WHERE path=?')
           .get(snapshot.path);
-        if (old?.hash !== hash) {
+        if (
+          old?.hash !== hash ||
+          syntaxFiles.some((f) => f.path === snapshot.path)
+        ) {
           this.db.prepare('DELETE FROM nodes WHERE path=?').run(snapshot.path);
           this.db
             .prepare(
@@ -455,6 +494,7 @@ export class CodeGraph {
           );
       this.db.exec('COMMIT');
       this.sources = sources;
+      this.syntaxSnapshots = new Map(syntaxFiles.map((s) => [s.path, s]));
       this.declarations = declarations;
       this.host = host;
       this.program = program;
@@ -467,7 +507,7 @@ export class CodeGraph {
     }
     return {
       changed,
-      files: files.length,
+      files: allFiles.length,
       symbols: nodes.filter((n) => n.kind !== 'file').length,
     };
   }
@@ -486,6 +526,44 @@ export class CodeGraph {
     ).map((row) => JSON.parse(row.data) as GraphEdge);
   }
   focused(file: string, position: Position): GraphNode | null {
+    const syntax = this.syntaxSnapshots.get(file);
+    if (syntax) {
+      const lines = syntax.text.split('\n');
+      if (
+        position.line < 0 ||
+        position.column < 0 ||
+        position.line >= lines.length ||
+        position.column > lines[position.line]!.replace(/\r$/, '').length
+      )
+        return null;
+      const before = (a: Position, b: Position) =>
+        a.line < b.line || (a.line === b.line && a.column <= b.column);
+      return (
+        this.nodes()
+          .filter(
+            (n) =>
+              n.path === file &&
+              n.kind !== 'file' &&
+              before(n.range.start, position) &&
+              before(position, n.range.end) &&
+              !(
+                position.line === n.range.end.line &&
+                position.column === n.range.end.column
+              ),
+          )
+          .sort(
+            (a, b) =>
+              a.range.end.line -
+                a.range.start.line -
+                (b.range.end.line - b.range.start.line) ||
+              a.range.end.column -
+                a.range.start.column -
+                (b.range.end.column - b.range.start.column),
+          )[0] ??
+        this.nodes().find((n) => n.id === fileId(file)) ??
+        null
+      );
+    }
     const source = this.sources.get(file);
     if (
       !source ||

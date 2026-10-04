@@ -1,21 +1,18 @@
 {
   "appId": "oax-evidence-viewer-xvokez",
   "url": "https://oax-evidence-viewer-xvokez.v2.appdeploy.ai/",
-  "snapshot": "1790958191826",
+  "snapshot": "1790985172068",
   "publicAssetHashes": {
     "app.js": "6eb9104d0bc89f4dafb966e7274655472bd3269d8e5848a4e28f4c497477f396",
     "style.css": "8546f884759d89e73504d279e2feb78190e05200dd628c598f41d3fa0f5fd567",
-    "sw.js": "5ef9b519fed9dc9bc8a69fd2860381491e878daf8916cf6dcbe5ce62f16d98bd",
+    "sw.js": "c48afec34cd52240cd6623bb782f1d846e64961fcc2d35e1465c8d8283e419de",
     "manifest.webmanifest": "726f5ed3219ac83ca9bcafa1cc19ecb83db303dbc45b52a1e7d9e76e285973ed",
     "icon-192.png": "939576a91c3e7888e4acbeac76ad73389318f9d5fe15062f83dbc816910e5805",
     "icon-512.png": "d668dadaf90266b8c06a0a7c2d1536c323a1c3ffef6e264896293503c9edd638"
   },
   "acceptance": [
-    "validated-context-import",
-    "invalid-evidence-denial",
-    "clear",
-    "reload-does-not-retain-evidence",
-    "standard-png-manifest",
-    "ready-no-qa-errors"
+    "prior-context-import-clear-reload-acceptance",
+    "ready-no-qa-errors",
+    "shared-knowledge-link-added-no-automatic-evidence-transfer"
   ]
 }

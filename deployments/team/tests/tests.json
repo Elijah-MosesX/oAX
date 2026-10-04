@@ -1,0 +1,123 @@
+[
+  {
+    "name": "Create a private repository room and retain reviewed knowledge",
+    "sanity": true,
+    "viewport": "desktop",
+    "covers": [
+      "authentication",
+      "room create/list/read",
+      "entry create/retract",
+      "durability",
+      "sign-out privacy"
+    ],
+    "description": "An authenticated owner publishes real knowledge and retracts it through the protected backend.",
+    "steps": [
+      "Sign in using the available test identity.",
+      "Create a private room for qa-oax/knowledge-acceptance.",
+      "Publish a finding titled Entry point with text Start at src/main.ts and reference src/main.ts, explicitly checking the sharing consent.",
+      "Refresh the page, open the room, and verify the finding persists.",
+      "Retract the finding, confirm, refresh and reopen the room.",
+      "Sign out."
+    ],
+    "expected": "The finding persisted before retraction, then only a retraction marker remains. Signing out clears private room contents and publishing controls."
+  },
+  {
+    "name": "Invited reader sees live knowledge but cannot publish, then loses access on revocation",
+    "viewport": "desktop",
+    "covers": [
+      "two-user identity",
+      "invite create/resolve/join/revoke and owner-only saved-invitation listing",
+      "reader permissions",
+      "realtime subscribe/unsubscribe",
+      "cross-user visibility",
+      "revocation"
+    ],
+    "description": "Two distinct authenticated users exercise scoped room sharing and immediate revocation on the next authorized read.",
+    "steps": [
+      "Actor B signs in with a distinct test identity and notes that identity's email.",
+      "Actor A signs in, creates qa-oax/reader-acceptance, opens Team access and invites Actor B's email as Reader.",
+      "Actor B opens the generated link and explicitly joins.",
+      "Actor A opens Knowledge and publishes a finding titled Live entry with text The owner shared this evidence.",
+      "Without reloading, Actor B sees Live entry and a reader-only message instead of publishing controls.",
+      "Actor A reloads, reopens the room, opens Team access, chooses Manage saved invitations and revokes Actor B's invitation. Actor B presses Refresh."
+    ],
+    "expected": "Only the invited identity can join, the reader receives the live entry without reload, cannot publish, and loses room content after revocation and Refresh."
+  },
+  {
+    "name": "Concurrent contributors preserve both entries and reconnect to the shared room",
+    "viewport": "desktop",
+    "covers": [
+      "contributor invitation",
+      "concurrent append",
+      "reconnect recovery",
+      "refresh",
+      "spatial code references",
+      "author-only retraction",
+      "screen capture and approved visual analysis",
+      "POST /api/rooms/:id/vision",
+      "reviewed analysis draft"
+    ],
+    "description": "Two authenticated actors retain independent contributions without one overwriting the other's work.",
+    "steps": [
+      "Actor A creates qa-oax/concurrent-acceptance, opens Team access and invites Actor B's distinct signed-in email as Contributor.",
+      "Actor B joins using the invitation link.",
+      "Both actors open Knowledge. Actor A publishes Owner finding at src/owner.ts and Actor B publishes Teammate finding at src/member.ts.",
+      "Actor B uses Reconnect subscription and Refresh.",
+      "Verify both attributed entries and code references appear for both users.",
+      "Actor B verifies no Retract entry button is offered for Actor A's entry.",
+      "Actor A opens Screen lens. Verify Analyze reviewed snapshot is unavailable before capture/consent. If display capture is supported by the test browser, choose only the synthetic acceptance app tab, verify capture ends after one frame, review the image, authorize provider analysis and select Analyze reviewed snapshot. Never capture real user desktops or credentials.",
+      "When a live result arrives, verify visible observations and uncertainty, then Use analysis as a draft. Confirm it is not published automatically. If screen capture or provider usage is unavailable, explicitly report this step as unverified rather than passed."
+    ],
+    "expected": "Both contributions remain available after reconnect and refresh. Contributor controls cannot retract another author's entry."
+  },
+  {
+    "name": "Mobile sharing, voice consent and invalid context guardrails",
+    "viewport": "mobile",
+    "covers": [
+      "mobile usability",
+      "sharing consent",
+      "voice input opt-in",
+      "transcript review",
+      "typed fallback",
+      "context validation",
+      "terms/privacy",
+      "GitHub metadata failure"
+    ],
+    "description": "Invalid evidence and credentials fail visibly, and voice remains optional with typed input available.",
+    "steps": [
+      "Sign in and create qa-oax/mobile-acceptance.",
+      "Enter a finding title and text; verify Publish to room is disabled without sharing consent.",
+      "Verify Start dictation is disabled without browser speech consent, and Stop dictation/Cancel audio are available. Do not provide real microphone audio.",
+      "Paste invalid JSON as the ContextSlice export, check sharing consent and attempt to publish.",
+      "Verify a visible validation error; remove invalid evidence and publish the typed finding.",
+      "Open GitHub connection. Submit the deliberately invalid token invalid-test-token using Authorize metadata check.",
+      "Open Terms and Privacy and return to the app."
+    ],
+    "expected": "Invalid evidence is not published, typed input works independently of microphone support, invalid GitHub credentials produce an error without a success claim, and legal pages are readable on mobile."
+  },
+  {
+    "name": "Failed room creation retains input for recovery",
+    "viewport": "desktop",
+    "covers": [
+      "backend failure handling",
+      "room input preservation",
+      "no false creation"
+    ],
+    "description": "A server error does not claim a private room was created.",
+    "qa_faults": [
+      {
+        "method": "POST",
+        "path": "/api/rooms",
+        "status": 503,
+        "body_json": {
+          "error": "Acceptance storage failure"
+        }
+      }
+    ],
+    "steps": [
+      "Sign in.",
+      "Enter qa-oax/failure-acceptance as the repository and choose Create private room."
+    ],
+    "expected": "A visible error is shown, the repository input is retained, and no successful room creation is claimed."
+  }
+]

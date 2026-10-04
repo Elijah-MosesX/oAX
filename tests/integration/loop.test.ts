@@ -6,6 +6,18 @@ import { capture } from '../../adapters/vscode/src/capture.js';
 import { fixtureRoot, observation } from '../helpers.js';
 import { eventSchema } from '@oax/protocol';
 import { BuddyStore } from '@oax/buddy';
+test('runtime rejects relative parser executables before spawning a companion', async () => {
+  await assert.rejects(
+    RuntimeClient.connect(
+      path.resolve('dist/cli.cjs'),
+      fixtureRoot,
+      process.execPath,
+      undefined,
+      { OAX_PYTHON: './repository-script.exe' },
+    ),
+    /Language parser paths must be absolute/,
+  );
+});
 test('editor translation -> real stdio runtime -> context -> mock -> adapter answer', async () => {
   const client = await RuntimeClient.connect(
     path.resolve('dist/cli.cjs'),

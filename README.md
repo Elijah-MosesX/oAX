@@ -6,27 +6,27 @@ The platform is being built end to end, with each supported workflow verified be
 
 ## Interfaces and deployment
 
-| Interface      | Available implementation                                                                                                                                                      | Remaining scope                                                             |
-| -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
-| VS Code        | Versioned selection, deterministic TS/JS graph, real Codex explanation and selected-range refactor, exact approvals, Node tests, diff review, Buddy and separate agent cursor | Broader languages and general multi-file model edits                        |
-| Neovim and Vim | Actual editor acceptance for read-only structural queries using the shared runtime; unsaved text and preserved developer cursor                                               | Editing/provider workflows and broader host acceptance                      |
-| JetBrains      | Java adapter compiled against the IntelliJ SDK                                                                                                                                | Plugin packaging and live IDE acceptance                                    |
-| Desktop        | Portable Windows x64 workbench, authenticated local runtime, source/context/history inspection and Buddy inspection receipts                                                  | Signed installers, full agent/editing UI, macOS/Linux acceptance            |
-| CLI            | Initialization, indexing, structural queries, explanation, rename previews, approved checks and review                                                                        | Published package and broader installation acceptance                       |
-| GitHub         | Selected-repository read adapter for commits, PRs, issues, reviews and checks                                                                                                 | Live product authentication acceptance, GitHub App and authorized posting   |
-| Web/PWA        | Local workbench plus a deployed browser-only exported-evidence viewer                                                                                                         | Shared workspace access, team identity, isolation and enterprise operations |
+| Interface      | Available implementation                                                                                                                                                      | Remaining scope                                                                   |
+| -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| VS Code        | Versioned selection, deterministic TS/JS graph, real Codex explanation and selected-range refactor, exact approvals, Node tests, diff review, Buddy and separate agent cursor | Broader semantic indexing and general multi-file model edits                      |
+| Neovim and Vim | Actual editor acceptance for read-only structural queries using the shared runtime; unsaved text and preserved developer cursor                                               | Editing/provider workflows and broader host acceptance                            |
+| JetBrains      | Java adapter compiled against the IntelliJ SDK                                                                                                                                | Plugin packaging and live IDE acceptance                                          |
+| Desktop        | Portable Windows x64 workbench, authenticated local runtime, source/context/history inspection and Buddy inspection receipts                                                  | Signed installers, full agent/editing UI, macOS/Linux acceptance                  |
+| CLI            | Initialization, indexing, structural queries, explanation, rename previews, approved checks and review                                                                        | Published package and broader installation acceptance                             |
+| GitHub         | Selected-repository read adapter for commits, PRs, issues, reviews and checks                                                                                                 | Live product authentication acceptance, GitHub App and authorized posting         |
+| Web/PWA        | Local workbench, exported-evidence PWA, and deployed authenticated shared-knowledge rooms with optional voice controls                                                        | Live multi-user/voice acceptance, automatic IDE pairing and enterprise operations |
 
 An interface is separate from its deployment: the supported runtime currently runs locally. Managed, hybrid and enterprise self-hosted deployments will reuse the core contracts but still require their own identity, isolation, installation and recovery validation. A local runtime can use remote model inference. No interface requires all users to share one server.
 
-Python already powers the pinned Jev planning worker; Java powers the JetBrains prototype. Go is an available implementation choice for a justified worker, not an implemented service. Cross-language workers must preserve the same validated contracts, permissions and evidence; using a language does not imply semantic indexing support for that language. See [polyglot boundaries](docs/polyglot.md).
+Python already powers the pinned Jev planning worker; Java powers the JetBrains prototype. Python AST, Go parser and Java compiler-tree workers now feed declarations and labeled caller candidates into the same graph. Cross-language workers must preserve the same validated contracts, permissions and evidence; using a language does not imply semantic indexing support for that language. See [language-worker setup and limits](docs/language-workers.md).
 
-Optional integrations include [Chrome DevTools MCP](docs/browser.md), the [Jev Python planner](docs/jev.md), and [Clicky-inspired companion behavior](docs/clicky.md). Their supported capabilities and external-service limits are explicit.
+Optional integrations include [Chrome DevTools MCP](docs/browser.md), the [Jev Python planner](docs/jev.md), and [Clicky-inspired companion behavior](docs/clicky.md). Their supported capabilities and external-service limits are explicit. [Ponytail and OpenMontage](docs/authoring-resources.md) support code review and product-video authoring, outside runtime authority.
 
 ## Build and use locally
 
 The Neovim read-only prototype uses the same runtime and protocol for unsaved-buffer structural queries. A JetBrains prototype and cross-adapter tests accompany it. `node dist/cli.cjs doctor [root]` checks the local toolchain without a model request. See [adapter setup and verified limits](docs/adapters.md); SDK compilation and live IDE acceptance are recorded separately in PROGRESS.
 
-**oAX: Show Buddy** opens an accessible native Explorer pane with workspace/provider presence, actual task and tool activity, pending approval prompts, output, edit/test review status and observed code locations. **Hide Buddy** changes presentation only. Buddy does not control the agent or grant permissions; voice is assessed and deferred. See [Buddy behavior](docs/buddy.md).
+**oAX: Show Buddy** opens an accessible native Explorer pane with workspace/provider presence, actual task and tool activity, pending approval prompts, output, edit/test review status and observed code locations. **Hide Buddy** changes presentation only. Buddy does not control the agent or grant permissions. VS Code voice remains pending; optional browser dictation and local read-aloud are implemented in the hosted knowledge service, with live audio acceptance outstanding. See [Buddy behavior](docs/buddy.md) and [shared knowledge](docs/team.md).
 
 Use Node **24.19.0** and pnpm **11.25.0**:
 
@@ -44,7 +44,7 @@ Explain requires an existing official Codex login and compatible **Codex 0.159.2
 
 **oAX: Rename Symbol with Preview** shows exact before/after text, requires approval, checks saved-file baselines, and writes only the pending plan's paths. Save affected editors first. Rename validation checks syntax and newly introduced diagnostics in the supported module model; it does not prove external-consumer compatibility. **oAX: Run Selected Node Tests with Approval** separately previews and authorizes a saved test file, reports actual exit status, and supports cancellation. Test code runs with local-account rights. **Onboard Repository** shows evidence with explicit heuristic labels. I/O failures can leave partial edits and are reported. **Show Git History Evidence** returns local commits and blame for saved tracked code, without inventing a cause.
 
-The status bar and a separate symbol decoration reflect observed runtime activity. Your selection is preserved. **Reconnect Runtime** releases sessions. Voice and animated Buddy are pending.
+The status bar and a separate symbol decoration reflect observed runtime activity. Your selection is preserved. **Reconnect Runtime** releases sessions. Editor voice and animated Buddy are pending.
 
 **Refactor Selection with Codex Preview** accepts a requested change to saved selected code, previews bounded provider context, and obtains transmission consent. Codex returns a replacement proposal; oAX rejects malformed proposals and shows a native diff. Applying it requires separate exact-plan approval and unchanged file baselines. Only the selected range in that file can change. The proposal is unverified until you run relevant checks; **Run Selected Node Tests with Approval** executes a separately approved saved test file. Multi-file model refactoring remains pending.
 
@@ -72,7 +72,7 @@ Positions are zero-based. `init` preserves valid configuration; `analyze` builds
 
 [Development](DEVELOPMENT.md), [architecture](ARCHITECTURE.md), [security](SECURITY.md), [protocol](docs/protocol.md), [provider verification](docs/codex-integration.md), and the full [blueprint](oAX.md) describe setup, implemented boundaries, and planned capabilities.
 
-The first distribution target is a local VS Code extension and CLI. Bounded Git/GitHub historical evidence is implemented; multi-file model refactoring, voice, additional interfaces, team services and cloud deployment remain separate work. Optional Chrome DevTools inspection is available through a separate, origin-scoped CLI adapter; see [browser setup](docs/browser.md). MIT license preserved.
+The first distribution target is a local VS Code extension and CLI. Bounded Git/GitHub historical evidence is implemented; multi-file model refactoring, editor voice, broader interfaces and enterprise deployment remain separate work. Optional Chrome DevTools inspection is available through a separate, origin-scoped CLI adapter; see [browser setup](docs/browser.md). MIT license preserved.
 
 CLI explain uses real Codex and prints a bounded context preview before transmission. Override executable discovery with --codex and an absolute contract-verified Codex executable path. Add --approve with the preview hash to authorize transmission. Explicit --mock is available only for development fixtures. CLI review returns labeled structural evidence, not a model quality verdict. Verification streams pass/fail diagnostics and returns exit code 1 on failed checks. See --help for exact arguments.
 
@@ -92,3 +92,7 @@ and the [Vim adapter](docs/vim.md) are separate interfaces over the existing bou
 See the [integration and gap review](docs/integration-audit.md) for evaluated dependencies
 and open release gates. This is a verified subset of the platform, not the completed
 enterprise product or a signed Marketplace release.
+
+## Shared knowledge on the web
+
+Open [oAX Shared Knowledge](https://oax-shared-knowledge-omcqtl.v2.appdeploy.ai/) to sign in, create a private repository room, invite a reader/contributor and publish reviewed findings or exported ContextSlices. Optional dictation produces a draft; local read-aloud depends on browser support. The local runtime keeps execution and approval ownership. See [practical use and acceptance limits](docs/team.md). Deployment and deterministic authorization checks passed; live owner/two-user sign-in, microphone use and product GitHub credentials still need acceptance. The hosted service does not automatically pair IDEs or run a shared Codex agent.

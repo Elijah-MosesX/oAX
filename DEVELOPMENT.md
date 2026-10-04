@@ -100,3 +100,15 @@ read-only bridge. `pnpm test:browser-addons` verifies actual Chrome registration
 in a dedicated owned profile. `pnpm package:chrome` creates the five-file Manifest
 V3 launcher ZIP; it is not Web Store publication. See docs/vim.md,
 docs/browser-extensions.md, docs/pwa.md and docs/integration-audit.md.
+
+## Hosted shared knowledge
+
+Run `node scripts/prepare-team.mjs` to assemble the public deployment source into ignored `dist/team-deploy-files.json`. It copies the canonical evidence validator/protocol rather than maintaining a second wire schema. Deploy with the AppDeploy React/Vite frontend+backend template and its injected client/server SDK; do not install SDK guesses into the core monorepo. The deployed template adds pinned zod 4.1.12. Inspect the provider's current instructions and latest remote source before updates, including platform formatting changes. Root TypeScript checks cover core and deterministic tests; the isolated hosted React/SDK code is built by AppDeploy and bundled for handler tests, not included in the core tsc project.
+
+`node --import tsx --test tests/team.test.ts tests/voice.test.ts` runs actual handler logic with injected SDK fixtures and mocked speech APIs. These tests incur no model usage, microphone capture, live identity or repository transmission. `deployments/team/tests/tests.json` specifies five browser QA workflows; require actual QA results and two distinct user identities before claiming live multi-user acceptance. Hosted setup and current URLs: docs/team.md.
+
+## Additional-language and video tools
+
+See docs/language-workers.md for the Windows worker build, four absolute tool paths and `pnpm test:languages`. The check invokes actual parsers and the built stdio runtime. VS Code settings are application-scoped and ignore workspace overrides.
+
+See docs/authoring-resources.md for checksum-pinned Ponytail/OpenMontage installation. Video authoring is isolated in ignored tool/output directories; its dependencies are not added to the core workspace. The narration is local Windows synthesis, not a microphone test or product voice acceptance.

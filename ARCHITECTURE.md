@@ -142,3 +142,13 @@ Spatial capture now derives open files from actual file-backed text tabs, listen
 ## Shared local surfaces and Python browser planner (2026-10-02)
 
 The local workbench owns loopback authentication and presentation over RuntimeClient and the same scoped protocol/session/graph used by CLI and editors. Its HTTP method allowlist exposes local intelligence without writes or provider transmission. A dedicated Chrome app-window launcher wraps that same surface. packages/browser isolates MCP snapshot projection and an optional pinned Python Jev planning worker; provider-context grants gate TypeSafe transmission, while returned choices never authorize browser execution. See docs/surfaces.md and docs/jev.md for exact supported boundaries and pending App/enterprise deployment.
+
+## Hosted knowledge boundary (2026-10-03)
+
+`deployments/team` is a separate AppDeploy React/backend surface. It shares the canonical ContextSlice validation contract through the preparation script, not local runtime credentials or authority. AppDeploy SDK identity gates private routes; an owner or a current identity-bound invitation is required on each content operation. Append-only records avoid lost updates between independent contributions. Source-free WebSocket invalidations trigger authenticated reads. No provider or repository execution is exposed by this deployment. Voice is a browser-controlled draft/read-aloud interface. See docs/team.md for limits, including unverified live multi-user acceptance and absent automatic IDE pairing.
+
+## Syntax workers and reviewed screen snapshots (2026-10-03)
+
+The indexer can invoke explicit local Python AST, Go parser and Java compiler-tree workers through a bounded versioned snapshot contract. It validates UTF-16 evidence, associates hashes, and commits syntax nodes/edges in the existing SQLite graph transaction. Caller name matches remain heuristic; imports/ambiguous calls remain unresolved. RuntimeClient and application-scoped editor settings pass absolute tool paths; no editor API enters core analysis.
+
+The hosted Screen lens is a separate provider boundary using AppDeploy structured image extraction. A user chooses a display/window/tab, capture stops after one frame, and an explicit preview/approval precedes transmission. Images are not added to the room database; analysis becomes a draft only on request. This is snapshot understanding, not continuous OS observation or verified source mapping. The earlier statement that the hosted service exposes no provider is superseded by this scoped image-analysis endpoint; local agent/edit authority remains absent.

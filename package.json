@@ -7,6 +7,7 @@
     "node": "24.19.0"
   },
   "scripts": {
+    "test:languages": "node --import tsx tests/languages/acceptance.ts",
     "setup:browser": "node scripts/setup-browser.mjs",
     "test:browser": "tsx scripts/test-browser.ts",
     "build": "node scripts/build.mjs",

@@ -18,6 +18,30 @@
     "configuration": {
       "title": "oAX",
       "properties": {
+        "oax.languageWorkersDirectory": {
+          "type": "string",
+          "default": "",
+          "scope": "application",
+          "description": "Absolute directory containing the explicitly installed oAX Python/Go/Java parser workers. User settings only; reconnect after changes."
+        },
+        "oax.pythonExecutable": {
+          "type": "string",
+          "default": "",
+          "scope": "application",
+          "description": "Absolute Python 3.12+ executable for syntax indexing. Does not execute repository imports."
+        },
+        "oax.javaExecutable": {
+          "type": "string",
+          "default": "",
+          "scope": "application",
+          "description": "Absolute Java 21 JDK executable for syntax indexing. Project build hooks and annotation processors are disabled."
+        },
+        "oax.goParserExecutable": {
+          "type": "string",
+          "default": "",
+          "scope": "application",
+          "description": "Absolute compiled oAX Go parser executable for syntax indexing."
+        },
         "oax.codexExecutable": {
           "type": "string",
           "default": "",

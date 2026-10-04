@@ -3,6 +3,7 @@ import path from 'node:path';
 import { CodeGraph, type SourceSnapshot } from '@oax/codegraph';
 import { workspacePath } from '@oax/context';
 import { OaxError } from '@oax/protocol';
+import { PolyglotParser } from './polyglot.js';
 const ignored = new Set([
   '.git',
   '.oax',
@@ -24,6 +25,7 @@ export class Indexer {
   constructor(
     readonly root: string,
     readonly graph: CodeGraph,
+    private readonly polyglot = new PolyglotParser(),
   ) {}
   async refresh(
     overlays: SourceSnapshot[] = [],
@@ -64,7 +66,7 @@ export class Indexer {
         if (
           !entry.isFile() ||
           (!projectMetadata &&
-            !/\.(?:tsx?|jsx?|mts|cts|mjs|cjs)$/i.test(entry.name))
+            !/\.(?:tsx?|jsx?|mts|cts|mjs|cjs|py|go|java)$/i.test(entry.name))
         )
           continue;
         if (projectMetadata && metadataFiles.length >= 256)
@@ -121,7 +123,8 @@ export class Indexer {
       ) > 8_388_608
     )
       throw new OaxError('INDEX_LIMIT', 'Editor snapshots exceed index budget');
-    const result = this.graph.update(sources, metadataFiles);
+    const evidence = await this.polyglot.parse(sources);
+    const result = this.graph.update(sources, metadataFiles, evidence);
     this.snapshots = new Map(sources.map((s) => [s.path, s]));
     return result;
   }

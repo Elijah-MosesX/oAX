@@ -1,5 +1,6 @@
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
 import { randomBytes, randomUUID } from 'node:crypto';
+import path from 'node:path';
 import {
   CAPABILITIES,
   OaxError,
@@ -16,6 +17,12 @@ interface Pending {
   reject: (error: Error) => void;
   timer: NodeJS.Timeout;
 }
+export type ParserEnvironment = Partial<
+  Record<
+    'OAX_LANGUAGE_WORKERS' | 'OAX_PYTHON' | 'OAX_JAVA' | 'OAX_GO_PARSER',
+    string
+  >
+>;
 export class RuntimeClient {
   get identity(): string {
     return this.workspaceId;
@@ -35,6 +42,7 @@ export class RuntimeClient {
     token: string,
     nodePath: string,
     providerExecutable?: string,
+    parserEnvironment: ParserEnvironment = {},
   ) {
     this.child = spawn(nodePath, [runtimePath, 'serve', root, workspaceId], {
       stdio: 'pipe',
@@ -42,6 +50,7 @@ export class RuntimeClient {
       windowsHide: true,
       env: {
         ...process.env,
+        ...parserEnvironment,
         OAX_CONNECTION_TOKEN: token,
         ELECTRON_RUN_AS_NODE: '1',
         OAX_PROVIDER_EXECUTABLE: providerExecutable ?? '',
@@ -67,7 +76,25 @@ export class RuntimeClient {
     root: string,
     nodePath = process.execPath,
     providerExecutable?: string,
+    parserEnvironment: ParserEnvironment = {},
   ): Promise<RuntimeClient> {
+    const safeEnvironment: ParserEnvironment = {};
+    for (const key of [
+      'OAX_LANGUAGE_WORKERS',
+      'OAX_PYTHON',
+      'OAX_JAVA',
+      'OAX_GO_PARSER',
+    ] as const) {
+      const value = parserEnvironment[key];
+      if (value) {
+        if (!path.isAbsolute(value))
+          throw new OaxError(
+            'INVALID_ARGS',
+            'Language parser paths must be absolute',
+          );
+        safeEnvironment[key] = value;
+      }
+    }
     const token = randomBytes(32).toString('hex');
     const client = new RuntimeClient(
       randomUUID(),
@@ -76,6 +103,7 @@ export class RuntimeClient {
       token,
       nodePath,
       providerExecutable,
+      safeEnvironment,
     );
     try {
       await client.call('initialize', {

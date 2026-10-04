@@ -281,7 +281,19 @@ export function activate(context: vscode.ExtensionContext): {
   });
   let observed: string | undefined, timer: NodeJS.Timeout | undefined;
   const connect = async (root: string, providerExecutable?: string) => {
-    const key = `${root}:${providerExecutable ?? 'mock'}`;
+    const settings = vscode.workspace.getConfiguration('oax');
+    const parsers = Object.fromEntries(
+      [
+        ['OAX_LANGUAGE_WORKERS', 'languageWorkersDirectory'],
+        ['OAX_PYTHON', 'pythonExecutable'],
+        ['OAX_JAVA', 'javaExecutable'],
+        ['OAX_GO_PARSER', 'goParserExecutable'],
+      ].flatMap(([env, setting]) => {
+        const value = settings.inspect<string>(setting!)?.globalValue;
+        return value ? [[env!, value]] : [];
+      }),
+    );
+    const key = `${root}:${providerExecutable ?? 'mock'}:${JSON.stringify(parsers)}`;
     let pending = connections.get(key);
     if (!pending) {
       const generation = connectionGeneration;
@@ -291,6 +303,7 @@ export function activate(context: vscode.ExtensionContext): {
           root,
           process.execPath,
           providerExecutable,
+          parsers,
         );
         const { sessionId } = (await client
           .call('session.open', {})

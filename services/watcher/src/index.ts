@@ -19,6 +19,8 @@ export class WorkspaceWatcher {
         if (!this.stopped) this.schedule();
       });
     }, this.intervalMs);
+    // Background polling alone must not keep the process alive; owners call close().
+    this.timer.unref?.();
   }
   async tick(): Promise<void> {
     try {

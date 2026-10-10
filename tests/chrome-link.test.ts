@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises';
 
 test('Chrome launcher has no privileged permissions and rejects remote/ambiguous links', async () => {
   const source = await readFile('adapters/chrome/link.js', 'utf8');
-  const { workbenchLink } = await import(
+  const { cloudApp, workbenchLink } = await import(
     `data:text/javascript;base64,${Buffer.from(source).toString('base64')}`
   );
   const token = 'a'.repeat(64);
@@ -22,6 +22,7 @@ test('Chrome launcher has no privileged permissions and rejects remote/ambiguous
     'http://127.0.0.1:1234/#short',
   ])
     assert.throws(() => workbenchLink(url));
+  assert.equal(cloudApp(), 'https://oax1-7mirgx.v2.appdeploy.ai/');
   const manifest = JSON.parse(
     await readFile('adapters/chrome/manifest.json', 'utf8'),
   );

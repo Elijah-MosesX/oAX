@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
 import ts from 'typescript';
 import { projectResolver, type ProjectFile } from './resolution.js';
-import type { Position, TextRange } from '@oax/protocol';
+import { OaxError, type Position, type TextRange } from '@oax/protocol';
 export interface SourceSnapshot {
   path: string;
   text: string;
@@ -81,6 +81,7 @@ export class CodeGraph {
   private sources = new Map<string, ts.SourceFile>();
   private signature = '';
   private projectSignature = '';
+  private metadata: ProjectFile[] = [];
   private syntaxSnapshots = new Map<string, SourceSnapshot>();
   limitations = [
     'TypeScript/JavaScript indexed local modules, bounded project aliases and workspace package exports; external packages and computed calls may be unresolved.',
@@ -501,6 +502,7 @@ export class CodeGraph {
       this.limitations = limitations;
       this.signature = signature;
       this.projectSignature = projectSignature;
+      this.metadata = metadata;
     } catch (error) {
       this.db.exec('ROLLBACK');
       throw error;
@@ -647,10 +649,13 @@ export class CodeGraph {
       !this.program ||
       !this.host
     )
-      throw new Error('A valid identifier and indexed snapshot are required');
+      throw new OaxError(
+        'RENAME_REJECTED',
+        'A valid identifier and indexed snapshot are required',
+      );
     const source = this.sources.get(file);
     if (!source || position.line >= source.getLineStarts().length)
-      throw new Error('Rename location unavailable');
+      throw new OaxError('RENAME_REJECTED', 'Rename location unavailable');
     let offset = source.getLineStarts()[position.line]! + position.column;
     const host: ts.LanguageServiceHost = {
       ...this.host,
@@ -684,7 +689,11 @@ export class CodeGraph {
           });
         }
       }
-      if (!info.canRename) throw new Error('Selected symbol cannot be renamed');
+      if (!info.canRename)
+        throw new OaxError(
+          'RENAME_REJECTED',
+          'Selected symbol cannot be renamed',
+        );
       const locations = service.findRenameLocations(
         file,
         offset,
@@ -692,7 +701,8 @@ export class CodeGraph {
         false,
         true,
       );
-      if (!locations?.length) throw new Error('No semantic rename locations');
+      if (!locations?.length)
+        throw new OaxError('RENAME_REJECTED', 'No semantic rename locations');
       const grouped = new Map<string, ts.RenameLocation[]>();
       for (const location of locations) {
         const list = grouped.get(location.fileName) ?? [];
@@ -704,7 +714,10 @@ export class CodeGraph {
         .map(([path, edits]) => {
           const before = this.sources.get(path)?.text;
           if (before === undefined)
-            throw new Error('Rename escaped indexed sources');
+            throw new OaxError(
+              'RENAME_REJECTED',
+              'Rename escaped indexed sources',
+            );
           let after = before;
           for (const edit of edits.sort(
             (a, b) => b.textSpan.start - a.textSpan.start,
@@ -727,9 +740,13 @@ export class CodeGraph {
               proposals.find((change) => change.path === path)?.after ??
               source.text,
           })),
+          this.metadata,
         );
         if (verification.program!.getSyntacticDiagnostics().length)
-          throw new Error('Rename would leave syntax errors');
+          throw new OaxError(
+            'RENAME_REJECTED',
+            'Rename would leave syntax errors',
+          );
         const key = (diagnostic: ts.Diagnostic) =>
           `${diagnostic.file?.fileName ?? ''}:${diagnostic.code}:${ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n')}`;
         const existing = new Map<string, number>();
@@ -741,7 +758,8 @@ export class CodeGraph {
           const value = key(diagnostic);
           const available = existing.get(value) ?? 0;
           if (!available)
-            throw new Error(
+            throw new OaxError(
+              'RENAME_REJECTED',
               'Rename introduces a TypeScript checker diagnostic; choose another name or resolve the conflict',
             );
           existing.set(value, available - 1);

@@ -7,6 +7,8 @@ import stat
 import zipfile
 
 RESOURCES = {
+    "hyperframes-browser": ("chrome-headless-shell-win64", "5d7df999a6e4a65a1b16b25b61064f7337b8aa8ee2ed1b4e07bfdd24f6e4275e"),
+    "hyperframes": ("hyperframes-main", "41ddb38678274e8e883776a53ada6a338e9f9a6d9ea7d742046711afa4574a77"),
     "ponytail": ("ponytail-main", "b48bf3e09182b0c9b4ddeb7c3c520918c173ec73e8756285cf794cbac84d38f0"),
     "openmontage": ("OpenMontage-main", "bacf55796fc6166a5951ed356cbeaa83ca74ae868bd10d73105547432c4d725e"),
 }
@@ -23,9 +25,12 @@ def install(name, archive):
     hashes = {}
     with zipfile.ZipFile(archive) as source:
         entries = source.infolist()
-        if len(entries) > 5000 or sum(e.file_size for e in entries) > 1024**3:
+        if len(entries) > (11000 if name == "hyperframes" else 5000) or sum(e.file_size for e in entries) > 1024**3:
             raise ValueError("Resource archive budget exceeded")
         for entry in entries:
+            # Hyperframes includes duplicate skill-discovery symlinks. Never materialize them.
+            if name == "hyperframes" and stat.S_ISLNK(entry.external_attr >> 16):
+                continue
             parts = PurePosixPath(entry.filename).parts
             if not parts or parts[0] != root or any(
                 p in ("..", ".") or ":" in p or "\\" in p for p in parts

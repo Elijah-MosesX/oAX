@@ -16,6 +16,7 @@ import {
   type RenamePlan,
 } from './refactor.js';
 import { onboarding } from './onboarding.js';
+import { contextEvidence } from './context-evidence.js';
 import { inspectReview, reviewMatches, type EditReview } from './review.js';
 import {
   prepareChecks,
@@ -902,33 +903,19 @@ export class Runtime {
         range: focused.range,
         hash: focused.hash,
       };
-      context.limitations = session.graph!.limitations;
-      let remaining = Math.max(0, 8192 - context.excerpt.length);
-      context.related = session
-        .graph!.related(focused.id, 'callers')
-        .relationships.slice(0, 6)
-        .flatMap(({ edge, node }) => {
-          const snapshot = node
-            ? session.indexer!.snapshots.get(node.path)
-            : undefined;
-          if (!node || !snapshot || remaining <= 0) return [];
-          const excerpt = snapshot.text
-            .split('\n')
-            .slice(node.range.start.line, node.range.end.line + 1)
-            .join('\n')
-            .slice(0, Math.min(1024, remaining));
-          remaining -= excerpt.length;
-          return [
-            {
-              path: node.path,
-              range: node.range,
-              hash: node.hash,
-              excerpt,
-              reason: 'Direct caller from TypeScript checker',
-              resolution: edge.resolution,
-            },
-          ];
-        });
+      const evidence = contextEvidence(
+        session.graph!,
+        focused,
+        session.indexer!.snapshots,
+        params.objective,
+        Math.max(0, 8192 - context.excerpt.length),
+      );
+      context.related = evidence.related;
+      context.truncated ||= evidence.truncated;
+      context.limitations = [
+        ...session.graph!.limitations,
+        ...evidence.limitations,
+      ];
     }
     const bounded = redactContext(context);
     while (

@@ -1,5 +1,7 @@
 # Developing oAX
 
+For a user-facing sequence, see [the practical walkthrough](docs/getting-started-workflow.md). The 2026-10-04 context relevance correction is checked with `node --import tsx --test tests/context-evidence.test.ts tests/runtime.test.ts`; it uses deterministic fixtures and makes no provider request. The original ideation reconciliation is in [product alignment](docs/product-alignment.md).
+
 Optional Clicky reference source: `python scripts/setup-clicky.py` (Python 3.12+).
 It verifies the pinned official archive and existing source under `.tools/clicky`,
 retaining the upstream license without running native code, the worker or a model.

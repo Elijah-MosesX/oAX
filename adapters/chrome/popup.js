@@ -1,4 +1,8 @@
-import { workbenchLink } from './link.js';
+import { cloudApp, workbenchLink } from './link.js';
+document.getElementById('cloud').addEventListener('click', async () => {
+  await chrome.tabs.create({ url: cloudApp() });
+  window.close();
+});
 document.getElementById('connect').addEventListener('submit', async (event) => {
   event.preventDefault();
   const input = document.getElementById('link');

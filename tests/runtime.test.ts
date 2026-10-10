@@ -1,4 +1,4 @@
-import test from 'node:test';
+import test, { afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { setTimeout as delay } from 'node:timers/promises';
 import {
@@ -13,6 +13,13 @@ import type { ContextSlice } from '@oax/context';
 import { CAPABILITIES, request, type Event } from '@oax/protocol';
 import { fixtureRoot, observation } from './helpers.js';
 const token = 'a'.repeat(64);
+// Stop every runtime created by setup(), even when an assertion fails first,
+// so an open session's workspace watcher cannot keep the test process alive.
+const runtimes = new Set<Runtime>();
+afterEach(async () => {
+  for (const runtime of runtimes) await runtime.stop();
+  runtimes.clear();
+});
 async function setup(engine = new MockAgentEngine(), timeoutMs = 1000) {
   const events: Event[] = [];
   const runtime = new Runtime({
@@ -23,6 +30,7 @@ async function setup(engine = new MockAgentEngine(), timeoutMs = 1000) {
     emit: (e) => events.push(e),
     timeoutMs,
   });
+  runtimes.add(runtime);
   const call = (method: string, payload: unknown, sessionId?: string) =>
     runtime.dispatch(request('workspace', method, payload, sessionId));
   assert.equal(
@@ -36,14 +44,66 @@ async function setup(engine = new MockAgentEngine(), timeoutMs = 1000) {
   ).sessionId;
   return { runtime, events, call, sessionId };
 }
-async function terminal(events: Event[], state: string): Promise<void> {
-  for (let i = 0; i < 100; i++) {
+// Wall-clock budget rather than an iteration count: timers stretch when the
+// whole suite runs in parallel on slower machines.
+async function terminal(
+  events: Event[],
+  state: string,
+  timeoutMs = 10_000,
+): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  do {
     if (events.some((e) => 'state' in e.payload && e.payload.state === state))
       return;
     await delay(5);
-  }
+  } while (Date.now() < deadline);
   assert.fail(`No ${state} event`);
 }
+test('runtime previews objective-relevant unsaved dependencies with inspectable provenance', async () => {
+  const { runtime, call, sessionId } = await setup();
+  const text =
+    'function leaf() { return 1; } export function add() { return leaf(); } function caller() { return add(); }';
+  const input = observation(text);
+  input.selection = {
+    start: { line: 0, column: text.indexOf('add()') },
+    end: { line: 0, column: text.indexOf('add()') + 3 },
+  };
+  try {
+    const response = await call(
+      'context.preview',
+      { observation: input, objective: 'Explain dependencies' },
+      sessionId,
+    );
+    assert.ok(response.ok);
+    const preview = response.payload as { context: ContextSlice; hash: string };
+    assert.equal(preview.context.focusedSymbol?.name, 'add');
+    assert.equal(
+      preview.context.related?.[0]?.excerpt,
+      'function leaf() { return 1; }',
+    );
+    assert.match(
+      preview.context.related![0]!.reason,
+      /^dependency relationship; semantic/,
+    );
+    assert.equal(preview.context.documentVersion, input.documentVersion);
+    assert.equal(preview.context.dirty, true);
+    assert.ok(Buffer.byteLength(JSON.stringify(preview.context)) <= 16000);
+    const changed = await call(
+      'context.preview',
+      { observation: input, objective: 'What calls this?' },
+      sessionId,
+    );
+    assert.ok(changed.ok);
+    assert.match(
+      (changed.payload as { context: ContextSlice }).context.related![0]!
+        .reason,
+      /^caller relationship/,
+    );
+    assert.notEqual((changed.payload as { hash: string }).hash, preview.hash);
+  } finally {
+    await runtime.stop();
+  }
+});
 test('authentication, version negotiation, duplicates, methods, and session isolation', async () => {
   const runtime = new Runtime({
     root: fixtureRoot,
@@ -91,7 +151,12 @@ test('authentication, version negotiation, duplicates, methods, and session isol
   );
 });
 test('mock lifecycle streams ordered scoped events from the unsaved selection', async () => {
-  const { runtime, events, call, sessionId } = await setup();
+  // Context gathering indexes the fixture and builds a TypeScript program; under
+  // a loaded parallel run that alone can exceed 1 s, so allow a realistic budget.
+  const { runtime, events, call, sessionId } = await setup(
+    new MockAgentEngine(),
+    15_000,
+  );
   const response = await call(
     'selection.explain',
     { observation: observation(), objective: 'Explain' },

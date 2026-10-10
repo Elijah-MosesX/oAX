@@ -9,6 +9,8 @@
 **Initial persistence:** SQLite  
 **Repository:** `oax/`
 
+The original ideation documents were reconciled with implementation on 2026-10-04. See [product alignment](docs/product-alignment.md) for the persistent-workspace-participant intent, concrete gaps and acceptance order. Later requests for collaboration, broader environments, voice and enterprise controls remain in scope; existing supporting surfaces do not replace the shared runtime experience.
+
 ---
 
 ## 1. Product Definition

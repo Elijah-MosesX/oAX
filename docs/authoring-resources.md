@@ -2,6 +2,22 @@
 
 These tools support development and communication. They do not become runtime permissions or execute merely because a repository requests them. oAX's MIT license is unchanged.
 
+## Hyperframes and Brag
+
+The supplied Hyperframes archive is pinned by SHA-256 `41ddb38678274e8e883776a53ada6a338e9f9a6d9ea7d742046711afa4574a77`. `python scripts/setup-resources.py hyperframes <archive>` verifies/extracts 8703 regular files under `.tools/hyperframes/41ddb3867827/hyperframes-main`, retaining Apache-2.0 notices and skipping duplicate discovery symlinks. The source installer does not run hooks or build the upstream monorepo.
+
+Codex skills were installed with the official skill installer: Brag at `cb89b9f44309b0bf4e3cb89e685fadf80c7999ed`, and Hyperframes router/core/animation/keyframes/creative/CLI at `237a984bb8d97f8dff7a5464c78851d633747f54`. Brag supplies the story/brief/quality workflow; Hyperframes supplies seekable HTML composition and rendering. No lifecycle hooks or hosted media service were configured.
+
+The isolated renderer uses `hyperframes@0.8.116` and `gsap@3.14.2`. Reproduce dependencies by copying `docs/video/toolchain/package*.json` into `.tools/hyperframes-cli` and running `npm ci --prefix .tools/hyperframes-cli --ignore-scripts --no-audit --no-fund`. The lockfile belongs to this optional authoring environment, not the product runtime. Telemetry is disabled by `scripts/hyperframes.ps1`. Usage probing returned unknown; no allowance is inferred.
+
+`python scripts/prepare-square-videos.py` creates four original 20-second, 1080×1080/30-fps compositions under `dist/oax-square-videos`. Inputs include the prior actual public landing capture and original synthesized music; bundled Brag music is not redistributed because its exact license was not established. Each film has a Brag plan, composition brief and share copy. Illustrative code/data are labeled. These are workflow films, not recordings proving live acceptance.
+
+Use `scripts/hyperframes.ps1 check <composition> --json`, then `snapshot <composition> '--at=3,10,17'`, inspect the frames, and `render <composition> --quality delivery --workers 2 --output <absolute-mp4-path>`. Absolute output paths avoid Hyperframes resolving relative paths against the invoking working directory.
+
+The wrapper expects Chrome Headless Shell 152.0.7977.30, downloaded from Google's Chrome for Testing storage. Its Windows archive SHA-256 is `5d7df999a6e4a65a1b16b25b61064f7337b8aa8ee2ed1b4e07bfdd24f6e4275e`; install with `python scripts/setup-resources.py hyperframes-browser <zip>`. The local `.oax/hyperframes-browser.json` receipt contains `version`, `executable` (the absolute installed path) and `archiveSha256`. Normal Windows Chrome passed composition checks but timed out on the renderer's version probe. No sandbox bypass is required.
+
+Install the standalone audio/video encoder with `python -m pip install --target .tools/video-python --no-deps --only-binary=:all: imageio-ffmpeg==0.6.0`. The wrapper uses its bundled FFmpeg and OpenMontage's separately installed `ffprobe.exe`. The Remotion-specific FFmpeg cannot mix this score, so it is not used for encoding. These tools and their license notices remain in the optional authoring environment. After rendering all four `brag.mp4` files, run `python scripts/verify-square-videos.py` to bake the inspected poster into frame zero, verify dimensions/frame counts/audio and decode every frame. Receipts are written to `dist/oax-square-videos/verification.json`.
+
 ## Ponytail
 
 Installed the supplied 4.10.3 source under `.tools/ponytail/b48bf3e09182/ponytail-main` using `scripts/setup-resources.py`. Archive SHA-256: `b48bf3e09182b0c9b4ddeb7c3c520918c173ec73e8756285cf794cbac84d38f0`. All 169 files were verified. Upstream MIT notices remain intact. No automatic lifecycle hooks were registered.

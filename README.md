@@ -1,6 +1,8 @@
 # oAX
 
-oAX is a spatially aware developer platform for understanding repositories, explaining code, tracing history, and making reviewed changes. Its direction is one shared runtime, protocol, codebase graph, context engine, and permission system across IDEs, desktop, CLI, GitHub, and web interfaces. Codex is the primary agent engine behind a provider adapter.
+oAX is a spatially aware developer agent runtime, designed to be a persistent participant in the workspace: understanding what the developer is viewing, how it connects to the codebase and its history, and which actions are authorized. One shared runtime, protocol, codebase graph, context engine, and permission system serves IDEs, desktop, CLI, GitHub, and web interfaces. Codex is the primary agent engine behind a provider adapter.
+
+The intended experience connects understanding → explanation → proposal → approval → execution → verification → review. The hosted knowledge app supports that experience; it is one surface of the platform. See the [original-intent alignment and concrete gaps](docs/product-alignment.md) and [practical walkthrough](docs/getting-started-workflow.md).
 
 The platform is being built end to end, with each supported workflow verified before it is advertised. The implementation branch is [codex/local-intelligence-preview](https://github.com/Elijah-MosesX/oAX/tree/codex/local-intelligence-preview); see its [verification tracker](https://github.com/Elijah-MosesX/oAX/blob/codex/local-intelligence-preview/PROGRESS.md) for tested versions, evidence, and remaining release gates. Universal IDE support and enterprise deployment are goals, not current compatibility claims.
 

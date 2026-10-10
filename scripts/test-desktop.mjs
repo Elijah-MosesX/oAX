@@ -96,7 +96,10 @@ function start(desktop) {
       stdio: ['ignore', 'ignore', 'pipe', 'ipc'],
     },
   );
-  child.stderr.resume();
+  let diagnostics = '';
+  child.stderr.on('data', (chunk) => {
+    diagnostics = (diagnostics + chunk.toString()).slice(-4096);
+  });
   const messages = new Map(),
     waiters = new Map();
   child.on('message', (message) => {
@@ -120,19 +123,27 @@ function start(desktop) {
   const exit = new Promise((resolve) =>
     child.once('exit', (code) => resolve(code)),
   );
+  let closing;
   return {
     child,
     wait,
-    async close() {
-      if (child.connected) child.send('close');
-      const timer = setTimeout(() => child.kill(), 12000);
-      const code = await exit;
-      clearTimeout(timer);
-      assert.equal(code, 0);
+    close() {
+      return (closing ??= (async () => {
+        if (child.connected) child.send('close');
+        const timer = setTimeout(() => child.kill(), 12000);
+        const code = await exit;
+        clearTimeout(timer);
+        assert.equal(
+          code,
+          0,
+          diagnostics.replace(/[a-f0-9]{32,}/gi, '[REDACTED]'),
+        );
+      })());
     },
   };
 }
 let active;
+let acceptanceError;
 try {
   active = start(false);
   const ready = await active.wait('workbench.ready');
@@ -271,8 +282,18 @@ try {
       2,
     ),
   );
+} catch (error) {
+  acceptanceError = error;
+  throw error;
 } finally {
-  if (active) await active.close();
+  if (active) {
+    try {
+      await active.close();
+    } catch (error) {
+      if (!acceptanceError) throw error;
+      console.error('Desktop cleanup also failed:', error.message);
+    }
+  }
   if (
     path.dirname(base) !== dist ||
     !path.basename(base).startsWith('desktop-acceptance-')

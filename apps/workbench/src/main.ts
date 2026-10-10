@@ -30,8 +30,15 @@ void startWorkbench(
             throw error;
           })
         : undefined;
+    const report = (message: Record<string, unknown>) => {
+      // Probe delivery can race with parent/owned-window shutdown. A closed
+      // diagnostic channel must not turn successful cleanup into a crash.
+      if (process.connected)
+        process.send?.(message, undefined, undefined, () => {});
+    };
+    let closing: Promise<void> | undefined;
     const close = () => {
-      void (desktop ? desktop.dispose() : app.close())
+      closing ??= (desktop ? desktop.dispose() : app.close())
         .catch(() => {
           console.error(
             'Owned desktop cleanup failed; inspect the temporary profile.',
@@ -43,7 +50,7 @@ void startWorkbench(
         });
     };
     if (process.send) {
-      process.send({
+      report({
         type: 'workbench.ready',
         origin: app.origin,
         ...(desktop ? { profile: desktop.profile } : { url: app.url }),
@@ -51,7 +58,7 @@ void startWorkbench(
       process.on('message', (message: unknown) => {
         if (message === 'close') close();
         if (message === 'inspect')
-          process.send?.({
+          report({
             type: 'transport.inspection',
             ...app.inspectTransport(),
           });
@@ -61,11 +68,11 @@ void startWorkbench(
     if (desktop)
       void app.connection.then(() => {
         console.log('Desktop window authenticated to its owned runtime.');
-        process.send?.({ type: 'desktop.authenticated' });
+        report({ type: 'desktop.authenticated' });
       });
     if (desktop)
       void desktop.exited.then((exit) =>
-        process.send?.({ type: 'desktop.exit', ...exit }),
+        report({ type: 'desktop.exit', ...exit }),
       );
     process.once('SIGINT', close);
     process.once('SIGTERM', close);

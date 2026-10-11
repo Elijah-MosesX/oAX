@@ -1,6 +1,6 @@
 # Reviewed local memory
 
-The runtime retains an explicitly reviewed note linked to a saved source snapshot. Review is not proof of factual correctness. Notes remain untrusted context and cannot grant permissions. This first slice supports CLI and protocol access; editor/Buddy memory controls and automatic relevance retrieval remain subsequent work.
+The runtime retains an explicitly reviewed note linked to a saved source snapshot. Review is not proof of factual correctness. Notes remain untrusted context and cannot grant permissions. CLI, protocol and VS Code commands support explicit review and retrieval. Buddy links to those same commands without owning approval state. Automatic relevance retrieval remains subsequent work.
 
 From the target repository, replace `<cli>` with the absolute path to the built `dist/cli.cjs`:
 
@@ -28,3 +28,9 @@ The first command previews the candidate, selected range, full source hash, reda
 `memory.reviewed.v1` advertises `memory.prepare`, `memory.save`, `memory.list`, and `memory.delete`. Save/delete cross the audited workspace-write boundary. Optional `memoryIds` on preview/explain selects records; freshness is rechecked for each context. Missing or changed provider consent still blocks transmission. No new execution or remote-write grant is introduced.
 
 Tests exercise wrong/cross-session/replayed approvals, redaction, persistence, stale source, expired review/records, copied workspaces, linked state, writer locks, deletion, bounded context and the built CLI sequence. They do not establish live voice, product GitHub login, team identity or editor memory-dialog acceptance.
+
+## VS Code and Buddy
+
+Save the file and select supporting code, then run **oAX: Save Reviewed Memory from Selection**. Enter the claim and eligibility period, inspect the full candidate in Output, then choose Save reviewed note; Cancel is selected initially. **Inspect Reviewed Workspace Memory** shows full records and their freshness. **Delete Reviewed Memory** previews the chosen record and requires a separate exact-record approval. **Explain Selection with Reviewed Memory (Codex)** offers only fresh notes matching the current file snapshot, previews up to five selected notes alongside code context, then requests provider transmission consent.
+
+Buddy's **Reviewed workspace memory** group opens these commands. Its prompt row reopens the actual approval UI; Buddy cannot authorize a write or transmission. Output-panel updates preserve the observed agent cursor; file-document changes still invalidate it. Actual editor acceptance covers command registration, runtime listing, unsaved-save denial and preserved selection/cursor. The new interactive save/delete and live memory-explain dialogs remain unverified end to end.

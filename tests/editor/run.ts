@@ -59,6 +59,28 @@ export async function run(): Promise<void> {
     inspectBuddy: () => import('@oax/buddy').BuddySnapshot;
   }>('oax-dev.oax-vscode');
   assert.ok(extension?.isActive);
+  const registered = await vscode.commands.getCommands(true);
+  for (const name of [
+    'oax.memory.save',
+    'oax.memory.list',
+    'oax.memory.delete',
+    'oax.explainWithMemory',
+  ])
+    assert.ok(registered.includes(name));
+  const memory =
+    await vscode.commands.executeCommand<unknown[]>('oax.memory.list');
+  assert.ok(
+    Array.isArray(memory),
+    'Editor must use the actual runtime memory listing',
+  );
+  await assert.rejects(
+    async () => await vscode.commands.executeCommand('oax.memory.save'),
+    /Save the file and select/,
+  );
+  assert.ok(
+    editor.selection.isEqual(selected),
+    'Memory controls preserve the developer selection',
+  );
   const inspect = extension.exports.inspectSpatial;
   const decorated = await waitForSpatial(inspect, (state) => !!state.cursor);
   assert.equal(decorated.cursor!.path, 'example.ts');

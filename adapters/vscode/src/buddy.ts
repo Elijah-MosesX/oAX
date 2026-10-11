@@ -19,6 +19,26 @@ export class BuddyView
     if (item) return this.children.get(item) ?? [];
     const state = this.store.snapshot();
     const roots: vscode.TreeItem[] = [];
+    const memory = new vscode.TreeItem(
+      'Reviewed workspace memory',
+      vscode.TreeItemCollapsibleState.Collapsed,
+    );
+    memory.tooltip =
+      'Open runtime-backed review controls. Buddy cannot save, delete or transmit notes without the actual approval flow.';
+    this.children.set(
+      memory,
+      [
+        ['Save selected-code note', 'oax.memory.save'],
+        ['Inspect saved notes', 'oax.memory.list'],
+        ['Explain with reviewed notes', 'oax.explainWithMemory'],
+        ['Delete a reviewed note', 'oax.memory.delete'],
+      ].map(([label, command]) => {
+        const item = new vscode.TreeItem(label!);
+        item.command = { command: command!, title: label! };
+        return item;
+      }),
+    );
+    roots.push(memory);
     if (state.prompt) {
       const prompt = new vscode.TreeItem(state.prompt.title);
       prompt.description = 'Input requested';

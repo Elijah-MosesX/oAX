@@ -92,6 +92,10 @@
         "title": "oAX: Explain Selection (Codex)"
       },
       {
+        "command": "oax.explainWithHistory",
+        "title": "oAX: Explain Selection with History (Codex)"
+      },
+      {
         "command": "oax.find.callers",
         "title": "oAX: Find Callers"
       },

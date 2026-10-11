@@ -886,54 +886,68 @@ export function activate(context: vscode.ExtensionContext): {
         observe();
       }
     }),
-    vscode.commands.registerCommand('oax.connectGitHub', async () => {
-      const editor = vscode.window.activeTextEditor;
-      if (!editor) throw new Error('Open a trusted local workspace file first');
-      if (busy) throw new Error('An oAX task is active');
-      const captured = snapshot(editor);
-      const repository = await vscode.window.showInputBox({
-        prompt: 'Select exactly one GitHub repository: owner/name',
-        validateInput: (value) =>
-          /^[A-Za-z0-9][A-Za-z0-9-]*\/[A-Za-z0-9][A-Za-z0-9_.-]*$/.test(value)
-            ? undefined
-            : 'Use owner/name',
-      });
-      if (!repository) return;
-      const key = `github.${createHash('sha256').update(`${captured.root}:${repository}`).digest('hex')}`;
-      const saved = await context.secrets.get(key);
-      const token =
-        saved ??
-        (await vscode.window.showInputBox({
-          prompt:
-            'Fine-grained GitHub token scoped to this repository with metadata and pull-request read access. Token stays outside context/config/logs.',
-          password: true,
-          ignoreFocusOut: true,
-        }));
-      if (!token) return;
-      const approved = await confirm(
-        `Connect read-only GitHub evidence for ${repository}?`,
-        'Allows repository metadata, commit-associated PRs, reviews, comments, referenced issues and checks for this workspace/session for one hour. Requests and result sizes are bounded. Only fixed-origin GET requests are exposed. No source upload, posting, push or model transmission. Configure a repository-scoped read-only token.',
-        'Connect read-only',
-      );
-      if (approved !== 'Connect read-only') return;
-      const { client, sessionId } = await connect(captured.root);
-      const result = await client.call(
-        'github.connect',
-        { repository, accessToken: token, approved: true },
-        sessionId,
-      );
-      if (!saved) {
-        const remember = await vscode.window.showQuickPick(
-          ['Use for this session', 'Remember in VS Code secret storage'],
-          { placeHolder: 'Credential retention' },
+    vscode.commands.registerCommand(
+      'oax.connectGitHub',
+      async (withProvider?: boolean) => {
+        const editor = vscode.window.activeTextEditor;
+        if (!editor)
+          throw new Error('Open a trusted local workspace file first');
+        if (busy) throw new Error('An oAX task is active');
+        const captured = snapshot(editor);
+        const repository = await vscode.window.showInputBox({
+          prompt: 'Select exactly one GitHub repository: owner/name',
+          validateInput: (value) =>
+            /^[A-Za-z0-9][A-Za-z0-9-]*\/[A-Za-z0-9][A-Za-z0-9_.-]*$/.test(value)
+              ? undefined
+              : 'Use owner/name',
+        });
+        if (!repository) return;
+        const key = `github.${createHash('sha256').update(`${captured.root}:${repository}`).digest('hex')}`;
+        const saved = await context.secrets.get(key);
+        const token =
+          saved ??
+          (await vscode.window.showInputBox({
+            prompt:
+              'Fine-grained GitHub token scoped to this repository with metadata and pull-request read access. Token stays outside context/config/logs.',
+            password: true,
+            ignoreFocusOut: true,
+          }));
+        if (!token) return;
+        const approved = await confirm(
+          `Connect read-only GitHub evidence for ${repository}?`,
+          'Allows repository metadata, commit-associated PRs, reviews, comments, referenced issues and checks for this workspace/session for one hour. Requests and result sizes are bounded. Only fixed-origin GET requests are exposed. No source upload, posting, push or model transmission. Configure a repository-scoped read-only token.',
+          'Connect read-only',
         );
-        if (remember === 'Remember in VS Code secret storage')
-          await context.secrets.store(key, token);
-      }
-      output.appendLine(`Verified read-only GitHub connection: ${repository}`);
-      output.show(true);
-      return result;
-    }),
+        if (approved !== 'Connect read-only') return;
+        const provider =
+          withProvider === true
+            ? await providerExecutable(
+                vscode.workspace
+                  .getConfiguration('oax')
+                  .inspect<string>('codexExecutable')?.globalValue,
+              )
+            : undefined;
+        const { client, sessionId } = await connect(captured.root, provider);
+        const result = await client.call(
+          'github.connect',
+          { repository, accessToken: token, approved: true },
+          sessionId,
+        );
+        if (!saved) {
+          const remember = await vscode.window.showQuickPick(
+            ['Use for this session', 'Remember in VS Code secret storage'],
+            { placeHolder: 'Credential retention' },
+          );
+          if (remember === 'Remember in VS Code secret storage')
+            await context.secrets.store(key, token);
+        }
+        output.appendLine(
+          `Verified read-only GitHub connection: ${repository}`,
+        );
+        output.show(true);
+        return result;
+      },
+    ),
     vscode.commands.registerCommand('oax.githubHistory', async () => {
       const editor = vscode.window.activeTextEditor;
       if (!editor) throw new Error('Select saved tracked code first');
@@ -1038,67 +1052,103 @@ export function activate(context: vscode.ExtensionContext): {
       output.show(true);
       return evidence;
     }),
-    vscode.commands.registerCommand('oax.explainLive', async () => {
-      const editor = vscode.window.activeTextEditor;
-      if (!editor || editor.selection.isEmpty)
-        throw new Error('Select code in a trusted local workspace first');
-      if (busy) throw new Error('An oAX task is active');
-      const configured = vscode.workspace
-        .getConfiguration('oax')
-        .inspect<string>('codexExecutable')?.globalValue;
-      const executable = await providerExecutable(configured);
-      const captured = snapshot(editor);
-      busy = true;
-      try {
-        const { client, sessionId } = await connect(captured.root, executable);
-        const objective = 'Explain this selection';
-        const preview = (await client.call(
-          'context.preview',
-          { observation: captured.observation, objective },
-          sessionId,
-        )) as { context: import('@oax/context').ContextSlice; hash: string };
-        output.clear();
-        output.appendLine(JSON.stringify(preview.context, null, 2));
-        output.show(true);
-        const approved = await confirm(
-          'Send this context to Codex using your existing provider login?',
-          `Model usage may apply. Selected ${preview.context.path} at version ${preview.context.documentVersion}${preview.context.dirty ? ' (unsaved buffer)' : ''}; ${preview.context.excerpt.length} selected characters, with caller excerpts from: ${preview.context.related?.map((item) => item.path).join(', ') || 'none'}.\nProvider tools and environment access are disabled.`,
-          'Send context',
-        );
-        if (approved !== 'Send context') return;
-        return await vscode.window.withProgress(
-          {
-            location: vscode.ProgressLocation.Notification,
-            title: 'oAX: Explain Selection (Codex)',
-            cancellable: true,
-          },
-          async (_progress, cancellation) => {
-            const controller = new AbortController();
-            const subscription = cancellation.onCancellationRequested(() =>
-              controller.abort(),
+    ...['oax.explainLive', 'oax.explainWithHistory'].map((command) =>
+      vscode.commands.registerCommand(command, async () => {
+        const editor = vscode.window.activeTextEditor;
+        if (!editor || editor.selection.isEmpty)
+          throw new Error('Select code in a trusted local workspace first');
+        if (busy) throw new Error('An oAX task is active');
+        const configured = vscode.workspace
+          .getConfiguration('oax')
+          .inspect<string>('codexExecutable')?.globalValue;
+        const executable = await providerExecutable(configured);
+        const captured = snapshot(editor);
+        let history: 'local' | 'github' | undefined;
+        if (command === 'oax.explainWithHistory') {
+          if (captured.observation.dirty)
+            throw new Error(
+              'Save the selected file before explaining its history',
             );
-            try {
-              const answer = await client.explain(
-                sessionId,
-                captured.observation,
-                objective,
-                controller.signal,
-                preview.hash,
+          const chosen = await vscode.window.showQuickPick(
+            [
+              { label: 'Local Git history', mode: 'local' as const },
+              { label: 'Git and GitHub discussions', mode: 'github' as const },
+            ],
+            {
+              placeHolder:
+                'Choose historical evidence to inspect before model transmission',
+            },
+          );
+          if (!chosen) return;
+          history = chosen.mode;
+          if (
+            history === 'github' &&
+            !(await vscode.commands.executeCommand('oax.connectGitHub', true))
+          )
+            return;
+        }
+        busy = true;
+        try {
+          const { client, sessionId } = await connect(
+            captured.root,
+            executable,
+          );
+          const objective = history
+            ? 'Explain this selection and its historical evidence. Distinguish observed changes from inferred intent; cite commit and discussion references.'
+            : 'Explain this selection';
+          const preview = (await client.call(
+            'context.preview',
+            {
+              observation: captured.observation,
+              objective,
+              ...(history ? { history } : {}),
+            },
+            sessionId,
+          )) as { context: import('@oax/context').ContextSlice; hash: string };
+          output.clear();
+          output.appendLine(JSON.stringify(preview.context, null, 2));
+          output.show(true);
+          const approved = await confirm(
+            'Send this context to Codex using your existing provider login?',
+            `Model usage may apply. Selected ${preview.context.path} at version ${preview.context.documentVersion}${preview.context.dirty ? ' (unsaved buffer)' : ''}; ${preview.context.excerpt.length} selected characters, with related excerpts from: ${preview.context.related?.map((item) => item.path).join(', ') || 'none'}. Historical sources: ${preview.context.historical?.map((item) => item.reference).join(', ') || 'none'}. Inspect the full context and truncation in Output.\nProvider tools and environment access are disabled.`,
+            'Send context',
+          );
+          if (approved !== 'Send context') return;
+          return await vscode.window.withProgress(
+            {
+              location: vscode.ProgressLocation.Notification,
+              title: 'oAX: Explain Selection (Codex)',
+              cancellable: true,
+            },
+            async (_progress, cancellation) => {
+              const controller = new AbortController();
+              const subscription = cancellation.onCancellationRequested(() =>
+                controller.abort(),
               );
-              output.clear();
-              output.append(answer);
-              output.show(true);
-              return answer;
-            } finally {
-              subscription.dispose();
-            }
-          },
-        );
-      } finally {
-        busy = false;
-        observe();
-      }
-    }),
+              try {
+                const answer = await client.explain(
+                  sessionId,
+                  captured.observation,
+                  objective,
+                  controller.signal,
+                  preview.hash,
+                  history,
+                );
+                output.clear();
+                output.append(answer);
+                output.show(true);
+                return answer;
+              } finally {
+                subscription.dispose();
+              }
+            },
+          );
+        } finally {
+          busy = false;
+          observe();
+        }
+      }),
+    ),
     vscode.commands.registerCommand('oax.explainSelection', () =>
       vscode.commands.executeCommand('oax.explainLive'),
     ),

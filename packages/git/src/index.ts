@@ -58,6 +58,9 @@ export class GitHistory {
       );
     }
   }
+  async head(): Promise<string> {
+    return (await this.read(['rev-parse', '--verify', 'HEAD'])).trim();
+  }
   async history(resource: string, range: TextRange): Promise<HistoryEvidence> {
     await workspacePath(this.directory, resource);
     if (range.start.line < 0 || range.end.line < range.start.line)

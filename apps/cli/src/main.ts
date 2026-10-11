@@ -26,8 +26,13 @@ async function inspectOrVerify(
   const resource = args.shift();
   let provider: string | undefined, approved: string | undefined;
   let mock = false;
+  let history: 'local' | undefined;
   while (args.length) {
     const flag = args.shift();
+    if (flag === '--history' && command === 'explain' && !history) {
+      history = 'local';
+      continue;
+    }
     if (flag === '--mock' && command === 'explain' && !mock) {
       mock = true;
       continue;
@@ -140,11 +145,13 @@ async function inspectOrVerify(
         ) + '\n',
       );
     } else {
-      const objective = 'Explain this file';
+      const objective = history
+        ? 'Explain this file and its historical evidence; distinguish observed changes from inferred intent and cite commit references.'
+        : 'Explain this file';
       if (provider) {
         const preview = (await client.call(
           'context.preview',
-          { observation, objective },
+          { observation, objective, ...(history ? { history } : {}) },
           sessionId,
         )) as { context: unknown; hash: string };
         if (!approved)
@@ -172,6 +179,7 @@ async function inspectOrVerify(
               objective,
               controller.signal,
               approved,
+              history,
             ),
           );
         }
@@ -182,6 +190,8 @@ async function inspectOrVerify(
             observation,
             objective,
             controller.signal,
+            undefined,
+            history,
           ),
         );
     }
@@ -436,7 +446,7 @@ const main = async () => {
       'Editor adapter: node dist/cli.cjs editor-bridge <trusted-workspace-root> (private read-only protocol 0.1; mock explanations only)\n',
     );
     process.stdout.write(
-      'oAX CLI (Explain uses Codex; explicit --mock is development-only)\nUsage: node dist/cli.cjs init [workspace-root]\n       node dist/cli.cjs analyze [workspace-root]\n       node dist/cli.cjs onboard [workspace-root]\n       node dist/cli.cjs query <callers|imports|implements|tests> <path> <zero-based-line> <zero-based-column>\n       node dist/cli.cjs rename <path> <zero-based-line> <zero-based-column> <new-name> [--apply <preview-hash>]\n       node dist/cli.cjs explain <path> [--codex <absolute-executable>] [--approve <context-hash>]\n       node dist/cli.cjs review <path>\n       node dist/cli.cjs verify <saved-test-path> [--approve <plan-hash>]\n       node dist/cli.cjs serve <workspace-root> <workspace-id>\ninit preserves config; analyze builds a local TypeScript/JavaScript SQLite graph. Rename previews before writes and verifies syntax; workspace tests are not run.\nserve is a private stdio interface requiring OAX_CONNECTION_TOKEN; no TCP port is opened.\nExit codes: 0 success, 1 operation failed, 2 unsupported command.\n',
+      'oAX CLI (Explain uses Codex; explicit --mock is development-only)\nUsage: node dist/cli.cjs init [workspace-root]\n       node dist/cli.cjs analyze [workspace-root]\n       node dist/cli.cjs onboard [workspace-root]\n       node dist/cli.cjs query <callers|imports|implements|tests> <path> <zero-based-line> <zero-based-column>\n       node dist/cli.cjs rename <path> <zero-based-line> <zero-based-column> <new-name> [--apply <preview-hash>]\n       node dist/cli.cjs explain <path> [--history] [--codex <absolute-executable>] [--approve <context-hash>]\n       node dist/cli.cjs review <path>\n       node dist/cli.cjs verify <saved-test-path> [--approve <plan-hash>]\n       node dist/cli.cjs serve <workspace-root> <workspace-id>\ninit preserves config; analyze builds a local TypeScript/JavaScript SQLite graph. Rename previews before writes and verifies syntax; workspace tests are not run.\nserve is a private stdio interface requiring OAX_CONNECTION_TOKEN; no TCP port is opened.\nExit codes: 0 success, 1 operation failed, 2 unsupported command.\n',
     );
     return;
   }

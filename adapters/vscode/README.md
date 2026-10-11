@@ -1,5 +1,7 @@
 # oAX for VS Code
 
+**Explain Selection with History (Codex)** combines saved selected code, graph context and opt-in local Git or GitHub evidence in one inspectable context. Choose the history scope, review the full Output preview, then approve that exact context for model transmission. GitHub requires a separate repository-scoped connection approval. Changed source or HEAD invalidates consent. Historical evidence is bounded and untrusted; persistent validated memory is not yet included. Live synthetic local-history explanation passed; interactive history dialogs and live product GitHub credentials remain separate acceptance gates.
+
 **Show Buddy** opens the native oAX Buddy pane in Explorer. It shows separate workspace/provider sessions, actual activity, pending prompts, output and the last observed edit/test review. Prompt clicks reopen the real decision UI with Cancel selected. Location clicks reveal a snapshot-validated range while preserving your selection. **Hide Buddy** hides presence without stopping tasks. Voice is deferred; microphone capture is not enabled.
 
 Local development preview for trusted, local TypeScript/JavaScript workspaces. Requires VS Code 1.105.0 or newer with a compatible Node runtime; 1.105.0 is the verified host. This is not a Marketplace release.

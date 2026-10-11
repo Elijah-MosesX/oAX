@@ -137,6 +137,7 @@
       "additionalProperties": false
     },
     "objective": { "type": "string", "minLength": 1, "maxLength": 2048 },
+    "history": { "type": "string", "enum": ["local", "github"] },
     "approvedContextHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
   },
   "required": ["observation", "objective"],

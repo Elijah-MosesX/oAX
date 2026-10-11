@@ -114,3 +114,9 @@ Run `node scripts/prepare-team.mjs` to assemble the public deployment source int
 See docs/language-workers.md for the Windows worker build, four absolute tool paths and `pnpm test:languages`. The check invokes actual parsers and the built stdio runtime. VS Code settings are application-scoped and ignore workspace overrides.
 
 See docs/authoring-resources.md for checksum-pinned Ponytail/OpenMontage installation. Video authoring is isolated in ignored tool/output directories; its dependencies are not added to the core workspace. The narration is local Windows synthesis, not a microphone test or product voice acceptance.
+
+## Connected history acceptance
+
+Build first with `pnpm build`. `node --import tsx --test tests/history-context.test.ts tests/git.test.ts` checks real local Git evidence, consent freshness and mocked GitHub isolation. `pnpm test:integration` also checks the built CLI's `explain <path> --history` option. See `docs/connected-intelligence.md` for the VS Code workflow.
+
+With explicit authorization for account usage, set `OAX_LIVE_TEST=1` and run `node --import tsx scripts/test-live-history.ts`. This sends one synthetic fixture through the installed, exact-version-verified Codex login, denies missing consent first, requires an actual commit citation, and writes `dist/history-live-acceptance.json`. It sends no project repository content. Ordinary tests never invoke this opt-in script.

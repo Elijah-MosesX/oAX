@@ -5,7 +5,6 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { CodeGraph } from '@oax/codegraph';
 import { Indexer } from '@oax/indexer';
-import { PolyglotParser } from '../../services/indexer/src/polyglot.js';
 import { RuntimeClient } from '../../packages/runtime/src/client.js';
 async function main() {
   for (const key of [
@@ -40,7 +39,7 @@ async function main() {
       },
     ];
     for (const f of fixtures) await writeFile(path.join(root, f.path), f.text);
-    const indexer = new Indexer(root, graph, new PolyglotParser());
+    const indexer = new Indexer(root, graph);
     const initial = await indexer.refresh();
     assert.equal(initial.files, 3);
     for (const f of fixtures) {

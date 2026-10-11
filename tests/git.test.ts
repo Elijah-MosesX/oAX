@@ -112,6 +112,30 @@ test('local history returns real commit and blame evidence without mutation or i
       )) as typeof evidence;
       assert.equal(traced.selectedCommits[0], introduced);
       assert.notEqual(traced.commits[0]?.sha, introduced);
+      const historical = (await client.call(
+        'context.preview',
+        {
+          observation: {
+            path: 'a.ts',
+            uri: pathToFileURL(path.join(root, 'a.ts')).href,
+            text,
+            documentVersion: 1,
+            dirty: false,
+            cursor: evidence.range.start,
+            selection: evidence.range,
+            visibleRanges: [],
+            openFiles: ['a.ts'],
+          },
+          objective: 'Explain historical evidence',
+          history: 'local',
+        },
+        sessionId,
+      )) as { context: import('@oax/context').ContextSlice };
+      assert.equal(historical.context.historical?.[0]?.reference, traced.head);
+      assert.match(
+        historical.context.historical![0]!.excerpt,
+        new RegExp(introduced!),
+      );
       await assert.rejects(client.call('git.push', {}, sessionId));
       await assert.rejects(client.call('github.post', {}, sessionId));
       await client.call('session.close', {}, sessionId);

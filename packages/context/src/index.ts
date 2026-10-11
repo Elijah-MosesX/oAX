@@ -33,6 +33,14 @@ export interface ContextSlice {
     resolution: string;
   }[];
   limitations?: string[];
+  historical?: {
+    source: 'local-git' | 'github';
+    reference: string;
+    sourceHash: string;
+    evidenceHash: string;
+    excerpt: string;
+    truncated: boolean;
+  }[];
   redactions?: number;
 }
 /** Conservative known-token and labeled-assignment redaction; not a complete secret detector. */
@@ -77,6 +85,14 @@ export function redactContext(context: ContextSlice): ContextSlice {
     ...(context.related
       ? {
           related: context.related.map((item) => ({
+            ...item,
+            excerpt: clean(item.excerpt),
+          })),
+        }
+      : {}),
+    ...(context.historical
+      ? {
+          historical: context.historical.map((item) => ({
             ...item,
             excerpt: clean(item.excerpt),
           })),

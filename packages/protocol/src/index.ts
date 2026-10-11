@@ -13,6 +13,7 @@ export const CAPABILITIES = [
   'codegraph.watch.v1',
   'agent.cursor.v1',
   'context.preview.v1',
+  'context.history.v1',
   'git.history.v1',
   'github.history.v1',
   'refactor.rename.v1',
@@ -232,6 +233,7 @@ export const payloadSchemas = {
   'selection.explain': z.strictObject({
     observation: observationSchema,
     objective: z.string().min(1).max(2048),
+    history: z.enum(['local', 'github']).optional(),
     approvedContextHash: z
       .string()
       .regex(/^[a-f0-9]{64}$/)
@@ -240,6 +242,7 @@ export const payloadSchemas = {
   'context.preview': z.strictObject({
     observation: observationSchema,
     objective: z.string().min(1).max(2048),
+    history: z.enum(['local', 'github']).optional(),
   }),
   'task.cancel': z.strictObject({ taskId: id }),
   'session.close': z.strictObject({}),

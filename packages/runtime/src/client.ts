@@ -172,9 +172,12 @@ export class RuntimeClient {
         () => this.fail(new OaxError('TIMEOUT', 'Runtime request timed out')),
         req.method === 'initialize'
           ? 60_000
-          : ['github.trace', 'github.history', 'history.query'].includes(
-                req.method,
-              )
+          : [
+                'github.trace',
+                'github.history',
+                'history.query',
+                'context.preview',
+              ].includes(req.method)
             ? 90_000
             : [
                   'spatial.observe',
@@ -208,6 +211,7 @@ export class RuntimeClient {
     objective = 'Explain this selection',
     signal?: AbortSignal,
     approvedContextHash?: string,
+    history?: 'local' | 'github',
   ): Promise<string> {
     return this.runTask(
       sessionId,
@@ -216,6 +220,7 @@ export class RuntimeClient {
         observation,
         objective,
         ...(approvedContextHash ? { approvedContextHash } : {}),
+        ...(history ? { history } : {}),
       },
       signal,
     );

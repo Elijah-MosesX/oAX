@@ -136,7 +136,8 @@
       ],
       "additionalProperties": false
     },
-    "objective": { "type": "string", "minLength": 1, "maxLength": 2048 }
+    "objective": { "type": "string", "minLength": 1, "maxLength": 2048 },
+    "history": { "type": "string", "enum": ["local", "github"] }
   },
   "required": ["observation", "objective"],
   "additionalProperties": false

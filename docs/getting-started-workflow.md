@@ -23,7 +23,7 @@ Run **oAX: Show Buddy** to see actual activity and the independent agent locatio
 
 ## 3. Ask for an explanation
 
-Run **oAX: Explain Selection**. Inspect the bounded context before approving transmission. Related excerpts prioritize callers, dependencies, imports or tests using explicit keyword rules; reasons and truncation are visible in the context. Git/GitHub history is still a separate evidence view, so do not assume it informed the explanation.
+Run **oAX: Explain Selection**. Inspect the bounded context before approving transmission. Related excerpts prioritize callers, dependencies, imports or tests using explicit keyword rules; reasons and truncation are visible in the context. To include saved tracked history, use **oAX: Explain Selection with History (Codex)** and choose local Git or the explicitly connected GitHub repository. See [historical context](connected-intelligence.md) for freshness, consent and limits.
 
 This requires an existing official Codex login and the verified provider executable versions documented in README.md. oAX does not substitute a mock answer when live setup fails. An approved request may consume account usage.
 

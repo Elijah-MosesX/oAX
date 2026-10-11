@@ -98,3 +98,5 @@ enterprise product or a signed Marketplace release.
 ## Shared knowledge on the web
 
 Open [oAX Shared Knowledge](https://oax-shared-knowledge-omcqtl.v2.appdeploy.ai/) to sign in, create a private repository room, invite a reader/contributor and publish reviewed findings or exported ContextSlices. Optional dictation produces a draft; local read-aloud depends on browser support. The local runtime keeps execution and approval ownership. See [practical use and acceptance limits](docs/team.md). Deployment and deterministic authorization checks passed; live owner/two-user sign-in, microphone use and product GitHub credentials still need acceptance. The hosted service does not automatically pair IDEs or run a shared Codex agent.
+
+Historical explanations: see [connected intelligence](docs/connected-intelligence.md) for the opt-in VS Code command and CLI --history workflow, consent boundaries and verified limits.

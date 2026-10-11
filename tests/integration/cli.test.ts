@@ -31,6 +31,37 @@ test('built CLI explains, provides labeled structural evidence, and gates real N
     const answer = await run(['explain', 'a.ts', '--mock']);
     assert.match(answer.stdout, /Mock engine/);
     assert.match(answer.stdout, /function sum/);
+    await assert.rejects(
+      run(['explain', 'a.ts', '--mock', '--history']),
+      /GIT_READ_FAILED/,
+    );
+    const git = (args: string[]) =>
+      exec(
+        'git',
+        [
+          '-c',
+          `safe.directory=${root}`,
+          '-c',
+          'user.name=Fixture',
+          '-c',
+          'user.email=fixture@example.invalid',
+          '-c',
+          'core.hooksPath=',
+          ...args,
+        ],
+        { cwd: root, windowsHide: true },
+      );
+    await git(['init']);
+    await git(['add', 'a.ts']);
+    await git(['commit', '-m', 'Introduce sum']);
+    assert.match(
+      (await run(['explain', 'a.ts', '--mock', '--history'])).stdout,
+      /Mock engine/,
+    );
+    await assert.rejects(
+      run(['explain', 'a.ts', '--mock', '--history', '--history']),
+      /INVALID_ARGS/,
+    );
     const review = JSON.parse((await run(['review', 'a.ts'])).stdout);
     assert.equal(review.kind, 'structural-review-evidence');
     assert.equal(review.relationships.callers.node.name, 'sum');

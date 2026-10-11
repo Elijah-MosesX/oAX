@@ -460,7 +460,7 @@ const main = async () => {
   }
   if (!command || command === '--help' || command === 'help') {
     process.stdout.write(
-      'Reviewed local memory: memory list | memory save <path> <quoted-note> <retention-days 1-90> [--approve <hash>] | memory delete <id> --approve <record-hash>\nExplain can include up to five explicit --memory <id> options; context transmission still requires approval.\n',
+      'Reviewed local memory: memory list | memory suggest <path> <quoted-objective> | memory save <path> <quoted-note> <retention-days 1-90> [--approve <hash>] | memory delete <id> --approve <record-hash>\nExplain can include up to five explicit --memory <id> options; context transmission still requires approval.\n',
     );
     process.stdout.write(
       'Diagnostics: node dist/cli.cjs doctor [workspace-root] (read-only; no model requests)\n',

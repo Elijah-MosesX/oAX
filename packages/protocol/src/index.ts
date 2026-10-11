@@ -15,6 +15,7 @@ export const CAPABILITIES = [
   'context.preview.v1',
   'context.history.v1',
   'memory.reviewed.v1',
+  'memory.suggest.v1',
   'git.history.v1',
   'github.history.v1',
   'refactor.rename.v1',
@@ -194,6 +195,10 @@ export const payloadSchemas = {
     approvedHash: z.string().regex(/^[a-f0-9]{64}$/),
   }),
   'memory.list': z.strictObject({}),
+  'memory.suggest': z.strictObject({
+    observation: observationSchema,
+    objective: z.string().min(1).max(2048),
+  }),
   'memory.delete': z.strictObject({
     id: z.uuid(),
     approvedHash: z.string().regex(/^[a-f0-9]{64}$/),

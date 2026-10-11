@@ -10,6 +10,7 @@ import { BuddyView } from './buddy.js';
 import type {
   MemoryPlan,
   MemoryRecord,
+  suggestMemory,
 } from '../../../packages/runtime/src/memory.js';
 type ListedMemory = MemoryRecord & {
   hash: string;
@@ -1063,121 +1064,141 @@ export function activate(context: vscode.ExtensionContext): {
     }),
     ...['oax.memory.save', 'oax.memory.list', 'oax.memory.delete'].map(
       (command) =>
-        vscode.commands.registerCommand(command, async () => {
-          const editor = vscode.window.activeTextEditor;
-          if (!editor)
-            throw new Error('Open a file in the trusted workspace first');
-          if (busy) throw new Error('An oAX task is active');
-          const captured = snapshot(editor);
-          busy = true;
-          try {
-            const { client, sessionId } = await connect(captured.root);
-            if (command === 'oax.memory.save') {
-              if (editor.selection.isEmpty || captured.observation.dirty)
-                throw new Error(
-                  'Save the file and select the code supporting this note first',
+        vscode.commands.registerCommand(
+          command,
+          async (draft?: {
+            note?: string;
+            retentionDays?: number;
+            id?: string;
+          }) => {
+            const editor = vscode.window.activeTextEditor;
+            if (!editor)
+              throw new Error('Open a file in the trusted workspace first');
+            if (busy) throw new Error('An oAX task is active');
+            const captured = snapshot(editor);
+            busy = true;
+            try {
+              const { client, sessionId } = await connect(captured.root);
+              if (command === 'oax.memory.save') {
+                if (editor.selection.isEmpty || captured.observation.dirty)
+                  throw new Error(
+                    'Save the file and select the code supporting this note first',
+                  );
+                const note =
+                  typeof draft?.note === 'string'
+                    ? draft.note
+                    : await vscode.window.showInputBox({
+                        title: 'oAX: Candidate memory',
+                        prompt:
+                          'Write a source-linked claim for review. Do not include credentials.',
+                        validateInput: (value) =>
+                          value.trim().length > 0 && value.trim().length <= 2000
+                            ? undefined
+                            : 'Enter 1–2000 characters',
+                      });
+                if (!note) return;
+                const days =
+                  typeof draft?.retentionDays === 'number'
+                    ? String(draft.retentionDays)
+                    : await vscode.window.showInputBox({
+                        title: 'oAX: Memory eligibility',
+                        value: '30',
+                        prompt:
+                          'Context eligibility in days (1–90). Records remain stored until explicitly deleted.',
+                        validateInput: (value) =>
+                          /^\d+$/.test(value) &&
+                          Number(value) >= 1 &&
+                          Number(value) <= 90
+                            ? undefined
+                            : 'Enter a whole number from 1 to 90',
+                      });
+                if (!days) return;
+                const plan = (await client.call(
+                  'memory.prepare',
+                  {
+                    observation: captured.observation,
+                    note,
+                    retentionDays: Number(days),
+                  },
+                  sessionId,
+                )) as MemoryPlan;
+                output.appendLine(JSON.stringify(plan, null, 2));
+                output.show(true);
+                if (
+                  (await confirm(
+                    'Save this reviewed local memory?',
+                    `${plan.operation.note}\nSource: ${plan.operation.path}\nHash: ${plan.operation.sourceHash}\nContext eligibility: ${plan.operation.retentionDays} days.\n${plan.disclosure}`,
+                    'Save reviewed note',
+                  )) !== 'Save reviewed note'
+                )
+                  return;
+                const saved = await client.call(
+                  'memory.save',
+                  { planId: plan.id, approvedHash: plan.hash },
+                  sessionId,
                 );
-              const note = await vscode.window.showInputBox({
-                title: 'oAX: Candidate memory',
-                prompt:
-                  'Write a source-linked claim for review. Do not include credentials.',
-                validateInput: (value) =>
-                  value.trim().length > 0 && value.trim().length <= 2000
-                    ? undefined
-                    : 'Enter 1–2000 characters',
-              });
-              if (!note) return;
-              const days = await vscode.window.showInputBox({
-                title: 'oAX: Memory eligibility',
-                value: '30',
-                prompt:
-                  'Context eligibility in days (1–90). Records remain stored until explicitly deleted.',
-                validateInput: (value) =>
-                  /^\d+$/.test(value) &&
-                  Number(value) >= 1 &&
-                  Number(value) <= 90
-                    ? undefined
-                    : 'Enter a whole number from 1 to 90',
-              });
-              if (!days) return;
-              const plan = (await client.call(
-                'memory.prepare',
-                {
-                  observation: captured.observation,
-                  note,
-                  retentionDays: Number(days),
-                },
+                output.appendLine(JSON.stringify(saved, null, 2));
+                void vscode.window.showInformationMessage(
+                  'oAX: Reviewed note saved locally. It will only be sent with separately approved context.',
+                );
+                return saved;
+              }
+              const records = (await client.call(
+                'memory.list',
+                {},
                 sessionId,
-              )) as MemoryPlan;
-              output.appendLine(JSON.stringify(plan, null, 2));
+              )) as ListedMemory[];
+              output.appendLine(JSON.stringify(records, null, 2));
               output.show(true);
+              if (command === 'oax.memory.list') return records;
+              if (!records.length) {
+                void vscode.window.showInformationMessage(
+                  'oAX: No saved memory in this workspace.',
+                );
+                return;
+              }
+              const chosen =
+                typeof draft?.id === 'string'
+                  ? records
+                      .filter((record) => record.id === draft.id)
+                      .map((record) => ({ record }))[0]
+                  : await vscode.window.showQuickPick(
+                      records.map((record) => ({
+                        label: record.note.slice(0, 100),
+                        description: `${record.status} · ${record.path}`,
+                        detail: record.id,
+                        record,
+                      })),
+                      {
+                        title: 'oAX: Choose memory to inspect before deleting',
+                      },
+                    );
+              if (!chosen) return;
+              output.appendLine(JSON.stringify(chosen.record, null, 2));
               if (
                 (await confirm(
-                  'Save this reviewed local memory?',
-                  `${plan.operation.note}\nSource: ${plan.operation.path}\nHash: ${plan.operation.sourceHash}\nContext eligibility: ${plan.operation.retentionDays} days.\n${plan.disclosure}`,
-                  'Save reviewed note',
-                )) !== 'Save reviewed note'
+                  'Delete this local memory record?',
+                  `${chosen.record.note}\n${chosen.record.path}\nID: ${chosen.record.id}\nThis removes the record, not prior provider transmissions or backups.`,
+                  'Delete reviewed note',
+                )) !== 'Delete reviewed note'
               )
                 return;
-              const saved = await client.call(
-                'memory.save',
-                { planId: plan.id, approvedHash: plan.hash },
+              const result = await client.call(
+                'memory.delete',
+                { id: chosen.record.id, approvedHash: chosen.record.hash },
                 sessionId,
               );
-              output.appendLine(JSON.stringify(saved, null, 2));
+              output.appendLine(JSON.stringify(result));
               void vscode.window.showInformationMessage(
-                'oAX: Reviewed note saved locally. It will only be sent with separately approved context.',
+                'oAX: Reviewed note deleted.',
               );
-              return saved;
+              return result;
+            } finally {
+              busy = false;
+              observe();
             }
-            const records = (await client.call(
-              'memory.list',
-              {},
-              sessionId,
-            )) as ListedMemory[];
-            output.appendLine(JSON.stringify(records, null, 2));
-            output.show(true);
-            if (command === 'oax.memory.list') return records;
-            if (!records.length) {
-              void vscode.window.showInformationMessage(
-                'oAX: No saved memory in this workspace.',
-              );
-              return;
-            }
-            const chosen = await vscode.window.showQuickPick(
-              records.map((record) => ({
-                label: record.note.slice(0, 100),
-                description: `${record.status} · ${record.path}`,
-                detail: record.id,
-                record,
-              })),
-              { title: 'oAX: Choose memory to inspect before deleting' },
-            );
-            if (!chosen) return;
-            output.appendLine(JSON.stringify(chosen.record, null, 2));
-            if (
-              (await confirm(
-                'Delete this local memory record?',
-                `${chosen.record.note}\n${chosen.record.path}\nID: ${chosen.record.id}\nThis removes the record, not prior provider transmissions or backups.`,
-                'Delete reviewed note',
-              )) !== 'Delete reviewed note'
-            )
-              return;
-            const result = await client.call(
-              'memory.delete',
-              { id: chosen.record.id, approvedHash: chosen.record.hash },
-              sessionId,
-            );
-            output.appendLine(JSON.stringify(result));
-            void vscode.window.showInformationMessage(
-              'oAX: Reviewed note deleted.',
-            );
-            return result;
-          } finally {
-            busy = false;
-            observe();
-          }
-        }),
+          },
+        ),
     ),
     ...[
       'oax.explainLive',
@@ -1229,20 +1250,13 @@ export function activate(context: vscode.ExtensionContext): {
             : 'Explain this selection';
           let memoryIds: string[] | undefined;
           if (command === 'oax.explainWithMemory') {
-            const records = (await client.call(
-              'memory.list',
-              {},
+            const suggested = (await client.call(
+              'memory.suggest',
+              { observation: captured.observation, objective },
               sessionId,
-            )) as ListedMemory[];
-            const matching = records.filter(
-              (record) =>
-                record.status === 'fresh' &&
-                record.path === captured.observation.path &&
-                record.sourceHash ===
-                  createHash('sha256')
-                    .update(captured.observation.text)
-                    .digest('hex'),
-            );
+            )) as Awaited<ReturnType<typeof suggestMemory>>;
+            output.appendLine(JSON.stringify(suggested, null, 2));
+            const matching = suggested.suggestions;
             if (!matching.length) {
               void vscode.window.showInformationMessage(
                 'oAX: No fresh reviewed memory matches this file snapshot.',
@@ -1253,7 +1267,7 @@ export function activate(context: vscode.ExtensionContext): {
               matching.map((record) => ({
                 label: record.note.slice(0, 100),
                 description: record.path,
-                detail: record.id,
+                detail: `${record.reason} ID: ${record.id}`,
                 id: record.id,
               })),
               {

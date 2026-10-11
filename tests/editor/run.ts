@@ -207,6 +207,9 @@ export async function run(): Promise<void> {
       (module) => module.path === 'example.ts' && module.symbols >= 2,
     ),
   );
+  await (await import('./memory.js')).memoryApprovals(folder.uri.fsPath);
+  editor = await vscode.window.showTextDocument(document);
+  editor.selection = selected;
   await vscode.commands.executeCommand(
     'workbench.action.revertAndCloseActiveEditor',
   );

@@ -124,3 +124,5 @@ With explicit authorization for account usage, set `OAX_LIVE_TEST=1` and run `no
 ## Reviewed-memory validation
 
 After pnpm build, run node --import tsx --test tests/memory.test.ts tests/integration/cli.test.ts. These deterministic tests perform real local persistence and CLI review/save/use/delete without a live model. Usage, retention eligibility and lock recovery: docs/reviewed-memory.md.
+
+The editor acceptance suite also drives actual reviewed-memory save/delete confirmations, including cancellation and reconnect persistence. It supplies synthetic note/period drafts but never bypasses approval. `tests/memory.test.ts` covers deterministic relevance ranking, end-exclusive ranges, budgets and stale exclusions; the built CLI integration covers `memory suggest`.

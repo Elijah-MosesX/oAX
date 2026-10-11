@@ -20,6 +20,7 @@ import {
   listMemory,
   memoryContext,
   deleteMemory,
+  suggestMemory,
   type MemoryPlan,
   type MemoryRecord,
 } from '../packages/runtime/src/memory.js';
@@ -247,6 +248,99 @@ test('memory rejects stale saves, expired reviews and concurrent writer locks', 
     await assert.rejects(listMemory(f.root), /holds the lock/);
     await rm(lock);
     assert.deepEqual(await listMemory(f.root), []);
+  } finally {
+    await f.close();
+  }
+});
+
+test('memory suggestions rank exact-source range overlap before lexical evidence and disclose exclusions', async () => {
+  const f = await fixture();
+  try {
+    const lines = [
+      'export function first() { return 1; }',
+      'export function second() { return 2; }',
+      'export function third() { return 3; }',
+    ];
+    const text = lines.join('\n');
+    await writeFile(path.join(f.root, 'a.ts'), text);
+    const observation = {
+      ...f.observation,
+      text,
+      selection: {
+        start: { line: 1, column: 0 },
+        end: { line: 1, column: lines[1]!.length },
+      },
+      cursor: { line: 1, column: 0 },
+    };
+    const add = async (line: number, note: string) =>
+      saveMemory(
+        f.root,
+        await prepareMemory(
+          f.root,
+          {
+            ...observation,
+            selection: {
+              start: { line, column: 0 },
+              end: { line, column: lines[line]!.length },
+            },
+          },
+          note,
+          30,
+        ),
+      );
+    const distant = await add(2, 'Payment payment handling');
+    const overlapping = await add(1, 'Synchronous return value');
+    await add(0, 'Unrelated reviewed claim');
+    const ranked = await suggestMemory(
+      f.root,
+      observation,
+      'Explain payment handling',
+    );
+    assert.equal(ranked.automaticInclusion, false);
+    assert.equal(ranked.suggestions[0]?.id, overlapping.id);
+    assert.equal(ranked.suggestions[1]?.id, distant.id);
+    assert.deepEqual(ranked.suggestions[1]?.relevance.matchedTerms, [
+      'payment',
+      'handling',
+    ]);
+    const boundary = await suggestMemory(
+      f.root,
+      {
+        ...observation,
+        selection: {
+          start: observation.selection.end,
+          end: observation.selection.end,
+        },
+      },
+      'Explain',
+    );
+    assert.equal(
+      boundary.suggestions.find((item) => item.id === overlapping.id)?.relevance
+        .overlaps,
+      false,
+    );
+    for (let n = 0; n < 4; n++) await add(0, `Extra reviewed claim ${n}`);
+    const bounded = await suggestMemory(
+      f.root,
+      observation,
+      'Explain payment handling',
+    );
+    assert.equal(bounded.suggestions.length, 5);
+    assert.equal(bounded.excluded.budget, 2);
+    assert.deepEqual(
+      (
+        await suggestMemory(f.root, observation, 'Explain payment handling')
+      ).suggestions.map((item) => item.id),
+      bounded.suggestions.map((item) => item.id),
+    );
+    await writeFile(path.join(f.root, 'a.ts'), text + '\n');
+    const stale = await suggestMemory(
+      f.root,
+      { ...observation, text: text + '\n' },
+      'Explain payment',
+    );
+    assert.equal(stale.suggestions.length, 0);
+    assert.equal(stale.excluded.stale, 7);
   } finally {
     await f.close();
   }

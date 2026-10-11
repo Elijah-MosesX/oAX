@@ -10,7 +10,12 @@ import {
 } from 'node:fs/promises';
 import path from 'node:path';
 import { digest } from '@oax/codegraph';
-import { redact, validateObservation, workspacePath } from '@oax/context';
+import {
+  redact,
+  validateObservation,
+  validateRange,
+  workspacePath,
+} from '@oax/context';
 import { OaxError, rangeSchema, z, type Observation } from '@oax/protocol';
 
 const hash = z.string().regex(/^[a-f0-9]{64}$/);
@@ -270,4 +275,94 @@ export async function memoryContext(
       trust: item.trust,
     };
   });
+}
+
+/** Deterministic suggestions, never a grant or automatic context inclusion. */
+export async function suggestMemory(
+  root: string,
+  observation: Observation,
+  objective: string,
+) {
+  await validateObservation(root, observation);
+  const [start, end] = validateRange(observation.text, observation.selection);
+  const sourceHash = digest(observation.text);
+  const terms = [
+    ...new Set(
+      (objective.toLowerCase().match(/[\p{L}\p{N}_]{3,}/gu) ?? []).filter(
+        (word) =>
+          ![
+            'this',
+            'that',
+            'the',
+            'with',
+            'and',
+            'for',
+            'explain',
+            'selection',
+            'code',
+            'file',
+          ].includes(word),
+      ),
+    ),
+  ].slice(0, 32);
+  const records = await listMemory(root);
+  const excluded = {
+    stale: 0,
+    expired: 0,
+    differentSource: 0,
+    invalidRange: 0,
+    budget: 0,
+  };
+  const eligible = [];
+  for (const record of records) {
+    if (record.status !== 'fresh') {
+      excluded[record.status]++;
+      continue;
+    }
+    if (record.path !== observation.path || record.sourceHash !== sourceHash) {
+      excluded.differentSource++;
+      continue;
+    }
+    let range: [number, number];
+    try {
+      range = validateRange(observation.text, record.range);
+    } catch {
+      excluded.invalidRange++;
+      continue;
+    }
+    const [a, b] = range;
+    const overlaps =
+      start === end
+        ? a <= start && start < b
+        : a === b
+          ? start <= a && a < end
+          : a < end && start < b;
+    const words = new Set(
+      record.note.toLowerCase().match(/[\p{L}\p{N}_]{3,}/gu) ?? [],
+    );
+    const matchedTerms = terms.filter((term) => words.has(term));
+    const lineDistance = Math.abs(
+      record.range.start.line - observation.selection.start.line,
+    );
+    eligible.push({
+      ...record,
+      relevance: { overlaps, matchedTerms, lineDistance },
+      reason: `${overlaps ? 'Overlaps selected code' : 'Same saved file; no selection overlap'}; ${matchedTerms.length} objective term matches; ${lineDistance} lines between range starts. These signals are not semantic proof.`,
+    });
+  }
+  eligible.sort(
+    (a, b) =>
+      Number(b.relevance.overlaps) - Number(a.relevance.overlaps) ||
+      b.relevance.matchedTerms.length - a.relevance.matchedTerms.length ||
+      a.relevance.lineDistance - b.relevance.lineDistance ||
+      a.id.localeCompare(b.id),
+  );
+  excluded.budget = Math.max(0, eligible.length - 5);
+  return {
+    suggestions: eligible.slice(0, 5),
+    excluded,
+    sourceHash,
+    strategy: 'same-source-range-terms-v1',
+    automaticInclusion: false as const,
+  };
 }

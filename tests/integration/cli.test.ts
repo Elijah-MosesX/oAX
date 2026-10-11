@@ -48,6 +48,12 @@ test('built CLI explains, provides labeled structural evidence, and gates real N
     const memories = JSON.parse((await run(['memory', 'list'])).stdout);
     assert.equal(memories[0].id, memory.id);
     assert.equal(memories[0].status, 'fresh');
+    const suggestions = JSON.parse(
+      (await run(['memory', 'suggest', 'a.ts', 'Explain constant sum'])).stdout,
+    );
+    assert.equal(suggestions.automaticInclusion, false);
+    assert.equal(suggestions.suggestions[0].id, memory.id);
+    assert.match(suggestions.suggestions[0].reason, /Overlaps selected code/);
     assert.match(
       (await run(['explain', 'a.ts', '--mock', '--memory', memory.id])).stdout,
       /Mock engine/,

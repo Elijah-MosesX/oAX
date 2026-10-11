@@ -506,3 +506,15 @@ Actual VS Code 1.105.0 acceptance initially exposed a non-file document invalida
 Typecheck and focused lint passed before the editor run; final formatting/build/package checks follow. Core storage/protocol behavior is unchanged from the previous 72-unit/12-integration and remote CI evidence. No hosted deployment, desktop archive, live microphone, GitHub credential or model request changed in this slice. Next work is interactive editor acceptance and evidence-based memory relevance selection, followed by the remaining IDE/collaboration phases.
 
 Final checks: typecheck, focused ESLint, changed-file formatting, build, eight-file VSIX packaging and git diff --check passed. Installed the new VSIX successfully; SHA-256 bf975926942ea2e82fe9243a03988b730d2569b486adbeae309df5c43fc65451. GitHub synchronization follows this checkpoint.
+
+## Memory relevance and actual editor approvals — 2026-10-11
+
+The previous editor-memory commit is synchronized to remote 1734f61fa1d2cc7c96a045b95bd083fb12d5e6fa (tree 547166fcbe70f21367e8462ad29e0365d8e2ee80); GitHub runs 38155060608 and 38155058306 passed Windows and Ubuntu.
+
+Added runtime-owned memory.suggest with a versioned schema/capability, CLI memory suggest, and VS Code evidence-bearing suggestions. Ranking uses exact-source freshness, end-exclusive range overlap, distinct objective word matches and line distance. At most five results include reasons and exclusion counts. Nothing is automatically selected, transmitted or treated as semantic proof. Existing explicit record selection and context-hash consent remain authoritative.
+
+Actual VS Code 1.105.0 acceptance passed real Cancel-default save/delete approvals, cancellation without mutation, Buddy prompts, persistence across runtime reconnect and unchanged developer selection. The harness supplies synthetic draft note/period inputs through command arguments; these do not bypass the production approval and do not verify manual text entry. Existing unsaved context/graph/mock/cursor acceptance also passed. The editor emitted a GitHub authentication-provider startup timeout; this does not verify product GitHub login. No model request was made.
+
+Targeted relevance and built CLI tests passed 5/5. Full unit suite passed 73/73. Final integration, lint, packaging and synchronization results follow this checkpoint. Live provider-backed memory explanation, broader semantic/cross-file relevance, team memory ownership and remaining IDE/collaboration/enterprise phases remain open. Hosted apps and desktop archives are unchanged.
+
+Final local checks: typecheck, focused ESLint, build, git diff --check, 73/73 unit tests and 12/12 integration tests passed. Actual editor approval acceptance passed as described above. Packaging, installation and GitHub CI are recorded separately in the delivery receipt.

@@ -23,6 +23,7 @@ import {
   listMemory,
   deleteMemory,
   memoryContext,
+  suggestMemory,
   type MemoryPlan,
 } from './memory.js';
 import { inspectReview, reviewMatches, type EditReview } from './review.js';
@@ -213,6 +214,13 @@ export class Runtime {
               params.retentionDays,
             );
             payload = session.memoryPlan;
+          } else if (req.method === 'memory.suggest') {
+            const params = payloadSchemas['memory.suggest'].parse(req.payload);
+            payload = await suggestMemory(
+              this.options.root,
+              params.observation,
+              params.objective,
+            );
           } else if (req.method === 'memory.list') {
             payloadSchemas['memory.list'].parse(req.payload);
             payload = await listMemory(this.options.root);

@@ -9,6 +9,7 @@ export async function memoryCommand(entry: string, args: string[]) {
   const [command, target, note, days, flag, approvedHash] = args;
   if (
     !(command === 'list' && args.length === 1) &&
+    !(command === 'suggest' && args.length === 3 && target && note) &&
     !(
       command === 'delete' &&
       args.length === 4 &&
@@ -26,7 +27,7 @@ export async function memoryCommand(entry: string, args: string[]) {
   )
     throw new OaxError(
       'INVALID_ARGS',
-      'memory list | memory save <path> <quoted-note> <retention-days> [--approve <hash>] | memory delete <id> --approve <record-hash>',
+      'memory list | memory suggest <path> <quoted-objective> | memory save <path> <quoted-note> <retention-days> [--approve <hash>] | memory delete <id> --approve <record-hash>',
     );
   const root = await realpath(process.cwd());
   const client = await RuntimeClient.connect(entry, root);
@@ -64,18 +65,26 @@ export async function memoryCommand(entry: string, args: string[]) {
         visibleRanges: [],
         openFiles: [target!],
       };
-      const plan = (await client.call(
-        'memory.prepare',
-        { observation, note, retentionDays: Number(days) },
-        sessionId,
-      )) as MemoryPlan;
-      result = approvedHash
-        ? await client.call(
-            'memory.save',
-            { planId: plan.id, approvedHash },
-            sessionId,
-          )
-        : plan;
+      if (command === 'suggest')
+        result = await client.call(
+          'memory.suggest',
+          { observation, objective: note },
+          sessionId,
+        );
+      else {
+        const plan = (await client.call(
+          'memory.prepare',
+          { observation, note, retentionDays: Number(days) },
+          sessionId,
+        )) as MemoryPlan;
+        result = approvedHash
+          ? await client.call(
+              'memory.save',
+              { planId: plan.id, approvedHash },
+              sessionId,
+            )
+          : plan;
+      }
     }
     process.stdout.write(JSON.stringify(result, null, 2) + '\n');
     await client.call('session.close', {}, sessionId);

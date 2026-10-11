@@ -17,6 +17,14 @@ import {
 } from './refactor.js';
 import { onboarding } from './onboarding.js';
 import { contextEvidence } from './context-evidence.js';
+import {
+  prepareMemory,
+  saveMemory,
+  listMemory,
+  deleteMemory,
+  memoryContext,
+  type MemoryPlan,
+} from './memory.js';
 import { inspectReview, reviewMatches, type EditReview } from './review.js';
 import {
   prepareChecks,
@@ -38,6 +46,7 @@ import {
 } from '@oax/protocol';
 import type { AgentEngine, AgentSession } from './engine.js';
 interface Session {
+  memoryPlan?: MemoryPlan;
   engine: AgentSession;
   task?: Task;
   graph?: CodeGraph;
@@ -194,7 +203,68 @@ export class Runtime {
         const session = sessionId ? this.sessions.get(sessionId) : undefined;
         if (!session || !sessionId)
           throw new OaxError('SESSION_NOT_FOUND', 'Unknown session');
-        if (req.method === 'index.status') {
+        if (req.method.startsWith('memory.')) {
+          if (req.method === 'memory.prepare') {
+            const params = payloadSchemas['memory.prepare'].parse(req.payload);
+            session.memoryPlan = await prepareMemory(
+              this.options.root,
+              params.observation,
+              params.note,
+              params.retentionDays,
+            );
+            payload = session.memoryPlan;
+          } else if (req.method === 'memory.list') {
+            payloadSchemas['memory.list'].parse(req.payload);
+            payload = await listMemory(this.options.root);
+          } else if (
+            req.method === 'memory.save' ||
+            req.method === 'memory.delete'
+          ) {
+            const params = payloadSchemas[req.method].parse(req.payload);
+            const plan = session.memoryPlan;
+            if (
+              req.method === 'memory.save' &&
+              (!plan ||
+                !('planId' in params) ||
+                plan.id !== params.planId ||
+                plan.hash !== params.approvedHash ||
+                plan.expiresAt <= Date.now())
+            )
+              throw new OaxError(
+                'PERMISSION_DENIED',
+                'Approve the exact current memory review',
+              );
+            const action = {
+              principal: 'local-editor',
+              workspaceId: this.options.workspaceId,
+              sessionId,
+              taskId: req.id,
+              capability: 'workspace.write' as const,
+              resource: `memory:${req.method}:${params.approvedHash}`,
+            };
+            this.permissions.grant({
+              ...action,
+              id: randomUUID(),
+              decision: 'allow',
+              expiresAt: Date.now() + 10000,
+            });
+            const saving = req.method === 'memory.save';
+            payload = await this.permissions.execute<unknown>(action, () =>
+              saving
+                ? saveMemory(this.options.root, plan!)
+                : deleteMemory(
+                    this.options.root,
+                    (params as { id: string }).id,
+                    params.approvedHash,
+                  ),
+            );
+            if (req.method === 'memory.save') delete session.memoryPlan;
+          } else
+            throw new OaxError(
+              'UNSUPPORTED_METHOD',
+              'Unsupported memory method',
+            );
+        } else if (req.method === 'index.status') {
           payloadSchemas['index.status'].parse(req.payload);
           payload = session.indexState
             ? {
@@ -585,6 +655,7 @@ export class Runtime {
       objective: string;
       approvedContextHash?: string | undefined;
       history?: 'local' | 'github' | undefined;
+      memoryIds?: string[] | undefined;
     },
   ): Promise<void> {
     const emit = (method: Event['method'], payload: Event['payload']) =>
@@ -852,6 +923,7 @@ export class Runtime {
       observation: import('@oax/protocol').Observation;
       objective: string;
       history?: 'local' | 'github' | undefined;
+      memoryIds?: string[] | undefined;
     },
   ): Promise<import('@oax/context').ContextSlice> {
     const context = await buildContext(
@@ -1019,7 +1091,29 @@ export class Runtime {
         'Persistent validated memory is not included in this slice.',
       ];
     }
+    if (params.memoryIds?.length) {
+      context.memory = await memoryContext(
+        this.options.root,
+        params.memoryIds,
+        params.observation,
+      );
+      context.limitations = [
+        ...(context.limitations ?? []).filter(
+          (item) => !item.includes('memory'),
+        ),
+        'Memory is a human-reviewed claim linked to an exact source hash, not independent proof or permission.',
+      ];
+    }
     const bounded = redactContext(context);
+    while (
+      Buffer.byteLength(JSON.stringify(bounded)) > 16000 &&
+      bounded.memory?.length
+    ) {
+      bounded.memory.pop();
+      bounded.truncated = true;
+      if (!bounded.limitations?.includes('Memory excluded by context budget.'))
+        bounded.limitations?.push('Memory excluded by context budget.');
+    }
     while (
       Buffer.byteLength(JSON.stringify(bounded)) > 16000 &&
       bounded.related?.length

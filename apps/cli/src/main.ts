@@ -19,6 +19,7 @@ import type { CheckPlan } from '../../../packages/runtime/src/verification.js';
 import { editorBridge } from './editor-bridge.js';
 import { doctor } from './doctor.js';
 import { openAudit } from '../../../packages/runtime/src/audit.js';
+import { memoryCommand } from './memory.js';
 async function inspectOrVerify(
   command: 'explain' | 'review' | 'verify',
   args: string[],
@@ -27,6 +28,7 @@ async function inspectOrVerify(
   let provider: string | undefined, approved: string | undefined;
   let mock = false;
   let history: 'local' | undefined;
+  const memoryIds: string[] = [];
   while (args.length) {
     const flag = args.shift();
     if (flag === '--history' && command === 'explain' && !history) {
@@ -38,6 +40,15 @@ async function inspectOrVerify(
       continue;
     }
     const value = args.shift();
+    if (
+      flag === '--memory' &&
+      command === 'explain' &&
+      value &&
+      memoryIds.length < 5
+    ) {
+      memoryIds.push(value);
+      continue;
+    }
     if (flag === '--codex' && command === 'explain' && value && !provider)
       provider = value;
     else if (flag === '--approve' && command !== 'review' && value && !approved)
@@ -151,7 +162,12 @@ async function inspectOrVerify(
       if (provider) {
         const preview = (await client.call(
           'context.preview',
-          { observation, objective, ...(history ? { history } : {}) },
+          {
+            observation,
+            objective,
+            ...(history ? { history } : {}),
+            ...(memoryIds.length ? { memoryIds } : {}),
+          },
           sessionId,
         )) as { context: unknown; hash: string };
         if (!approved)
@@ -180,6 +196,7 @@ async function inspectOrVerify(
               controller.signal,
               approved,
               history,
+              memoryIds,
             ),
           );
         }
@@ -192,6 +209,7 @@ async function inspectOrVerify(
             controller.signal,
             undefined,
             history,
+            memoryIds,
           ),
         );
     }
@@ -417,6 +435,8 @@ const main = async () => {
   if (command === 'serve' && root && workspaceId)
     return serve(root, workspaceId);
   if (command === 'demo') return demo();
+  if (command === 'memory')
+    return memoryCommand(__filename, process.argv.slice(3));
   if (command === 'explain' || command === 'review' || command === 'verify')
     return inspectOrVerify(command, process.argv.slice(3));
   if (command === 'rename') return rename(process.argv.slice(3));
@@ -439,6 +459,9 @@ const main = async () => {
     return;
   }
   if (!command || command === '--help' || command === 'help') {
+    process.stdout.write(
+      'Reviewed local memory: memory list | memory save <path> <quoted-note> <retention-days 1-90> [--approve <hash>] | memory delete <id> --approve <record-hash>\nExplain can include up to five explicit --memory <id> options; context transmission still requires approval.\n',
+    );
     process.stdout.write(
       'Diagnostics: node dist/cli.cjs doctor [workspace-root] (read-only; no model requests)\n',
     );

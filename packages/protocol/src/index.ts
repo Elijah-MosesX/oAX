@@ -14,6 +14,7 @@ export const CAPABILITIES = [
   'agent.cursor.v1',
   'context.preview.v1',
   'context.history.v1',
+  'memory.reviewed.v1',
   'git.history.v1',
   'github.history.v1',
   'refactor.rename.v1',
@@ -183,6 +184,20 @@ export const messageSchema = z.union([
   eventSchema,
 ]);
 export const payloadSchemas = {
+  'memory.prepare': z.strictObject({
+    observation: observationSchema,
+    note: z.string().trim().min(1).max(2000),
+    retentionDays: z.number().int().min(1).max(90),
+  }),
+  'memory.save': z.strictObject({
+    planId: id,
+    approvedHash: z.string().regex(/^[a-f0-9]{64}$/),
+  }),
+  'memory.list': z.strictObject({}),
+  'memory.delete': z.strictObject({
+    id: z.uuid(),
+    approvedHash: z.string().regex(/^[a-f0-9]{64}$/),
+  }),
   'review.get': z.strictObject({}),
   initialize: z.strictObject({
     token: z.string().min(32).max(128),
@@ -231,6 +246,7 @@ export const payloadSchemas = {
     relationship: z.enum(['callers', 'imports', 'implements', 'tests']),
   }),
   'selection.explain': z.strictObject({
+    memoryIds: z.array(z.uuid()).max(5).optional(),
     observation: observationSchema,
     objective: z.string().min(1).max(2048),
     history: z.enum(['local', 'github']).optional(),
@@ -240,6 +256,7 @@ export const payloadSchemas = {
       .optional(),
   }),
   'context.preview': z.strictObject({
+    memoryIds: z.array(z.uuid()).max(5).optional(),
     observation: observationSchema,
     objective: z.string().min(1).max(2048),
     history: z.enum(['local', 'github']).optional(),

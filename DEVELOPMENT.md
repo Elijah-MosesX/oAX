@@ -120,3 +120,7 @@ See docs/authoring-resources.md for checksum-pinned Ponytail/OpenMontage install
 Build first with `pnpm build`. `node --import tsx --test tests/history-context.test.ts tests/git.test.ts` checks real local Git evidence, consent freshness and mocked GitHub isolation. `pnpm test:integration` also checks the built CLI's `explain <path> --history` option. See `docs/connected-intelligence.md` for the VS Code workflow.
 
 With explicit authorization for account usage, set `OAX_LIVE_TEST=1` and run `node --import tsx scripts/test-live-history.ts`. This sends one synthetic fixture through the installed, exact-version-verified Codex login, denies missing consent first, requires an actual commit citation, and writes `dist/history-live-acceptance.json`. It sends no project repository content. Ordinary tests never invoke this opt-in script.
+
+## Reviewed-memory validation
+
+After pnpm build, run node --import tsx --test tests/memory.test.ts tests/integration/cli.test.ts. These deterministic tests perform real local persistence and CLI review/save/use/delete without a live model. Usage, retention eligibility and lock recovery: docs/reviewed-memory.md.

@@ -212,6 +212,7 @@ export class RuntimeClient {
     signal?: AbortSignal,
     approvedContextHash?: string,
     history?: 'local' | 'github',
+    memoryIds?: string[],
   ): Promise<string> {
     return this.runTask(
       sessionId,
@@ -221,6 +222,7 @@ export class RuntimeClient {
         objective,
         ...(approvedContextHash ? { approvedContextHash } : {}),
         ...(history ? { history } : {}),
+        ...(memoryIds?.length ? { memoryIds } : {}),
       },
       signal,
     );

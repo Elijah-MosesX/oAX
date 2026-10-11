@@ -48,3 +48,5 @@ The documents also contain illustrative APIs, event names, numeric examples and 
 - Markdown SHA-256: `f7d7526770bc6922081cf27f31b5d82a1f1092fc6982bfafd7ad04dd5d9ab776`.
 - Word SHA-256: `9fe88f6bede797219bda6d5a18691e85a8ac61c44633a02068a28b98959e1dff`.
 - Both contain the same product definition, persistent-participant principle, north-star context, memory and Codex adapter direction. Formatting/examples remain design input; the live source and tests establish implementation status.
+
+October 11 update: the connected-history slice is implemented, and reviewed local memory now adds explicit candidate approval, persistence, source/workspace freshness, expiration, deletion and opt-in context through CLI/protocol. See docs/reviewed-memory.md. This does not complete automatic relevance retrieval, team memory, semantic claim validation or editor memory controls.

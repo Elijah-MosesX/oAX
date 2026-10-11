@@ -42,6 +42,16 @@ export interface ContextSlice {
     truncated: boolean;
   }[];
   redactions?: number;
+  memory?: {
+    id: string;
+    path: string;
+    sourceHash: string;
+    note: string;
+    reviewedAt: number;
+    expiresAt: number;
+    validation: 'human-reviewed-source-linked';
+    trust: 'untrusted';
+  }[];
 }
 /** Conservative known-token and labeled-assignment redaction; not a complete secret detector. */
 export function redact(text: string): { text: string; count: number } {
@@ -82,6 +92,14 @@ export function redactContext(context: ContextSlice): ContextSlice {
     ...context,
     objective: clean(context.objective),
     excerpt: clean(context.excerpt),
+    ...(context.memory
+      ? {
+          memory: context.memory.map((item) => ({
+            ...item,
+            note: clean(item.note),
+          })),
+        }
+      : {}),
     ...(context.related
       ? {
           related: context.related.map((item) => ({

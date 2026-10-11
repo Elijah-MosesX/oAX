@@ -29,6 +29,34 @@ test('built CLI explains, provides labeled structural evidence, and gates real N
       'import {test} from "node:test"; import assert from "node:assert/strict"; import {sum} from "./a.ts"; test("sum", () => assert.equal(sum(), 2));',
     );
     const answer = await run(['explain', 'a.ts', '--mock']);
+    const memoryArgs = [
+      'memory',
+      'save',
+      'a.ts',
+      'sum returns a constant two',
+      '30',
+    ];
+    const memoryPlan = JSON.parse((await run(memoryArgs)).stdout);
+    assert.deepEqual(JSON.parse((await run(['memory', 'list'])).stdout), []);
+    await assert.rejects(
+      run([...memoryArgs, '--approve', '0'.repeat(64)]),
+      /PERMISSION_DENIED/,
+    );
+    const memory = JSON.parse(
+      (await run([...memoryArgs, '--approve', memoryPlan.hash])).stdout,
+    );
+    const memories = JSON.parse((await run(['memory', 'list'])).stdout);
+    assert.equal(memories[0].id, memory.id);
+    assert.equal(memories[0].status, 'fresh');
+    assert.match(
+      (await run(['explain', 'a.ts', '--mock', '--memory', memory.id])).stdout,
+      /Mock engine/,
+    );
+    await run(['memory', 'delete', memory.id, '--approve', memories[0].hash]);
+    await assert.rejects(
+      run(['explain', 'a.ts', '--mock', '--memory', memory.id]),
+      /MEMORY_STALE/,
+    );
     assert.match(answer.stdout, /Mock engine/);
     assert.match(answer.stdout, /function sum/);
     await assert.rejects(

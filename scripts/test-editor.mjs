@@ -101,15 +101,29 @@ try {
     );
   });
   if (live) {
+    const failure = await readFile(
+      path.join(workspace, 'failure.json'),
+      'utf8',
+    ).catch((error) => {
+      if (error.code === 'ENOENT') return undefined;
+      throw error;
+    });
+    if (failure) throw new Error(`Live editor acceptance failed: ${failure}`);
     const result = JSON.parse(
       await readFile(path.join(workspace, 'acceptance.json'), 'utf8'),
     );
-    if (!result.report?.verified || !result.preservedSelection)
+    const memory = process.env.OAX_LIVE_EDITOR_MEMORY_TEST === '1';
+    if (
+      !(memory
+        ? result.memoryVerified && result.workflow === 'memory-explain'
+        : result.report?.verified) ||
+      !result.preservedSelection
+    )
       throw new Error(
         'Live editor acceptance did not establish verified review',
       );
     console.log(
-      `M4 LIVE PASSED on VS Code ${result.editorVersion}; actual provider, approval, edit, test and review evidence: ${path.join(workspace, 'acceptance.json')}`,
+      `${memory ? 'MEMORY' : 'M4'} LIVE PASSED on VS Code ${result.editorVersion}; actual workflow evidence: ${path.join(workspace, 'acceptance.json')}`,
     );
   }
 } finally {

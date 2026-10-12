@@ -162,3 +162,7 @@ VS Code now exposes the runtime memory lifecycle through explicit commands; Budd
 Reviewed-memory suggestions are runtime-owned (`memory.suggest.v1`): exact-source freshness filters, range/lexical ranking, five-item budget, inspectable reasons/exclusions, and no automatic inclusion. CLI and VS Code share this protocol; explicit selection and context-hash consent remain separate.
 
 The hosted evidence consumers now share the canonical strict validator for code, graph, history and reviewed source-linked notes. The oAX1 duplicate validator was removed. CLI export carries these explicit selections into the existing inspect/share flow without transmitting automatically; AppDeploy releases remain separate from GitHub sync. The hosted apps neither own local memory nor grant local agent execution.
+
+## Editor memory selection inspection (2026-10-12)
+
+The memory note picker exposes a detached read-only snapshot of note IDs, checked IDs and the focused ID for actual editor acceptance. Initial keyboard focus checks no note; production context preview and explicit transmission consent remain authoritative. Reconnect hides the picker. Provider details and per-stream-step permission enforcement stay inside their existing boundaries.

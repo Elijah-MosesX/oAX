@@ -16,6 +16,7 @@ export const SUPPORTED_CODEX_VERSIONS = [
   SUPPORTED_CODEX_VERSION,
   '0.159.0-alpha.12.1',
   '0.162.0-alpha.2',
+  '0.162.0-alpha.17.2',
 ] as const;
 export function supportedCodexVersion(output: string): string | undefined {
   return SUPPORTED_CODEX_VERSIONS.find(

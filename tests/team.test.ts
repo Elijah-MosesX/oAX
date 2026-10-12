@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import path from 'node:path';
+import { readFile } from 'node:fs/promises';
 import { build } from 'esbuild';
 import {
   checkAccess,
@@ -300,6 +301,7 @@ test('real collaboration handlers enforce revocation, append concurrent notes an
     title: 'Evidence',
     text: 'private-marker',
     path: 'src/file.ts',
+    evidence: await readFile('tests/fixtures/connected-evidence.json', 'utf8'),
   };
   const writes = await Promise.all([
     call('POST /api/rooms/:id/entries', owner, { id }, note),
@@ -312,6 +314,10 @@ test('real collaboration handlers enforce revocation, append concurrent notes an
   ]);
   assert.ok(writes.every((x) => x.statusCode === 200));
   assert.equal(table(`entries:${id}`).size, 2);
+  const stored = [...table(`entries:${id}`).values()][0]!;
+  assert.match(JSON.stringify(stored.evidence), /ORCHID-27/);
+  assert.match(JSON.stringify(stored.evidence), /local-git/);
+  assert.ok(!JSON.stringify(messages).includes('ORCHID-27'));
   assert.ok(messages.length > 0);
   assert.ok(!JSON.stringify(messages).includes('private-marker'));
   const other = await call(

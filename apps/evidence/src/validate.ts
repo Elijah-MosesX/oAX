@@ -33,6 +33,33 @@ const context = z.strictObject({
     .max(6)
     .optional(),
   limitations: z.array(z.string().max(4096)).max(100).optional(),
+  historical: z
+    .array(
+      z.strictObject({
+        source: z.enum(['local-git', 'github']),
+        reference: z.string().min(1).max(4096),
+        sourceHash: z.string().regex(/^[a-f0-9]{64}$/),
+        evidenceHash: z.string().regex(/^[a-f0-9]{64}$/),
+        excerpt: z.string().max(3072),
+        truncated: z.boolean(),
+      }),
+    )
+    .max(2)
+    .optional(),
+  memory: z
+    .array(
+      location.extend({
+        id: z.uuid(),
+        sourceHash: z.string().regex(/^[a-f0-9]{64}$/),
+        note: z.string().max(2000),
+        reviewedAt: z.number().int().nonnegative().max(8640000000000000),
+        expiresAt: z.number().int().nonnegative().max(8640000000000000),
+        validation: z.literal('human-reviewed-source-linked'),
+        trust: z.literal('untrusted'),
+      }),
+    )
+    .max(5)
+    .optional(),
   redactions: z.number().int().nonnegative().optional(),
 });
 /** Browser import is evidence, never executable content or a permission grant. */

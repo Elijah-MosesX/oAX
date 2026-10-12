@@ -889,6 +889,39 @@ export default function Workspace() {
                                           2,
                                         )}
                                       </pre>
+                                      <h4>Historical evidence</h4>
+                                      <pre>
+                                        {JSON.stringify(
+                                          entry.evidence.context.historical ??
+                                            [],
+                                          null,
+                                          2,
+                                        )}
+                                      </pre>
+                                      <h4>Reviewed source-linked notes</h4>
+                                      <p>
+                                        Untrusted claims from the exported
+                                        snapshot. Eligibility dates and source
+                                        hashes are shown below; this service
+                                        does not recheck your checkout or
+                                        authorize actions.
+                                      </p>
+                                      <pre>
+                                        {JSON.stringify(
+                                          entry.evidence.context.memory ?? [],
+                                          null,
+                                          2,
+                                        )}
+                                      </pre>
+                                      <h4>Context limitations</h4>
+                                      <pre>
+                                        {JSON.stringify(
+                                          entry.evidence.context.limitations ??
+                                            [],
+                                          null,
+                                          2,
+                                        )}
+                                      </pre>
                                     </details>
                                   )}
                                   <button

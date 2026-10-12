@@ -5,6 +5,7 @@ import { promisify } from 'node:util';
 import { mkdtemp, writeFile, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { parseEvidence } from '../../apps/evidence/src/validate.js';
 const exec = promisify(execFile);
 test('built CLI explains, provides labeled structural evidence, and gates real Node verification by exact plan', async () => {
   const root = await mkdtemp(path.join(tmpdir(), 'oax-cli-acceptance-'));
@@ -54,6 +55,15 @@ test('built CLI explains, provides labeled structural evidence, and gates real N
     assert.equal(suggestions.automaticInclusion, false);
     assert.equal(suggestions.suggestions[0].id, memory.id);
     assert.match(suggestions.suggestions[0].reason, /Overlaps selected code/);
+    const exported = parseEvidence(
+      (await run(['export', 'a.ts', '--memory', memory.id])).stdout,
+    );
+    assert.equal(exported.context.memory?.[0]?.id, memory.id);
+    assert.equal(exported.context.memory?.[0]?.range.start.line, 0);
+    await assert.rejects(
+      run(['export', 'a.ts', '--approve', '0'.repeat(64)]),
+      /INVALID_ARGS/,
+    );
     assert.match(
       (await run(['explain', 'a.ts', '--mock', '--memory', memory.id])).stdout,
       /Mock engine/,

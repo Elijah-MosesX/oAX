@@ -1,0 +1,58 @@
+{
+  "format": "oax-evidence.v1",
+  "method": "context.preview",
+  "capturedAt": "2026-10-11T00:00:00.000Z",
+  "result": {
+    "objective": "Explain calibration",
+    "path": "src/sum.ts",
+    "range": {
+      "start": {
+        "line": 0,
+        "column": 0
+      },
+      "end": {
+        "line": 0,
+        "column": 8
+      }
+    },
+    "documentVersion": 1,
+    "dirty": false,
+    "excerpt": "export const sum = 1 + 2;",
+    "truncated": false,
+    "provenance": "editor-buffer",
+    "trust": "untrusted",
+    "related": [],
+    "historical": [
+      {
+        "source": "local-git",
+        "reference": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "sourceHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "evidenceHash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "excerpt": "Synthetic commit: introduce calibration",
+        "truncated": false
+      }
+    ],
+    "memory": [
+      {
+        "id": "123e4567-e89b-42d3-a456-426614174000",
+        "path": "src/sum.ts",
+        "range": {
+          "start": {
+            "line": 0,
+            "column": 0
+          },
+          "end": {
+            "line": 0,
+            "column": 8
+          }
+        },
+        "sourceHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "note": "ORCHID-27 is a reviewed synthetic calibration claim.",
+        "reviewedAt": 1791676800000,
+        "expiresAt": 1791763200000,
+        "validation": "human-reviewed-source-linked",
+        "trust": "untrusted"
+      }
+    ]
+  }
+}

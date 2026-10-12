@@ -507,7 +507,7 @@ Typecheck and focused lint passed before the editor run; final formatting/build/
 
 Final checks: typecheck, focused ESLint, changed-file formatting, build, eight-file VSIX packaging and git diff --check passed. Installed the new VSIX successfully; SHA-256 bf975926942ea2e82fe9243a03988b730d2569b486adbeae309df5c43fc65451. GitHub synchronization follows this checkpoint.
 
-## Memory relevance and actual editor approvals — 2026-10-11
+## Memory relevance and actual editor approvals â€” 2026-10-11
 
 The previous editor-memory commit is synchronized to remote 1734f61fa1d2cc7c96a045b95bd083fb12d5e6fa (tree 547166fcbe70f21367e8462ad29e0365d8e2ee80); GitHub runs 38155060608 and 38155058306 passed Windows and Ubuntu.
 
@@ -518,3 +518,15 @@ Actual VS Code 1.105.0 acceptance passed real Cancel-default save/delete approva
 Targeted relevance and built CLI tests passed 5/5. Full unit suite passed 73/73. Final integration, lint, packaging and synchronization results follow this checkpoint. Live provider-backed memory explanation, broader semantic/cross-file relevance, team memory ownership and remaining IDE/collaboration/enterprise phases remain open. Hosted apps and desktop archives are unchanged.
 
 Final local checks: typecheck, focused ESLint, build, git diff --check, 73/73 unit tests and 12/12 integration tests passed. Actual editor approval acceptance passed as described above. Packaging, installation and GitHub CI are recorded separately in the delivery receipt.
+
+## Connected hosted evidence and live memory - 2026-10-12
+
+Closed an actual compatibility gap: the hosted validator rejected newer ContextSlice history/memory fields. Canonical validation now preserves bounded history and reviewed notes while rejecting unsupported trust/permission fields. Shared Knowledge and the browser viewer display these fields; oAX1 replaces its duplicate parser with the canonical one. Added CLI export <path> [--history] [--memory <id>] with no provider call or automatic upload. oAX1 requires explicit backend-transmission consent, resets it after edits and clears stale reports on errors.
+
+Installed Codex had moved to 0.162.0-alpha.17.2 and initially failed the version guard. Generated contracts were compared before adding this exact version; new optional parent/root turn IDs are unused, inspected consumed contracts otherwise match. Real synthetic history+memory acceptance then passed: absent consent denied, approved answer cites actual commit and note ID and labels the note as a claim. No private repository content was transmitted. The VSIX was rebuilt and installed; SHA-256 3c0e9444bbb7124eb3f02b489b6dd6f4239fbf9fb5e968ffb0d98afd056c8ac7.
+
+Verification: typecheck/focused lint/build passed; 75/75 unit tests passed. The concurrent integration run passed 12/13, with the review fixture failing its expected exit-code assertion under load. An unchanged sequential rerun passed 13/13, including that real edit/test/review flow. No timeout or gate was loosened. Keep this load sensitivity visible.
+
+AppDeploy updated Shared Knowledge (1791757522441), evidence viewer (1791784785710), and oAX1 (1791785222866); all report ready with empty frontend/backend/network errors. Initial viewer deployment placed assets at root while the existing app served public/ assets; actual browser acceptance caught the stale bundle, and the correct public assets were redeployed. Actual synthetic browser acceptance now passes viewer import/render/clear and oAX1 consent, backend history/memory display, consent reset and invalid-input stale-result removal. AppDeploy did not return E2E test execution results; readiness alone is not treated as workflow proof. Authenticated shared-room publication/revocation was not reverified live.
+
+The local and hosted applications are connected through the reviewed evidence contract and explicit sharing workflow. No automatic device pairing, shared agent execution, universal IDE completion, enterprise readiness, microphone/screen/product GitHub credential acceptance is claimed. Next: actual editor memory-explain consent acceptance, then full second-editor agent workflows. GitHub synchronization/CI follows this checkpoint. A prior single non-UTF-8 dash in this tracker was normalized without changing its content.

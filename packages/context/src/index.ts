@@ -45,6 +45,7 @@ export interface ContextSlice {
   memory?: {
     id: string;
     path: string;
+    range: TextRange;
     sourceHash: string;
     note: string;
     reviewedAt: number;

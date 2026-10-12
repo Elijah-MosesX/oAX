@@ -21,7 +21,7 @@ import { doctor } from './doctor.js';
 import { openAudit } from '../../../packages/runtime/src/audit.js';
 import { memoryCommand } from './memory.js';
 async function inspectOrVerify(
-  command: 'explain' | 'review' | 'verify',
+  command: 'explain' | 'review' | 'verify' | 'export',
   args: string[],
 ): Promise<void> {
   const resource = args.shift();
@@ -31,7 +31,11 @@ async function inspectOrVerify(
   const memoryIds: string[] = [];
   while (args.length) {
     const flag = args.shift();
-    if (flag === '--history' && command === 'explain' && !history) {
+    if (
+      flag === '--history' &&
+      (command === 'explain' || command === 'export') &&
+      !history
+    ) {
       history = 'local';
       continue;
     }
@@ -42,7 +46,7 @@ async function inspectOrVerify(
     const value = args.shift();
     if (
       flag === '--memory' &&
-      command === 'explain' &&
+      (command === 'explain' || command === 'export') &&
       value &&
       memoryIds.length < 5
     ) {
@@ -51,7 +55,12 @@ async function inspectOrVerify(
     }
     if (flag === '--codex' && command === 'explain' && value && !provider)
       provider = value;
-    else if (flag === '--approve' && command !== 'review' && value && !approved)
+    else if (
+      flag === '--approve' &&
+      (command === 'explain' || command === 'verify') &&
+      value &&
+      !approved
+    )
       approved = value;
     else
       throw new OaxError(
@@ -105,7 +114,30 @@ async function inspectOrVerify(
     const { sessionId } = (await client.call('session.open', {})) as {
       sessionId: string;
     };
-    if (command === 'verify') {
+    if (command === 'export') {
+      const result = await client.call(
+        'context.preview',
+        {
+          observation,
+          objective: 'Inspect code, selected memory and historical evidence',
+          ...(history ? { history } : {}),
+          ...(memoryIds.length ? { memoryIds } : {}),
+        },
+        sessionId,
+      );
+      process.stdout.write(
+        JSON.stringify(
+          {
+            format: 'oax-evidence.v1',
+            method: 'context.preview',
+            capturedAt: new Date().toISOString(),
+            result,
+          },
+          null,
+          2,
+        ) + '\n',
+      );
+    } else if (command === 'verify') {
       const plan = (await client.call(
         'verification.prepare',
         { observation },
@@ -437,7 +469,12 @@ const main = async () => {
   if (command === 'demo') return demo();
   if (command === 'memory')
     return memoryCommand(__filename, process.argv.slice(3));
-  if (command === 'explain' || command === 'review' || command === 'verify')
+  if (
+    command === 'explain' ||
+    command === 'review' ||
+    command === 'verify' ||
+    command === 'export'
+  )
     return inspectOrVerify(command, process.argv.slice(3));
   if (command === 'rename') return rename(process.argv.slice(3));
   if (command === 'query') return query(process.argv.slice(3));
@@ -460,7 +497,7 @@ const main = async () => {
   }
   if (!command || command === '--help' || command === 'help') {
     process.stdout.write(
-      'Reviewed local memory: memory list | memory suggest <path> <quoted-objective> | memory save <path> <quoted-note> <retention-days 1-90> [--approve <hash>] | memory delete <id> --approve <record-hash>\nExplain can include up to five explicit --memory <id> options; context transmission still requires approval.\n',
+      'Export for hosted inspection: export <path> [--history] [--memory <id>] (JSON to stdout; no provider request or upload)\nReviewed local memory: memory list | memory suggest <path> <quoted-objective> | memory save <path> <quoted-note> <retention-days 1-90> [--approve <hash>] | memory delete <id> --approve <record-hash>\nExplain can include up to five explicit --memory <id> options; context transmission still requires approval.\n',
     );
     process.stdout.write(
       'Diagnostics: node dist/cli.cjs doctor [workspace-root] (read-only; no model requests)\n',

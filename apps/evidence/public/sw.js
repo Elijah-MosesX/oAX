@@ -1,4 +1,4 @@
-const name = 'oax-evidence-shell-v4';
+const name = 'oax-evidence-shell-v5';
 const assets = [
   './',
   './index.html',

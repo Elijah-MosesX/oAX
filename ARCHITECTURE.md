@@ -160,3 +160,5 @@ The runtime owns a bounded JSON note store under .oax/memory, exposed through me
 VS Code now exposes the runtime memory lifecycle through explicit commands; Buddy contains navigation links to these same controls and observes their existing approval prompts. Editor filtering is advisory; runtime source hashes, expiry, record identity and provider consent remain authoritative. Non-file Output changes do not invalidate agent code locations.
 
 Reviewed-memory suggestions are runtime-owned (`memory.suggest.v1`): exact-source freshness filters, range/lexical ranking, five-item budget, inspectable reasons/exclusions, and no automatic inclusion. CLI and VS Code share this protocol; explicit selection and context-hash consent remain separate.
+
+The hosted evidence consumers now share the canonical strict validator for code, graph, history and reviewed source-linked notes. The oAX1 duplicate validator was removed. CLI export carries these explicit selections into the existing inspect/share flow without transmitting automatically; AppDeploy releases remain separate from GitHub sync. The hosted apps neither own local memory nor grant local agent execution.

@@ -25,10 +25,25 @@ $('import').addEventListener('submit', (event) => {
       $('related').append(title, code);
     }
     $('limitations').replaceChildren();
+    for (const item of context.historical || []) {
+      const title = document.createElement('p'),
+        body = document.createElement('pre');
+      title.textContent = `Historical evidence · ${item.source} · ${item.reference} · ${item.truncated ? 'truncated' : 'bounded'} · evidence hash ${item.evidenceHash}`;
+      body.textContent = item.excerpt;
+      $('related').append(title, body);
+    }
+    for (const item of context.memory || []) {
+      const title = document.createElement('p'),
+        body = document.createElement('pre');
+      title.textContent = `Reviewed note · ${item.id} · ${item.path} · reviewed ${new Date(item.reviewedAt).toISOString()} · eligible until ${new Date(item.expiresAt).toISOString()} · ${item.expiresAt <= Date.now() ? 'expired' : 'freshness not rechecked'} · source hash ${item.sourceHash}`;
+      body.textContent = item.note;
+      $('related').append(title, body);
+    }
     for (const value of [
       ...(context.limitations || []),
       'Imported evidence may be stale; this viewer does not recheck workspace files.',
       'This viewer does not verify provenance or historical causes.',
+      'Reviewed notes remain untrusted claims. Exporting does not grant permissions or establish current source freshness.',
     ]) {
       const li = document.createElement('li');
       li.textContent = value;

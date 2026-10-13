@@ -457,18 +457,31 @@ const main = async () => {
     return;
   }
   if (command === 'editor-bridge') {
-    if (
-      !root ||
-      !(
-        process.argv.length === 4 ||
-        (process.argv.length === 6 && workspaceId === '--codex')
+    const args = process.argv.slice(4);
+    let codex: string | undefined;
+    let edits = false;
+    while (args.length) {
+      const flag = args.shift();
+      if (flag === '--edits' && !edits) edits = true;
+      else if (
+        flag === '--codex' &&
+        codex === undefined &&
+        args[0] &&
+        !args[0].startsWith('--')
       )
-    )
+        codex = args.shift();
+      else
+        throw new OaxError(
+          'INVALID_ARGS',
+          'editor-bridge <root> [--codex <absolute-executable>] [--edits]',
+        );
+    }
+    if (!root)
       throw new OaxError(
         'INVALID_ARGS',
-        'editor-bridge requires a trusted workspace root and optional --codex <absolute-executable>',
+        'A trusted workspace root is required',
       );
-    return editorBridge(__filename, root, process.argv[5]);
+    return editorBridge(__filename, root, codex, edits);
   }
   if (command === 'serve' && root && workspaceId)
     return serve(root, workspaceId);

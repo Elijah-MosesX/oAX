@@ -49,6 +49,20 @@ export const editorAgentBootstrapSchema = editorBootstrapSchema.extend({
   contract: z.literal('editor-codex-text.v1'),
   engine: z.literal('codex'),
 });
+export const EDITOR_EDIT_METHODS = [
+  ...EDITOR_READ_METHODS,
+  'refactor.prepare',
+  'refactor.apply',
+  'review.get',
+] as const;
+export const editorEditBootstrapSchema = editorBootstrapSchema.extend({
+  contract: z.literal('editor-reviewed-rename.v1'),
+  engine: z.enum(['mock', 'codex']),
+  methods: z
+    .array(z.enum(EDITOR_EDIT_METHODS))
+    .min(1)
+    .max(EDITOR_EDIT_METHODS.length),
+});
 export const observationSchema = z.strictObject({
   path: z.string().min(1).max(4096),
   uri: z.string().max(8192),

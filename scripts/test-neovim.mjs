@@ -7,23 +7,34 @@ if (!executable || !path.isAbsolute(executable))
     'Set OAX_NVIM_EXECUTABLE to an absolute Neovim 0.11.5 executable',
   );
 const live = process.env.OAX_NVIM_LIVE_TEST === '1';
+const edits = process.env.OAX_NVIM_EDIT_TEST === '1';
+if (live && edits) throw new Error('Choose one acceptance mode');
 let workspace;
-if (live) {
+if (live || edits) {
   if (
-    !process.env.OAX_CODEX_EXECUTABLE ||
-    !path.isAbsolute(process.env.OAX_CODEX_EXECUTABLE)
+    live &&
+    (!process.env.OAX_CODEX_EXECUTABLE ||
+      !path.isAbsolute(process.env.OAX_CODEX_EXECUTABLE))
   )
     throw new Error(
       'Live Neovim acceptance requires an absolute OAX_CODEX_EXECUTABLE and consumes account usage',
     );
   await mkdir('.oax', { recursive: true });
-  workspace = await mkdtemp(path.resolve('.oax/nvim-live-'));
-  await writeFile(
-    path.join(workspace, 'example.mjs'),
-    'export function add(a, b) { return a + b; }\n',
+  workspace = await mkdtemp(
+    path.resolve(edits ? '.oax/nvim-edit-' : '.oax/nvim-live-'),
   );
+  await writeFile(
+    path.join(workspace, edits ? 'example.ts' : 'example.mjs'),
+    'export function add(a, b) { return a + b; }\n' +
+      (edits ? 'export const result = add(1, 2);\n' : ''),
+  );
+  if (edits)
+    await writeFile(
+      path.join(workspace, 'caller.ts'),
+      "import { add } from './example';\nexport const value = add(3, 4);\n",
+    );
   console.log(
-    `Live Neovim acceptance sends only synthetic code. Evidence: ${workspace}`,
+    `Synthetic Neovim acceptance (live provider: ${live}). Evidence: ${workspace}`,
   );
 }
 const child = spawn(
@@ -38,13 +49,17 @@ const child = spawn(
     `set rtp+=${path.resolve('adapters/neovim').replaceAll('\\', '/').replaceAll(' ', '\\ ')}`,
     '-l',
     path.resolve(
-      live ? 'tests/neovim/live.lua' : 'tests/neovim/acceptance.lua',
+      live
+        ? 'tests/neovim/live.lua'
+        : edits
+          ? 'tests/neovim/edit.lua'
+          : 'tests/neovim/acceptance.lua',
     ),
   ],
   {
     shell: false,
     windowsHide: true,
-    stdio: live ? ['pipe', 'inherit', 'inherit'] : 'inherit',
+    stdio: live || edits ? ['pipe', 'inherit', 'inherit'] : 'inherit',
     env: {
       ...process.env,
       OAX_REPO: process.cwd().replaceAll('\\', '/'),
@@ -65,11 +80,11 @@ try {
         : reject(new Error(`Neovim acceptance exited ${code}`)),
     );
   });
-  if (live) {
+  if (live || edits) {
     const result = JSON.parse(
       await readFile(path.join(workspace, 'acceptance.json'), 'utf8'),
     );
-    if (!result.verified || result.engine !== 'codex')
+    if (!result.verified || result.engine !== (live ? 'codex' : 'mock'))
       throw new Error('Live Neovim acceptance did not verify Codex');
   }
 } finally {

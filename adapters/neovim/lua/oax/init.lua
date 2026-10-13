@@ -52,7 +52,7 @@ end
 local function receive(message)
   assert(message.version == '0.1', 'Unsupported oAX version')
   if message.type == 'response' and message.correlationId == 'adapter-bootstrap' then
-    local expected = state.codex and 'editor-codex-text.v1' or 'editor-read-only.v1'
+    local expected = state.edits and 'editor-reviewed-rename.v1' or state.codex and 'editor-codex-text.v1' or 'editor-read-only.v1'
     assert(message.ok and message.payload.contract == expected and message.payload.engine == (state.codex and 'codex' or 'mock'), 'Invalid adapter bootstrap')
     state.identity, state.session = message.payload.workspaceId, message.payload.sessionId
     return
@@ -107,11 +107,13 @@ function M.setup(options)
   state.error = nil
   state.root = vim.fn.fnamemodify(options.root, ':p'):gsub('[\\/]$', '')
   state.codex = options.codex
+  state.edits = options.edits == true
   local argv = {options.node or 'node', options.cli, 'editor-bridge', state.root}
   if options.codex then
     assert(vim.fn.fnamemodify(options.codex, ':p') == options.codex or vim.fs.normalize(vim.fn.fnamemodify(options.codex, ':p')) == vim.fs.normalize(options.codex), 'Configure an absolute Codex executable')
     vim.list_extend(argv, {'--codex', options.codex})
   end
+  if state.edits then table.insert(argv, '--edits') end
   state.job = vim.fn.jobstart(argv, {
     overlapped = true,
     on_stdout = function(_, chunks)
@@ -165,6 +167,63 @@ function M.setup(options)
       end)
     end)
   end, {nargs = '*', range = true, force = true})
+  vim.api.nvim_create_user_command('OaxRename', function(command)
+    assert(state.edits, 'Enable edits explicitly in trusted oAX setup')
+    local snapshot = M.capture()
+    assert(not snapshot.dirty, 'Save the selected buffer before preparing a rename')
+    snapshot.selection = {start = snapshot.cursor, ['end'] = snapshot.cursor}
+    local source = vim.api.nvim_get_current_buf()
+    local expected_generation, session = state.generation, state.session
+    M.request('refactor.prepare', {observation = snapshot, newName = command.args}, function(message)
+      if not message.ok then display(message, 'rename-error'); return end
+      local plan = message.payload
+      -- Capture every loaded affected buffer; disk validation remains runtime-owned.
+      local ticks = {}
+      local function buffers_unchanged(record)
+        for _, buf in ipairs(vim.api.nvim_list_bufs()) do
+          if vim.api.nvim_buf_is_loaded(buf) then
+            local name = vim.fs.normalize(vim.api.nvim_buf_get_name(buf)):lower()
+            for _, change in ipairs(plan.changes) do
+              if name == vim.fs.normalize(state.root .. '/' .. change.path):lower() then
+                if vim.bo[buf].modified or (not record and ticks[buf] and ticks[buf] ~= vim.api.nvim_buf_get_changedtick(buf)) then return false end
+                if record then ticks[buf] = vim.api.nvim_buf_get_changedtick(buf) end
+              end
+            end
+          end
+        end
+        return true
+      end
+      if not buffers_unchanged(true) then vim.notify('An affected buffer has unsaved changes; save and preview again', vim.log.levels.WARN); return end
+      local lines = {'Rename plan: ' .. plan.id, 'Approval hash: ' .. plan.hash, plan.verification, ''}
+      for _, change in ipairs(plan.changes) do
+        vim.list_extend(lines, {'FILE: ' .. change.path, 'BEFORE:', change.before, 'AFTER:', change.after, ''})
+      end
+      display({ok = true, payload = table.concat(lines, '\n')}, message.correlationId .. '-rename')
+      vim.ui.select({'Cancel', 'Apply rename'}, {prompt = 'Write the exact reviewed files? Tests are not run.'}, function(choice)
+        if choice ~= 'Apply rename' then return end
+        if expected_generation ~= state.generation or session ~= state.session or not vim.api.nvim_buf_is_valid(source) or vim.api.nvim_buf_get_changedtick(source) ~= snapshot.documentVersion or not buffers_unchanged(false) then
+          vim.notify('Affected buffers or connection changed; preview again', vim.log.levels.WARN); return
+        end
+        M.request('refactor.apply', {planId = plan.id, approvedHash = plan.hash, observation = snapshot}, function(result)
+          -- Native checktime preserves a buffer edited while the disk operation was running.
+          for buf, _ in pairs(ticks) do
+            if vim.api.nvim_buf_is_loaded(buf) and not vim.bo[buf].modified then
+              local autoread = vim.bo[buf].autoread
+              vim.bo[buf].autoread = true
+              local ok, err = pcall(vim.cmd, 'checktime ' .. buf)
+              vim.bo[buf].autoread = autoread
+              if not ok then vim.notify(tostring(err), vim.log.levels.WARN) end
+            end
+          end
+          display(result, message.correlationId .. '-applied')
+        end)
+      end)
+    end)
+  end, {nargs = 1, force = true})
+  vim.api.nvim_create_user_command('OaxReview', function()
+    assert(state.edits, 'Enable edits explicitly in trusted oAX setup')
+    M.request('review.get', vim.empty_dict())
+  end, {force = true})
   vim.api.nvim_create_user_command('OaxCancel', function()
     if state.task then M.request('task.cancel', {taskId = state.task}, function() end) end
   end, {force = true})

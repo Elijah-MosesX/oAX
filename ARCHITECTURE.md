@@ -174,3 +174,9 @@ The hosted evidence consumers now share the canonical strict validator for code,
 ## Editor memory selection inspection (2026-10-12)
 
 The memory note picker exposes a detached read-only snapshot of note IDs, checked IDs and the focused ID for actual editor acceptance. Initial keyboard focus checks no note; production context preview and explicit transmission consent remain authoritative. Reconnect hides the picker. Provider details and per-stream-step permission enforcement stay inside their existing boundaries.
+
+## Second-editor reviewed rename (2026-10-13)
+
+Trusted `--edits` setup selects `editor-reviewed-rename.v1`, adding three existing runtime methods: prepare rename, apply exact plan, and inspect review. The default and text-only contracts remain unchanged. The bridge retains one short-lived plan receipt per connection and consumes it on an apply attempt; the runtime still owns plan state, validation, grants, writes and review freshness.
+
+Neovim shows complete before/after content before native Cancel-default approval and checks affected loaded buffers. It refreshes only unmodified buffers after the runtime result and displays actual review evidence. No provider-specific execution, new persistence, test runner or permission engine was introduced.

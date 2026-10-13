@@ -144,3 +144,7 @@ Build first, configure the adapter with an absolute trusted Codex executable in 
 For the opt-in synthetic live check, set `OAX_NVIM_EXECUTABLE` to the pinned Neovim binary, `OAX_NVIM_LIVE_TEST=1`, and `OAX_CODEX_EXECUTABLE` to the absolute installed executable, then run `node scripts/test-neovim.mjs`. The existing `providerExecutable()` helper in `packages/codex/src/executable.ts` discovers the installed binary. This consumes account usage and drives the real native confirmation with queued input; ordinary Neovim acceptance remains deterministic. Evidence is written to `.oax/nvim-live-*/acceptance.json`. Clear the live flag afterward.
 
 `node --import tsx --test tests/editor-agent.test.ts tests/integration/adapter-contract.test.ts` checks approval expiry, replay, mismatched inputs, runtime rejection, scoped cancellation, EOF cleanup and built CLI argument validation without provider usage.
+
+## Neovim reviewed-rename acceptance
+
+Set `OAX_NVIM_EXECUTABLE` to pinned Neovim 0.11.5, set `OAX_NVIM_EDIT_TEST=1`, then run `node scripts/test-neovim.mjs` after building. This creates an isolated two-file synthetic fixture and drives actual native approval, cancellation, changed-buffer protection, rename, buffer refresh, review and disk-baseline rejection. It uses no provider. Evidence is saved under `.oax/nvim-edit-*/acceptance.json`. Live and edit acceptance flags are mutually exclusive; clear the edit flag for the default read-only suite. Setup and user commands are in `docs/adapters.md`.

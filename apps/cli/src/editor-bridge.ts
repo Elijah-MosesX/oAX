@@ -14,14 +14,18 @@ import {
   EDITOR_READ_METHODS,
   editorBootstrapSchema,
   editorAgentBootstrapSchema,
+  editorEditBootstrapSchema,
+  EDITOR_EDIT_METHODS,
+  renamePlanSchema,
 } from '@oax/protocol';
 
 export const EDITOR_METHODS = EDITOR_READ_METHODS;
-/** Private parent-owned stdio. Codex is explicit opt-in; writes remain unavailable. */
+/** Private parent-owned stdio. Codex and reviewed rename are separate explicit opt-ins. */
 export async function editorBridge(
   runtimePath: string,
   root: string,
   codex?: string,
+  edits = false,
 ): Promise<void> {
   if (codex !== undefined && !path.isAbsolute(codex))
     throw new OaxError('INVALID_ARGS', 'Codex executable must be absolute');
@@ -37,6 +41,8 @@ export async function editorBridge(
       codex ? 'codex' : 'mock',
       process.stdin,
       process.stdout,
+      Date.now,
+      edits,
     );
   } finally {
     client.dispose();
@@ -51,8 +57,15 @@ export async function serveEditorBridge(
   inputStream: Readable,
   outputStream: Writable,
   now: () => number = Date.now,
+  edits = false,
 ): Promise<void> {
   const writer = new FrameWriter(outputStream);
+  const methods: readonly string[] = edits
+    ? EDITOR_EDIT_METHODS
+    : EDITOR_METHODS;
+  let editReceipt:
+    | { id: string; hash: string; expires: number; observationHash: string }
+    | undefined;
   let preview:
     | { hash: string; requestHash: string; expires: number }
     | undefined;
@@ -88,15 +101,20 @@ export async function serveEditorBridge(
   try {
     await send(
       'adapter-bootstrap',
-      (engine === 'codex'
-        ? editorAgentBootstrapSchema
-        : editorBootstrapSchema
+      (edits
+        ? editorEditBootstrapSchema
+        : engine === 'codex'
+          ? editorAgentBootstrapSchema
+          : editorBootstrapSchema
       ).parse({
-        contract:
-          engine === 'codex' ? 'editor-codex-text.v1' : 'editor-read-only.v1',
+        contract: edits
+          ? 'editor-reviewed-rename.v1'
+          : engine === 'codex'
+            ? 'editor-codex-text.v1'
+            : 'editor-read-only.v1',
         workspaceId: client.identity,
         sessionId: opened.sessionId,
-        methods: EDITOR_METHODS,
+        methods,
         engine,
       }),
     );
@@ -113,14 +131,10 @@ export async function serveEditorBridge(
         if (seen.size >= 4096)
           throw new OaxError('SESSION_LIMIT', 'Reconnect after 4096 requests');
         seen.add(req.id);
-        if (
-          !EDITOR_METHODS.includes(
-            req.method as (typeof EDITOR_METHODS)[number],
-          )
-        )
+        if (!methods.includes(req.method))
           throw new OaxError(
             'UNSUPPORTED_METHOD',
-            'Method unavailable in read-only editor adapter',
+            'Method unavailable in this editor adapter',
           );
         const payload = payloadSchemas[
           req.method as keyof typeof payloadSchemas
@@ -169,7 +183,35 @@ export async function serveEditorBridge(
               );
             } else {
               if (req.method === 'context.preview') preview = undefined;
+              if (req.method === 'refactor.prepare') editReceipt = undefined;
+              if (req.method === 'refactor.apply') {
+                const params = payloadSchemas['refactor.apply'].parse(payload);
+                const receipt = editReceipt;
+                editReceipt = undefined;
+                if (
+                  !receipt ||
+                  now() >= receipt.expires ||
+                  receipt.id !== params.planId ||
+                  receipt.hash !== params.approvedHash ||
+                  receipt.observationHash !== fingerprint(params.observation)
+                )
+                  throw new OaxError(
+                    'PERMISSION_DENIED',
+                    'Review and approve this exact rename in this connection',
+                  );
+              }
               result = await client.call(req.method, payload, opened.sessionId);
+              if (req.method === 'refactor.prepare') {
+                const plan = renamePlanSchema.parse(result);
+                const params =
+                  payloadSchemas['refactor.prepare'].parse(payload);
+                editReceipt = {
+                  id: plan.id,
+                  hash: plan.hash,
+                  expires: Math.min(plan.expiresAt, now() + 60000),
+                  observationHash: fingerprint(params.observation),
+                };
+              }
               if (engine === 'codex' && req.method === 'context.preview') {
                 const hash = (result as { hash?: unknown })?.hash;
                 if (typeof hash !== 'string' || !/^[a-f0-9]{64}$/.test(hash))

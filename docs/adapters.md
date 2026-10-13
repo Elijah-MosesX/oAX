@@ -30,11 +30,11 @@ require('oax').setup({
 })
 ```
 
-Use `:OaxCallers`, `:OaxObserve`, or the development-only `:OaxExplainMock`. Results appear in a read-only scratch buffer. Characterwise and linewise current visual selections are supported; block selections and other dirty-buffer overlays are not. Open files come from actual visible text windows across tabs rather than all cached buffers. `User OaxEvent` delivers actual scoped lifecycle/activity/cursor events for presentation consumers. The prototype does not move your cursor, apply edits or automatically follow an agent. `require('oax').close()` releases the connection; VimLeave closes it automatically. Neovim setup assumes you explicitly trust the configured root; it does not claim a VS Code-style workspace trust UI.
+Use `:OaxCallers`, `:OaxObserve`, or the development-only `:OaxExplainMock`. Results appear in a read-only scratch buffer. Characterwise and linewise current visual selections are supported; block selections and other dirty-buffer overlays are not. Open files come from actual visible text windows across tabs rather than all cached buffers. `User OaxEvent` delivers actual scoped lifecycle/activity/cursor events for presentation consumers. Default setup does not apply edits or automatically follow an agent. `require('oax').close()` releases the connection; VimLeave closes it automatically. Neovim setup assumes you explicitly trust the configured root; it does not claim a VS Code-style workspace trust UI.
 
 Run `pnpm test:neovim` with `OAX_NVIM_EXECUTABLE` set to the absolute pinned executable. The actual headless editor acceptance verifies unsaved semantic callers, an actual Unicode visual selection, ordered runtime/mock events, unsupported-write denial and preserved developer cursor. The optional portable editor lives under ignored `.tools`; it is excluded from indexing and provider context. Normal Node tests need no Neovim installation.
 
-Use `:OaxContext [objective]` to inspect the current line's bounded context and approval hash, or `:2,5OaxContext Explain callers` for an explicit line range. Visual Ex ranges select whole lines. The command captures the unsaved document and its version, uses UTF-16 end-exclusive coordinates, and opens a read-only result buffer without modifying the source or starting an agent task. Default mode remains read-only; opt-in provider explanation is described above, while edits and tests remain unavailable.
+Use `:OaxContext [objective]` to inspect the current line's bounded context and approval hash, or `:2,5OaxContext Explain callers` for an explicit line range. Visual Ex ranges select whole lines. The command captures the unsaved document and its version, uses UTF-16 end-exclusive coordinates, and opens a read-only result buffer without modifying the source or starting an agent task. Default mode remains read-only; opt-in provider explanation is described above, while reviewed rename requires the separate opt-in below and tests remain unavailable.
 
 ## JetBrains prototype
 
@@ -58,3 +58,13 @@ Desktop/web evaluation does not establish cloud deployment, tenant isolation or 
 ## Requested voice follow-up
 
 Voice was not implemented in Milestone 6, whose checklist required assessment. The user's subsequent request explicitly adds voice to the implementation backlog. It remains planned, not cancelled or deployed. The next voice slice must choose and verify a backend, add explicit microphone start/stop and indication, provide text alternatives and keep all transcription-driven actions behind the same runtime approvals. No microphone capture is enabled by this milestone. See [voice acceptance requirements](buddy.md#optional-voice-assessment).
+
+## Opt-in reviewed rename
+
+Set `edits = true` in trusted Neovim setup to select `editor-reviewed-rename.v1`. The CLI equivalent is `editor-bridge <root> [--codex <absolute-executable>] --edits`. This contract adds only `refactor.prepare`, `refactor.apply` and `review.get`; it can use mock or explicit Codex text mode. Codex is not needed for deterministic rename.
+
+Place the cursor on a saved TypeScript/JavaScript symbol and run `:OaxRename newName`. A read-only view displays every path and complete before/after content. The native choice defaults to Cancel. Apply uses an exact, single-use, connection-bound receipt with a maximum 60-second lifetime; a changed source version or any affected dirty/changed loaded buffer requires a fresh preview. The runtime independently enforces saved-file baselines, exact plan/hash, expiration, path identity and resource grants. Unmodified affected buffers reload after completion; unsaved buffers are preserved.
+
+Use `:OaxReview` to inspect the latest completed edit and current disk freshness. Rename's limited syntax/checker validation does not establish test success or external API compatibility. No provider-generated edits, test execution, Git writes or automatic rollback are exposed. A multi-file I/O failure can leave partial writes and is reported by the runtime; this is not an atomic transaction.
+
+With pinned Neovim configured, set `OAX_NVIM_EDIT_TEST=1` and run `node scripts/test-neovim.mjs`. The isolated synthetic fixture verifies native cancellation, changed secondary buffers, cross-file writes, refresh, review and disk-conflict rejection. It uses no provider account. Clear the flag to run default acceptance.

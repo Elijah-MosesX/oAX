@@ -9,6 +9,7 @@ import {
   checkPlanSchema,
   editorBootstrapSchema,
   editorAgentBootstrapSchema,
+  editorEditBootstrapSchema,
 } from '@oax/protocol';
 async function main(): Promise<void> {
   mkdirSync('schemas', { recursive: true });
@@ -19,6 +20,7 @@ async function main(): Promise<void> {
     'check-plan.v0.1': checkPlanSchema,
     'editor-bootstrap.v0.1': editorBootstrapSchema,
     'editor-agent-bootstrap.v0.1': editorAgentBootstrapSchema,
+    'editor-edit-bootstrap.v0.1': editorEditBootstrapSchema,
     ...Object.fromEntries(
       Object.entries(payloadSchemas).map(([method, schema]) => [
         `${method}.v0.1`,

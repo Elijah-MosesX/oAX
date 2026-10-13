@@ -211,3 +211,126 @@ test('Codex bridge requires a fresh one-use preview bound to connection, content
   }
   assert.ok(disposed);
 });
+
+test('edit bridge requires opt-in, fresh exact one-use plans and keeps execution unavailable', async () => {
+  for (const enabled of [false, true]) {
+    const input = new PassThrough(),
+      output = new PassThrough();
+    const writer = new FrameWriter(input),
+      reader = frames(output)[Symbol.asyncIterator]();
+    let time = 100,
+      writes = 0;
+    const captured = { ...observation(), dirty: false };
+    const hash = 'a'.repeat(64);
+    const client: Parameters<typeof serveEditorBridge>[0] = {
+      identity: 'workspace',
+      call: async (method) => {
+        if (method === 'session.open') return { sessionId: 'session' };
+        if (method === 'refactor.prepare')
+          return {
+            id: 'plan',
+            hash,
+            expiresAt: time + 60000,
+            state: 'awaiting_approval',
+            verification: 'Syntax only',
+            changes: [
+              {
+                path: 'example.ts',
+                before: 'before',
+                after: 'after',
+                beforeHash: hash,
+              },
+            ],
+          };
+        if (method === 'refactor.apply') {
+          writes++;
+          return { files: ['example.ts'] };
+        }
+        return {};
+      },
+      explain: async () => 'mock',
+      subscribe: () => () => {},
+      onDisconnect: () => () => {},
+      dispose: () => {},
+    };
+    const running = serveEditorBridge(
+      client,
+      'mock',
+      input,
+      output,
+      () => time,
+      enabled,
+    );
+    const next = async () =>
+      messageSchema.parse((await reader.next()).value) as Response;
+    const send = async (
+      method: string,
+      payload: unknown,
+      session = 'session',
+    ) => {
+      await writer.send(request('workspace', method, payload, session));
+      return next();
+    };
+    const apply = { planId: 'plan', approvedHash: hash, observation: captured };
+    const prepare = async () =>
+      assert.ok(
+        (
+          await send('refactor.prepare', {
+            observation: captured,
+            newName: 'renamed',
+          })
+        ).ok,
+      );
+    const deny = async (value: unknown) => {
+      const r = await send('refactor.apply', value);
+      assert.ok(!r.ok && r.error.code === 'PERMISSION_DENIED');
+    };
+    try {
+      const bootstrap = await next();
+      assert.ok(bootstrap.ok);
+      assert.equal(
+        (bootstrap.payload as { contract: string }).contract,
+        enabled ? 'editor-reviewed-rename.v1' : 'editor-read-only.v1',
+      );
+      if (!enabled) {
+        const r = await send('refactor.prepare', {
+          observation: captured,
+          newName: 'renamed',
+        });
+        assert.ok(!r.ok && r.error.code === 'UNSUPPORTED_METHOD');
+        continue;
+      }
+      await deny(apply);
+      await prepare();
+      await deny({ ...apply, approvedHash: 'b'.repeat(64) });
+      await deny(apply);
+      await prepare();
+      await deny({ ...apply, planId: 'other' });
+      await prepare();
+      await deny({
+        ...apply,
+        observation: { ...captured, documentVersion: 3 },
+      });
+      await prepare();
+      time += 60000;
+      await deny(apply);
+      assert.equal(writes, 0);
+      await prepare();
+      const foreign = await send('refactor.apply', apply, 'foreign');
+      assert.ok(!foreign.ok && foreign.error.code === 'SCOPE_MISMATCH');
+      const execute = await send('verification.prepare', {
+        observation: captured,
+      });
+      assert.ok(!execute.ok && execute.error.code === 'UNSUPPORTED_METHOD');
+      assert.ok((await send('refactor.apply', apply)).ok);
+      assert.equal(writes, 1);
+      await deny(apply);
+      assert.equal(writes, 1);
+      assert.ok((await send('review.get', {})).ok);
+    } finally {
+      input.end();
+      await running;
+      output.end();
+    }
+  }
+});

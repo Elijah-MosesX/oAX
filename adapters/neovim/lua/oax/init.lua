@@ -52,7 +52,8 @@ end
 local function receive(message)
   assert(message.version == '0.1', 'Unsupported oAX version')
   if message.type == 'response' and message.correlationId == 'adapter-bootstrap' then
-    assert(message.ok and message.payload.contract == 'editor-read-only.v1', 'Invalid adapter bootstrap')
+    local expected = state.codex and 'editor-codex-text.v1' or 'editor-read-only.v1'
+    assert(message.ok and message.payload.contract == expected and message.payload.engine == (state.codex and 'codex' or 'mock'), 'Invalid adapter bootstrap')
     state.identity, state.session = message.payload.workspaceId, message.payload.sessionId
     return
   end
@@ -60,6 +61,10 @@ local function receive(message)
   if message.type == 'event' then
     assert(message.sessionId == state.session and message.sequence > (state.sequence or 0), 'Invalid event scope/order')
     state.sequence = message.sequence
+    if message.method == 'task.state' then
+      local phase = message.payload.state
+      state.task = (phase ~= 'completed' and phase ~= 'failed' and phase ~= 'cancelled') and message.taskId or nil
+    end
     table.insert(state.events, message)
     if #state.events > 100 then table.remove(state.events, 1) end
     vim.api.nvim_exec_autocmds('User', {pattern = 'OaxEvent', data = message})
@@ -70,11 +75,7 @@ local function receive(message)
     callback(message)
   else error('Invalid oAX message type') end
 end
-function M.request(method, payload, callback)
-  assert(state.session, 'oAX not connected yet')
-  state.serial = state.serial + 1
-  local id = 'nvim-' .. state.serial
-  state.pending[id] = callback or function(message)
+local function display(message, id)
     if not message.ok then vim.notify(message.error.code .. ': ' .. message.error.message, vim.log.levels.ERROR); return end
     local buf = vim.api.nvim_create_buf(false, true)
     vim.api.nvim_buf_set_name(buf, 'oax-result://' .. id)
@@ -82,18 +83,36 @@ function M.request(method, payload, callback)
     vim.api.nvim_buf_set_lines(buf, 0, -1, false, vim.split(text, '\n', {plain = true}))
     vim.bo[buf].modifiable = false
     vim.cmd('botright split'); vim.api.nvim_win_set_buf(0, buf)
-  end
+end
+function M.request(method, payload, callback)
+  assert(state.session, 'oAX not connected yet')
+  state.serial = state.serial + 1
+  local id = 'nvim-' .. state.serial
+  state.pending[id] = callback or function(message) display(message, id) end
   vim.fn.chansend(state.job, vim.json.encode({type = 'request', version = '0.1', id = id,
     timestamp = os.date('!%Y-%m-%dT%H:%M:%SZ'), workspaceId = state.identity, sessionId = state.session,
     method = method, payload = payload}) .. '\n')
+end
+local function line_snapshot(command)
+  local snapshot = M.capture()
+  local last = vim.api.nvim_buf_get_lines(0, command.line2 - 1, command.line2, false)[1] or ''
+  snapshot.selection = {start = {line = command.line1 - 1, column = 0}, ['end'] = {line = command.line2 - 1, column = utf16(last, #last)}}
+  return snapshot
 end
 function M.setup(options)
   assert(not state.job, 'oAX already connected; close before reconnecting')
   assert(options.root and options.cli, 'Configure trusted root and absolute built CLI path')
   state.generation = state.generation + 1
   local generation = state.generation
+  state.error = nil
   state.root = vim.fn.fnamemodify(options.root, ':p'):gsub('[\\/]$', '')
-  state.job = vim.fn.jobstart({options.node or 'node', options.cli, 'editor-bridge', state.root}, {
+  state.codex = options.codex
+  local argv = {options.node or 'node', options.cli, 'editor-bridge', state.root}
+  if options.codex then
+    assert(vim.fn.fnamemodify(options.codex, ':p') == options.codex or vim.fs.normalize(vim.fn.fnamemodify(options.codex, ':p')) == vim.fs.normalize(options.codex), 'Configure an absolute Codex executable')
+    vim.list_extend(argv, {'--codex', options.codex})
+  end
+  state.job = vim.fn.jobstart(argv, {
     overlapped = true,
     on_stdout = function(_, chunks)
       if generation ~= state.generation then return end
@@ -110,9 +129,13 @@ function M.setup(options)
         end
       end)
     end,
-    on_exit = function() vim.schedule(function()
+    on_exit = function(_, code) vim.schedule(function()
       if generation ~= state.generation then return end
-      state.job, state.session, state.identity = nil, nil, nil
+      if not state.session then
+        state.error = 'oAX bridge exited before initialization (code ' .. code .. '); check executable and provider login'
+        vim.notify(state.error, vim.log.levels.ERROR)
+      end
+      state.job, state.session, state.identity, state.task = nil, nil, nil, nil
       for _, callback in pairs(state.pending) do callback({ok = false, error = {code = 'DISCONNECTED', message = 'oAX runtime disconnected'}}) end
       state.pending = {}
     end) end,
@@ -121,19 +144,41 @@ function M.setup(options)
   vim.api.nvim_create_user_command('OaxCallers', function() M.request('graph.query', {observation = M.capture(), relationship = 'callers'}) end, {force = true})
   vim.api.nvim_create_user_command('OaxObserve', function() M.request('spatial.observe', {observation = M.capture()}) end, {force = true})
   vim.api.nvim_create_user_command('OaxContext', function(command)
-    local snapshot = M.capture()
-    local last = vim.api.nvim_buf_get_lines(0, command.line2 - 1, command.line2, false)[1] or ''
-    snapshot.selection = {start = {line = command.line1 - 1, column = 0}, ['end'] = {line = command.line2 - 1, column = utf16(last, #last)}}
-    M.request('context.preview', {observation = snapshot, objective = command.args ~= '' and command.args or 'Explain current code'})
+    M.request('context.preview', {observation = line_snapshot(command), objective = command.args ~= '' and command.args or 'Explain current code'})
   end, {nargs = '*', range = true, force = true})
-  vim.api.nvim_create_user_command('OaxExplainMock', function() M.request('selection.explain', {observation = M.capture(), objective = 'Explain current code using the explicitly selected mock engine'}) end, {force = true})
+  vim.api.nvim_create_user_command('OaxExplain', function(command)
+    assert(state.codex, 'Configure codex explicitly; no mock fallback')
+    local snapshot = line_snapshot(command)
+    local source = vim.api.nvim_get_current_buf()
+    local expected_generation, session = state.generation, state.session
+    local payload = {observation = snapshot, objective = command.args ~= '' and command.args or 'Explain current code'}
+    M.request('context.preview', payload, function(message)
+      display(message, message.correlationId .. '-preview')
+      if not message.ok then return end
+      vim.ui.select({'Cancel', 'Send to Codex'}, {prompt = 'Send this preview using your existing provider login? Usage may be charged.'}, function(choice)
+        if choice ~= 'Send to Codex' then return end
+        if expected_generation ~= state.generation or session ~= state.session or not vim.api.nvim_buf_is_valid(source) or vim.api.nvim_buf_get_changedtick(source) ~= snapshot.documentVersion then
+          vim.notify('Context changed or connection closed; preview again', vim.log.levels.WARN); return
+        end
+        payload.approvedContextHash = message.payload.hash
+        M.request('selection.explain', payload)
+      end)
+    end)
+  end, {nargs = '*', range = true, force = true})
+  vim.api.nvim_create_user_command('OaxCancel', function()
+    if state.task then M.request('task.cancel', {taskId = state.task}, function() end) end
+  end, {force = true})
+  vim.api.nvim_create_user_command('OaxExplainMock', function()
+    assert(not state.codex, 'Mock command is unavailable in Codex mode')
+    M.request('selection.explain', {observation = M.capture(), objective = 'Explain current code using the explicitly selected mock engine'})
+  end, {force = true})
   vim.api.nvim_create_autocmd('VimLeavePre', {callback = M.close, once = true})
 end
-function M.inspect() return {connected = state.session ~= nil, events = vim.deepcopy(state.events)} end
+function M.inspect() return {connected = state.session ~= nil, engine = state.codex and 'codex' or 'mock', error = state.error, events = vim.deepcopy(state.events)} end
 function M.close()
   state.generation = state.generation + 1
   if state.job then vim.fn.jobstop(state.job) end
-  state.job, state.session, state.identity = nil, nil, nil
+  state.job, state.session, state.identity, state.task = nil, nil, nil, nil
   state.events, state.sequence, state.remainder = {}, nil, ''
   local pending = state.pending
   state.pending = {}

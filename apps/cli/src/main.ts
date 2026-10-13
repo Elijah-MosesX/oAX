@@ -457,12 +457,18 @@ const main = async () => {
     return;
   }
   if (command === 'editor-bridge') {
-    if (!root || process.argv.length !== 4)
+    if (
+      !root ||
+      !(
+        process.argv.length === 4 ||
+        (process.argv.length === 6 && workspaceId === '--codex')
+      )
+    )
       throw new OaxError(
         'INVALID_ARGS',
-        'editor-bridge requires exactly one trusted workspace root',
+        'editor-bridge requires a trusted workspace root and optional --codex <absolute-executable>',
       );
-    return editorBridge(__filename, root);
+    return editorBridge(__filename, root, process.argv[5]);
   }
   if (command === 'serve' && root && workspaceId)
     return serve(root, workspaceId);
@@ -503,7 +509,7 @@ const main = async () => {
       'Diagnostics: node dist/cli.cjs doctor [workspace-root] (read-only; no model requests)\n',
     );
     process.stdout.write(
-      'Editor adapter: node dist/cli.cjs editor-bridge <trusted-workspace-root> (private read-only protocol 0.1; mock explanations only)\n',
+      'Editor adapter: node dist/cli.cjs editor-bridge <trusted-workspace-root> [--codex <absolute-executable>] (private protocol 0.1; default mock, explicit hash-approved Codex text)\n',
     );
     process.stdout.write(
       'oAX CLI (Explain uses Codex; explicit --mock is development-only)\nUsage: node dist/cli.cjs init [workspace-root]\n       node dist/cli.cjs analyze [workspace-root]\n       node dist/cli.cjs onboard [workspace-root]\n       node dist/cli.cjs query <callers|imports|implements|tests> <path> <zero-based-line> <zero-based-column>\n       node dist/cli.cjs rename <path> <zero-based-line> <zero-based-column> <new-name> [--apply <preview-hash>]\n       node dist/cli.cjs explain <path> [--history] [--codex <absolute-executable>] [--approve <context-hash>]\n       node dist/cli.cjs review <path>\n       node dist/cli.cjs verify <saved-test-path> [--approve <plan-hash>]\n       node dist/cli.cjs serve <workspace-root> <workspace-id>\ninit preserves config; analyze builds a local TypeScript/JavaScript SQLite graph. Rename previews before writes and verifies syntax; workspace tests are not run.\nserve is a private stdio interface requiring OAX_CONNECTION_TOKEN; no TCP port is opened.\nExit codes: 0 success, 1 operation failed, 2 unsupported command.\n',

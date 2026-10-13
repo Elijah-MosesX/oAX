@@ -1,12 +1,34 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { request, messageSchema, type Response } from '@oax/protocol';
 import { RuntimeClient } from '@oax/runtime/client';
 import { frames, FrameWriter } from '@oax/runtime/transport';
 import { observation, fixtureRoot } from '../helpers.js';
 import type { GraphResult } from '@oax/codegraph';
+
+test('editor provider mode rejects relative executables and ambiguous command arguments', () => {
+  for (const args of [
+    ['--codex', 'relative.exe'],
+    ['--codex'],
+    ['--provider', 'codex'],
+    ['--codex', ''],
+  ]) {
+    const result = spawnSync(
+      process.execPath,
+      [path.resolve('dist/cli.cjs'), 'editor-bridge', fixtureRoot, ...args],
+      { windowsHide: true, encoding: 'utf8', timeout: 10000 },
+    );
+    assert.equal(result.status, 1, result.stderr);
+    assert.match(result.stderr, /INVALID_ARGS/);
+    assert.equal(
+      result.stdout,
+      '',
+      'Invalid provider setup cannot announce a ready session',
+    );
+  }
+});
 
 test('second-editor bridge reuses protocol validation and deterministic graph results while rejecting scope and writes', async () => {
   const child = spawn(

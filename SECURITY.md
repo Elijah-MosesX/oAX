@@ -1,5 +1,7 @@
 # oAX security policy
 
+The second-editor bridge enables provider text only through an explicit absolute Codex executable at process launch. The original default mock/read-only contract remains unchanged. Its new versioned bootstrap identifies Codex explicitly; missing, mismatched, expired, reused or cross-connection preview approvals cannot reach execution. One attempt consumes the 60-second preview receipt, and the runtime independently verifies current context before granting transmission. Neovim defaults to Cancel and rejects changed-buffer or disconnected approval callbacks. The editor process remains a trusted local consent surface, not a sandbox against arbitrary plugins. Provider tools, edits, terminal tests, credentials and Git/GitHub mutations remain unavailable through this bridge.
+
 Clicky is installed as checksum-verified reference source only. oAX does not run
 its proxy, analytics, screenshot capture, speech providers or updater. The
 workbench Buddy consumes authenticated source-free operation receipts and grants

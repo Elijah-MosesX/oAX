@@ -136,3 +136,11 @@ After `pnpm build`, set `OAX_LIVE_EDITOR_TEST=1`, `OAX_AUTOMATED_LIVE_EDITOR_TES
 ## Neovim context inspection and provider diagnostics
 
 After building, run `pnpm test:neovim` with `OAX_NVIM_EXECUTABLE` pointing to the pinned Neovim 0.11.5 binary. Acceptance now drives `OaxContext` through its production command and verifies read-only unsaved-context display, preserved source/cursor and no agent task. Usage and line-range semantics are in `docs/adapters.md`. Provider RPC timeouts identify the outbound operation without printing request parameters or raw provider responses; `node --import tsx --test tests/codex.test.ts` verifies that diagnostic.
+
+## Opt-in Neovim Codex explanation
+
+Build first, configure the adapter with an absolute trusted Codex executable in its optional `codex` field, then use `OaxExplain [objective]` (current line or Ex range). Review the complete context and choose Send to Codex in the Cancel-default native prompt. `OaxCancel` cancels the active task. Default setup remains read-only/mock. See `docs/adapters.md` for the versioned contract and one-use approval receipt.
+
+For the opt-in synthetic live check, set `OAX_NVIM_EXECUTABLE` to the pinned Neovim binary, `OAX_NVIM_LIVE_TEST=1`, and `OAX_CODEX_EXECUTABLE` to the absolute installed executable, then run `node scripts/test-neovim.mjs`. The existing `providerExecutable()` helper in `packages/codex/src/executable.ts` discovers the installed binary. This consumes account usage and drives the real native confirmation with queued input; ordinary Neovim acceptance remains deterministic. Evidence is written to `.oax/nvim-live-*/acceptance.json`. Clear the live flag afterward.
+
+`node --import tsx --test tests/editor-agent.test.ts tests/integration/adapter-contract.test.ts` checks approval expiry, replay, mismatched inputs, runtime rejection, scoped cancellation, EOF cleanup and built CLI argument validation without provider usage.

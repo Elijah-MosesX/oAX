@@ -1,4 +1,6 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
+import path from 'node:path';
+import type { Readable, Writable } from 'node:stream';
 import { realpath } from 'node:fs/promises';
 import { RuntimeClient } from '@oax/runtime/client';
 import { frames, FrameWriter } from '@oax/runtime/transport';
@@ -11,16 +13,51 @@ import {
   type Request,
   EDITOR_READ_METHODS,
   editorBootstrapSchema,
+  editorAgentBootstrapSchema,
 } from '@oax/protocol';
 
 export const EDITOR_METHODS = EDITOR_READ_METHODS;
-/** Private parent-owned stdio only. No provider, mutation or terminal capability. */
+/** Private parent-owned stdio. Codex is explicit opt-in; writes remain unavailable. */
 export async function editorBridge(
   runtimePath: string,
   root: string,
+  codex?: string,
 ): Promise<void> {
-  const client = await RuntimeClient.connect(runtimePath, await realpath(root));
-  const writer = new FrameWriter(process.stdout);
+  if (codex !== undefined && !path.isAbsolute(codex))
+    throw new OaxError('INVALID_ARGS', 'Codex executable must be absolute');
+  const client = await RuntimeClient.connect(
+    runtimePath,
+    await realpath(root),
+    process.execPath,
+    codex,
+  );
+  try {
+    await serveEditorBridge(
+      client,
+      codex ? 'codex' : 'mock',
+      process.stdin,
+      process.stdout,
+    );
+  } finally {
+    client.dispose();
+  }
+}
+export async function serveEditorBridge(
+  client: Pick<
+    RuntimeClient,
+    'identity' | 'call' | 'explain' | 'subscribe' | 'onDisconnect' | 'dispose'
+  >,
+  engine: 'mock' | 'codex',
+  inputStream: Readable,
+  outputStream: Writable,
+  now: () => number = Date.now,
+): Promise<void> {
+  const writer = new FrameWriter(outputStream);
+  let preview:
+    | { hash: string; requestHash: string; expires: number }
+    | undefined;
+  const fingerprint = (value: unknown) =>
+    createHash('sha256').update(JSON.stringify(value)).digest('hex');
   let active: Request | undefined;
   const seen = new Set<string>();
   const opened = (await client.call('session.open', {})) as {
@@ -46,20 +83,24 @@ export async function editorBridge(
         .send({ ...event, correlationId: active.id })
         .catch(() => client.dispose());
   });
-  const disconnected = client.onDisconnect(() => process.stdin.destroy());
+  const disconnected = client.onDisconnect(() => inputStream.destroy());
   const operations = new Set<Promise<void>>();
   try {
     await send(
       'adapter-bootstrap',
-      editorBootstrapSchema.parse({
-        contract: 'editor-read-only.v1',
+      (engine === 'codex'
+        ? editorAgentBootstrapSchema
+        : editorBootstrapSchema
+      ).parse({
+        contract:
+          engine === 'codex' ? 'editor-codex-text.v1' : 'editor-read-only.v1',
         workspaceId: client.identity,
         sessionId: opened.sessionId,
         methods: EDITOR_METHODS,
-        engine: 'mock',
+        engine,
       }),
     );
-    for await (const input of frames(process.stdin)) {
+    for await (const input of frames(inputStream)) {
       const req = validateRequest(input);
       try {
         if (
@@ -99,16 +140,50 @@ export async function editorBridge(
         active = req;
         const operation = (async () => {
           try {
-            const result =
-              req.method === 'selection.explain'
-                ? await client.explain(
-                    opened.sessionId,
-                    payloadSchemas['selection.explain'].parse(req.payload)
-                      .observation,
-                    payloadSchemas['selection.explain'].parse(req.payload)
-                      .objective,
-                  )
-                : await client.call(req.method, payload, opened.sessionId);
+            let result: unknown;
+            if (req.method === 'selection.explain') {
+              const { approvedContextHash, ...selection } =
+                payloadSchemas['selection.explain'].parse(payload);
+              if (engine === 'codex') {
+                const receipt = preview;
+                preview = undefined;
+                if (
+                  !receipt ||
+                  now() >= receipt.expires ||
+                  receipt.hash !== approvedContextHash ||
+                  receipt.requestHash !== fingerprint(selection)
+                )
+                  throw new OaxError(
+                    'PERMISSION_DENIED',
+                    'Preview and approve this exact context in this connection before transmission',
+                  );
+              }
+              result = await client.explain(
+                opened.sessionId,
+                selection.observation,
+                selection.objective,
+                undefined,
+                approvedContextHash,
+                selection.history,
+                selection.memoryIds,
+              );
+            } else {
+              if (req.method === 'context.preview') preview = undefined;
+              result = await client.call(req.method, payload, opened.sessionId);
+              if (engine === 'codex' && req.method === 'context.preview') {
+                const hash = (result as { hash?: unknown })?.hash;
+                if (typeof hash !== 'string' || !/^[a-f0-9]{64}$/.test(hash))
+                  throw new OaxError(
+                    'INVALID_MESSAGE',
+                    'Runtime returned an invalid context hash',
+                  );
+                preview = {
+                  hash,
+                  requestHash: fingerprint(payload),
+                  expires: now() + 60000,
+                };
+              }
+            }
             await send(req.id, result);
           } catch (error) {
             await send(

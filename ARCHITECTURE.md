@@ -1,5 +1,11 @@
 # oAX architecture
 
+## Opt-in second-editor text execution (2026-10-13)
+
+The private editor bridge defaults to the unchanged `editor-read-only.v1` mock contract. An explicit absolute Codex executable selects `editor-codex-text.v1` and the existing restricted runtime engine. No credentials or provider wire fields cross the bridge. A connection holds at most one source-free preview receipt (context hash, request fingerprint and 60-second expiry). One explanation attempt consumes it; the runtime independently reconstructs the context and enforces its exact hash/grant at transmission. The same method allowlist excludes edits, test execution and connection administration. Cancellation remains available while a task runs; EOF disposes the runtime.
+
+Neovim presents the full context in a read-only buffer and obtains a Cancel-default native choice. Its callback checks connection generation/session and source document version before forwarding the approved hash. Actual scoped runtime events drive task cancellation and remain available to presentation consumers; source and human cursor are preserved. This is a text-explanation slice, not the full refactor/test/review workflow.
+
 Neovim's `OaxContext` command now consumes the existing read-only bridge's `context.preview` method. It converts the current line or an explicit Ex line range to a versioned unsaved UTF-16 selection and displays the runtime's bounded context/hash. No protocol capability, provider permission or bridge allowlist is expanded.
 
 The local workbench projects real read-operation receipts through the same

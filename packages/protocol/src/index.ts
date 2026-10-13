@@ -45,6 +45,10 @@ export const editorBootstrapSchema = z.strictObject({
     .max(EDITOR_READ_METHODS.length),
   engine: z.literal('mock'),
 });
+export const editorAgentBootstrapSchema = editorBootstrapSchema.extend({
+  contract: z.literal('editor-codex-text.v1'),
+  engine: z.literal('codex'),
+});
 export const observationSchema = z.strictObject({
   path: z.string().min(1).max(4096),
   uri: z.string().max(8192),

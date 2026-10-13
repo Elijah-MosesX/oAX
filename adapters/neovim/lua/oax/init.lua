@@ -120,6 +120,12 @@ function M.setup(options)
   assert(state.job > 0, 'Unable to start oAX bridge')
   vim.api.nvim_create_user_command('OaxCallers', function() M.request('graph.query', {observation = M.capture(), relationship = 'callers'}) end, {force = true})
   vim.api.nvim_create_user_command('OaxObserve', function() M.request('spatial.observe', {observation = M.capture()}) end, {force = true})
+  vim.api.nvim_create_user_command('OaxContext', function(command)
+    local snapshot = M.capture()
+    local last = vim.api.nvim_buf_get_lines(0, command.line2 - 1, command.line2, false)[1] or ''
+    snapshot.selection = {start = {line = command.line1 - 1, column = 0}, ['end'] = {line = command.line2 - 1, column = utf16(last, #last)}}
+    M.request('context.preview', {observation = snapshot, objective = command.args ~= '' and command.args or 'Explain current code'})
+  end, {nargs = '*', range = true, force = true})
   vim.api.nvim_create_user_command('OaxExplainMock', function() M.request('selection.explain', {observation = M.capture(), objective = 'Explain current code using the explicitly selected mock engine'}) end, {force = true})
   vim.api.nvim_create_autocmd('VimLeavePre', {callback = M.close, once = true})
 end

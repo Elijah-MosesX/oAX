@@ -1,5 +1,7 @@
 # oAX architecture
 
+Neovim's `OaxContext` command now consumes the existing read-only bridge's `context.preview` method. It converts the current line or an explicit Ex line range to a versioned unsaved UTF-16 selection and displays the runtime's bounded context/hash. No protocol capability, provider permission or bridge allowlist is expanded.
+
 The local workbench projects real read-operation receipts through the same
 `BuddyStore` used by VS Code. Inspection state is separate from agent task state,
 verification and cursor evidence. Authenticated event polls and RPC responses

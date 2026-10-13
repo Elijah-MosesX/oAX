@@ -26,6 +26,8 @@ Use `:OaxCallers`, `:OaxObserve`, or the development-only `:OaxExplainMock`. Res
 
 Run `pnpm test:neovim` with `OAX_NVIM_EXECUTABLE` set to the absolute pinned executable. The actual headless editor acceptance verifies unsaved semantic callers, an actual Unicode visual selection, ordered runtime/mock events, unsupported-write denial and preserved developer cursor. The optional portable editor lives under ignored `.tools`; it is excluded from indexing and provider context. Normal Node tests need no Neovim installation.
 
+Use `:OaxContext [objective]` to inspect the current line's bounded context and approval hash, or `:2,5OaxContext Explain callers` for an explicit line range. Visual Ex ranges select whole lines. The command captures the unsaved document and its version, uses UTF-16 end-exclusive coordinates, and opens a read-only result buffer without modifying the source or starting an agent task. This is the context inspection step toward a full second-editor workflow; live provider consent, execution, edits and tests remain unavailable through this bridge.
+
 ## JetBrains prototype
 
 `adapters/jetbrains` contains an IntelliJ Platform Java action and plugin descriptor targeting IDEA Community 2025.2.1, platform plugin 2.9.0 and Java 21. It captures the current document/selection on the editor thread and runs the same read-only bridge in a background task. Configure trusted absolute paths through IDE VM options `-Doax.cli=/absolute/oAX/dist/cli.cjs` and optional `-Doax.node=/absolute/node`. The editor-popup **oAX: Find Callers** action displays correlated structural evidence. Workspace files cannot supply executable configuration.

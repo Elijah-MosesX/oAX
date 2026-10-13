@@ -106,7 +106,12 @@ export class CodexRpc {
     return new Promise<T>((resolve, reject) => {
       const timer = setTimeout(() => {
         this.pending.delete(id);
-        reject(new OaxError('PROVIDER_TIMEOUT', 'Codex request timed out'));
+        reject(
+          new OaxError(
+            'PROVIDER_TIMEOUT',
+            `Codex request timed out: ${method}`,
+          ),
+        );
       }, this.timeoutMs);
       this.pending.set(id, {
         resolve: (value) => resolve(value as T),

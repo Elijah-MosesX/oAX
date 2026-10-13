@@ -40,7 +40,13 @@ test('provider request timeout and disconnect reject outstanding work', async ()
   const input = new PassThrough(),
     output = new PassThrough();
   const rpc = new CodexRpc(input, output, 5);
-  await assert.rejects(rpc.request('unknown', {}));
+  await assert.rejects(
+    rpc.request('account/read', { secret: 'must-not-appear' }),
+    {
+      code: 'PROVIDER_TIMEOUT',
+      message: 'Codex request timed out: account/read',
+    },
+  );
   const pending = rpc.request('initialize', {});
   input.end();
   await assert.rejects(pending);

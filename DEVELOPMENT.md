@@ -132,3 +132,7 @@ Connected evidence: `node dist/cli.cjs export <path> [--history] [--memory <id>]
 ## Live editor memory explanation acceptance
 
 After `pnpm build`, set `OAX_LIVE_EDITOR_TEST=1`, `OAX_AUTOMATED_LIVE_EDITOR_TEST=1`, and `OAX_LIVE_EDITOR_MEMORY_TEST=1`, then run `pnpm test:editor`. This opt-in check uses the existing provider login and synthetic notes/code, consumes account usage, and drives production selection and consent controls. It verifies cancellation without transmission, one selected note, exclusion of an unselected note, citations, streaming/Buddy state, unchanged document/selection, and source-free audits. The runtime audits each streamed iterator step under one grant. The isolated fixture stores `acceptance.json` or `failure.json`; the runner now reports harness failures directly. Clear these variables before deterministic editor tests. The new source harness passed on VS Code 1.105.0; this checkpoint does not claim installed-VSIX acceptance.
+
+## Neovim context inspection and provider diagnostics
+
+After building, run `pnpm test:neovim` with `OAX_NVIM_EXECUTABLE` pointing to the pinned Neovim 0.11.5 binary. Acceptance now drives `OaxContext` through its production command and verifies read-only unsaved-context display, preserved source/cursor and no agent task. Usage and line-range semantics are in `docs/adapters.md`. Provider RPC timeouts identify the outbound operation without printing request parameters or raw provider responses; `node --import tsx --test tests/codex.test.ts` verifies that diagnostic.

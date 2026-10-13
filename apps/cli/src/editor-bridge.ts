@@ -20,6 +20,7 @@ import {
   checkPlanSchema,
   editorTestBootstrapSchema,
   EDITOR_TEST_METHODS,
+  editorProposalBootstrapSchema,
 } from '@oax/protocol';
 
 export const EDITOR_METHODS = EDITOR_READ_METHODS;
@@ -66,10 +67,15 @@ export async function serveEditorBridge(
   tests = false,
 ): Promise<void> {
   const writer = new FrameWriter(outputStream);
+  const proposals = edits && engine === 'codex';
+  let proposalReceipt:
+    | { responseHash: string; observationHash: string; expires: number }
+    | undefined;
   const methods: readonly string[] = [
     ...new Set([
       ...(edits ? EDITOR_EDIT_METHODS : EDITOR_METHODS),
       ...(tests ? EDITOR_TEST_METHODS : []),
+      ...(proposals ? ['refactor.propose'] : []),
     ]),
   ];
   let checkReceipt: { id: string; hash: string; expires: number } | undefined;
@@ -78,7 +84,7 @@ export async function serveEditorBridge(
     | { id: string; hash: string; expires: number; observationHash: string }
     | undefined;
   let preview:
-    | { hash: string; requestHash: string; expires: number }
+    | { hash: string; requestHash: string; expires: number; editable: boolean }
     | undefined;
   const fingerprint = (value: unknown) =>
     createHash('sha256').update(JSON.stringify(value)).digest('hex');
@@ -123,21 +129,25 @@ export async function serveEditorBridge(
   try {
     await send(
       'adapter-bootstrap',
-      (tests
-        ? editorTestBootstrapSchema
-        : edits
-          ? editorEditBootstrapSchema
-          : engine === 'codex'
-            ? editorAgentBootstrapSchema
-            : editorBootstrapSchema
-      ).parse({
-        contract: tests
-          ? 'editor-verification.v1'
+      (proposals
+        ? editorProposalBootstrapSchema
+        : tests
+          ? editorTestBootstrapSchema
           : edits
-            ? 'editor-reviewed-rename.v1'
+            ? editorEditBootstrapSchema
             : engine === 'codex'
-              ? 'editor-codex-text.v1'
-              : 'editor-read-only.v1',
+              ? editorAgentBootstrapSchema
+              : editorBootstrapSchema
+      ).parse({
+        contract: proposals
+          ? 'editor-codex-edit.v1'
+          : tests
+            ? 'editor-verification.v1'
+            : edits
+              ? 'editor-reviewed-rename.v1'
+              : engine === 'codex'
+                ? 'editor-codex-text.v1'
+                : 'editor-read-only.v1',
         workspaceId: client.identity,
         sessionId: opened.sessionId,
         methods,
@@ -182,11 +192,14 @@ export async function serveEditorBridge(
           try {
             let result: unknown;
             if (req.method === 'selection.explain') {
+              proposalReceipt = undefined;
+              let editable = false;
               const { approvedContextHash, ...selection } =
                 payloadSchemas['selection.explain'].parse(payload);
               if (engine === 'codex') {
                 const receipt = preview;
                 preview = undefined;
+                editable = receipt?.editable ?? false;
                 if (
                   !receipt ||
                   now() >= receipt.expires ||
@@ -207,8 +220,34 @@ export async function serveEditorBridge(
                 selection.history,
                 selection.memoryIds,
               );
+              if (proposals && editable && typeof result === 'string')
+                proposalReceipt = {
+                  responseHash: fingerprint(result),
+                  observationHash: fingerprint(selection.observation),
+                  expires: now() + 60000,
+                };
             } else {
-              if (req.method === 'context.preview') preview = undefined;
+              if (req.method === 'context.preview') {
+                preview = undefined;
+                proposalReceipt = undefined;
+              }
+              if (req.method === 'refactor.propose') {
+                editReceipt = undefined;
+                const params =
+                  payloadSchemas['refactor.propose'].parse(payload);
+                const receipt = proposalReceipt;
+                proposalReceipt = undefined;
+                if (
+                  !receipt ||
+                  now() >= receipt.expires ||
+                  receipt.responseHash !== fingerprint(params.proposal) ||
+                  receipt.observationHash !== fingerprint(params.observation)
+                )
+                  throw new OaxError(
+                    'PERMISSION_DENIED',
+                    'Use the exact fresh provider response and captured selection from this connection',
+                  );
+              }
               if (req.method === 'verification.prepare')
                 checkReceipt = undefined;
               if (req.method === 'verification.run') {
@@ -241,7 +280,7 @@ export async function serveEditorBridge(
                 )
                   throw new OaxError(
                     'PERMISSION_DENIED',
-                    'Review and approve this exact rename in this connection',
+                    'Review and approve this exact edit in this connection',
                   );
               }
               result = await client.call(req.method, payload, opened.sessionId);
@@ -253,10 +292,12 @@ export async function serveEditorBridge(
                   expires: Math.min(plan.expiresAt, now() + 60000),
                 };
               }
-              if (req.method === 'refactor.prepare') {
+              if (
+                req.method === 'refactor.prepare' ||
+                req.method === 'refactor.propose'
+              ) {
                 const plan = renamePlanSchema.parse(result);
-                const params =
-                  payloadSchemas['refactor.prepare'].parse(payload);
+                const params = payloadSchemas[req.method].parse(payload);
                 editReceipt = {
                   id: plan.id,
                   hash: plan.hash,
@@ -275,6 +316,16 @@ export async function serveEditorBridge(
                   hash,
                   requestHash: fingerprint(payload),
                   expires: now() + 60000,
+                  editable:
+                    (
+                      result as {
+                        context?: { truncated?: boolean; redactions?: number };
+                      }
+                    ).context?.truncated === false &&
+                    !(result as { context?: { redactions?: number } }).context
+                      ?.redactions &&
+                    !payloadSchemas['context.preview'].parse(payload)
+                      .observation.dirty,
                 };
               }
             }

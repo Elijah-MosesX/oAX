@@ -82,6 +82,21 @@ export const editorTestBootstrapSchema = editorEditBootstrapSchema.extend({
     .min(1)
     .max(13),
 });
+export const editorProposalBootstrapSchema = editorTestBootstrapSchema.extend({
+  contract: z.literal('editor-codex-edit.v1'),
+  engine: z.literal('codex'),
+  methods: z
+    .array(
+      z.enum([
+        ...EDITOR_EDIT_METHODS,
+        'refactor.propose',
+        'verification.prepare',
+        'verification.run',
+      ]),
+    )
+    .min(1)
+    .max(14),
+});
 export const observationSchema = z.strictObject({
   path: z.string().min(1).max(4096),
   uri: z.string().max(8192),

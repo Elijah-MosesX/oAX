@@ -6,7 +6,8 @@ if (!executable || !path.isAbsolute(executable))
   throw new Error(
     'Set OAX_NVIM_EXECUTABLE to an absolute Neovim 0.11.5 executable',
   );
-const live = process.env.OAX_NVIM_LIVE_TEST === '1';
+const proposal = process.env.OAX_NVIM_PROPOSAL_TEST === '1';
+const live = process.env.OAX_NVIM_LIVE_TEST === '1' || proposal;
 const verify = process.env.OAX_NVIM_VERIFY_TEST === '1';
 const edits = process.env.OAX_NVIM_EDIT_TEST === '1' || verify;
 if (live && edits) throw new Error('Choose one acceptance mode');
@@ -27,12 +28,21 @@ if (live || edits) {
   await writeFile(
     path.join(workspace, edits ? 'example.ts' : 'example.mjs'),
     'export function add(a, b) { return a + b; }\n' +
-      (edits ? 'export const result = add(1, 2);\n' : ''),
+      (edits
+        ? 'export const result = add(1, 2);\n'
+        : proposal
+          ? '// preserved outside selection\n'
+          : ''),
   );
   if (edits)
     await writeFile(
       path.join(workspace, 'caller.ts'),
       "import { add } from './example';\nexport const value = add(3, 4);\n",
+    );
+  if (proposal)
+    await writeFile(
+      path.join(workspace, 'proposal.test.mjs'),
+      "import assert from 'node:assert/strict';\nimport {add} from './example.mjs';\nassert.equal(add(7, 2), 5);\n",
     );
   if (verify)
     await writeFile(
@@ -55,11 +65,13 @@ const child = spawn(
     `set rtp+=${path.resolve('adapters/neovim').replaceAll('\\', '/').replaceAll(' ', '\\ ')}`,
     '-l',
     path.resolve(
-      live
-        ? 'tests/neovim/live.lua'
-        : edits
-          ? 'tests/neovim/edit.lua'
-          : 'tests/neovim/acceptance.lua',
+      proposal
+        ? 'tests/neovim/proposal.lua'
+        : live
+          ? 'tests/neovim/live.lua'
+          : edits
+            ? 'tests/neovim/edit.lua'
+            : 'tests/neovim/acceptance.lua',
     ),
   ],
   {
@@ -91,6 +103,7 @@ try {
       await readFile(path.join(workspace, 'acceptance.json'), 'utf8'),
     );
     if (
+      (proposal && !result.proposal) ||
       (verify && !result.verification) ||
       !result.verified ||
       result.engine !== (live ? 'codex' : 'mock')

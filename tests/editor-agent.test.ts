@@ -468,3 +468,163 @@ test('test-only bridge binds approval and forwards late task output with origina
     output.end();
   }
 });
+
+test('provider edit proposals require the exact fresh response and a separate write approval', async () => {
+  const { selectionEditPlan } = await import(
+    '../packages/runtime/src/refactor.js'
+  );
+  const input = new PassThrough(),
+    output = new PassThrough();
+  const writer = new FrameWriter(input),
+    reader = frames(output)[Symbol.asyncIterator]();
+  let time = 100,
+    writes = 0,
+    truncated = false,
+    redactions = 0;
+  let proposal = JSON.stringify({
+    replacement: 'export const after = 2;',
+    explanation: 'Requested change',
+  });
+  const captured = { ...observation('export const before = 1;'), dirty: false };
+  const selection = { observation: captured, objective: 'Propose an edit' };
+  const hash = 'a'.repeat(64);
+  const client: Parameters<typeof serveEditorBridge>[0] = {
+    identity: 'workspace',
+    call: async (method, payload) => {
+      if (method === 'session.open') return { sessionId: 'session' };
+      if (method === 'context.preview')
+        return { hash, context: { truncated, redactions } };
+      if (method === 'refactor.propose') {
+        const params = payload as {
+          observation: typeof captured;
+          proposal: string;
+        };
+        return {
+          ...selectionEditPlan('plan', params.observation, params.proposal),
+          expiresAt: time + 60000,
+        };
+      }
+      if (method === 'refactor.apply') {
+        writes++;
+        return { files: ['example.ts'] };
+      }
+      return {};
+    },
+    explain: async () => proposal,
+    subscribe: () => () => {},
+    onDisconnect: () => () => {},
+    dispose: () => {},
+  };
+  const running = serveEditorBridge(
+    client,
+    'codex',
+    input,
+    output,
+    () => time,
+    true,
+  );
+  const send = async (method: string, payload: unknown) => {
+    await writer.send(request('workspace', method, payload, 'session'));
+    return messageSchema.parse((await reader.next()).value) as Response;
+  };
+  const generate = async () => {
+    assert.ok((await send('context.preview', selection)).ok);
+    assert.ok(
+      (
+        await send('selection.explain', {
+          ...selection,
+          approvedContextHash: hash,
+        })
+      ).ok,
+    );
+  };
+  const deny = async (value: unknown) => {
+    const r = await send('refactor.propose', value);
+    assert.ok(!r.ok && r.error.code === 'PERMISSION_DENIED');
+  };
+  try {
+    const boot = messageSchema.parse((await reader.next()).value) as Response;
+    assert.ok(boot.ok);
+    assert.equal(
+      (boot.payload as { contract: string }).contract,
+      'editor-codex-edit.v1',
+    );
+    await deny({ observation: captured, proposal });
+    await generate();
+    await deny({ observation: captured, proposal: proposal + ' ' });
+    await deny({ observation: captured, proposal });
+    await generate();
+    await deny({ observation: { ...captured, documentVersion: 3 }, proposal });
+    await generate();
+    time += 60000;
+    await deny({ observation: captured, proposal });
+    truncated = true;
+    await generate();
+    await deny({ observation: captured, proposal });
+    truncated = false;
+    redactions = 1;
+    await generate();
+    await deny({ observation: captured, proposal });
+    redactions = 0;
+    const valid = proposal;
+    proposal = JSON.stringify({
+      replacement: 'bad',
+      explanation: 'bad',
+      path: 'other.ts',
+    });
+    await generate();
+    const invalid = await send('refactor.propose', {
+      observation: captured,
+      proposal,
+    });
+    assert.ok(!invalid.ok);
+    proposal = valid;
+    await generate();
+    const prepared = await send('refactor.propose', {
+      observation: captured,
+      proposal,
+    });
+    assert.ok(prepared.ok);
+    assert.equal(
+      writes,
+      0,
+      'Provider transmission and preparation never write',
+    );
+    const plan = prepared.payload as { id: string; hash: string };
+    const badApproval = await send('refactor.apply', {
+      planId: plan.id,
+      approvedHash: hash,
+      observation: captured,
+    });
+    assert.ok(!badApproval.ok);
+    await generate();
+    const fresh = await send('refactor.propose', {
+      observation: captured,
+      proposal,
+    });
+    assert.ok(fresh.ok);
+    const ready = fresh.payload as { id: string; hash: string };
+    assert.ok(
+      (
+        await send('refactor.apply', {
+          planId: ready.id,
+          approvedHash: ready.hash,
+          observation: captured,
+        })
+      ).ok,
+    );
+    assert.equal(writes, 1);
+    await deny({ observation: captured, proposal });
+    const replay = await send('refactor.apply', {
+      planId: ready.id,
+      approvedHash: ready.hash,
+      observation: captured,
+    });
+    assert.ok(!replay.ok);
+    assert.equal(writes, 1);
+  } finally {
+    input.end();
+    await running;
+    output.end();
+  }
+});

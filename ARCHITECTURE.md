@@ -186,3 +186,9 @@ Neovim shows complete before/after content before native Cancel-default approval
 Independent trusted `--tests` setup selects `editor-verification.v1`, exposing the existing saved-test planner/runner and review reader. Optional rename support remains separately selected. A connection-scoped single-use receipt binds plan ID/hash and a maximum 60-second expiry before runtime dispatch. Execution, bounded output, timeout, cancellation, source freshness, grants and review state stay runtime-owned.
 
 The bridge retains verification task correlation after the initial request acknowledgement until terminal state, so later output and cancellation results reach Neovim. The adapter checks the captured buffer/session before native approval and renders the actual terminal result. Reusing a result window prevents repeated previews/results from exhausting editor splits.
+
+## Second-editor provider proposals (2026-10-13)
+
+Explicit Codex plus edit setup selects `editor-codex-edit.v1`; optional tests remain separately enabled. Context/explanation reuse existing hash-bound consent. Only complete non-redacted saved context can yield a fresh proposal receipt, bound to exact provider output and captured observation. A one-use refactor.propose dispatch reuses the runtime strict JSON replacement parser and single-selection plan. Write approval remains a separate plan/hash receipt and existing runtime grant/baseline boundary.
+
+Neovim shares one reviewed-plan UI for deterministic rename and provider proposals, checking affected buffers and connection continuity. Provider generation and test execution do not gain file-write authority; generated edits remain explicitly unverified until independent checks complete. VS Code production behavior and provider wire contracts are unchanged.

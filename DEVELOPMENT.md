@@ -152,3 +152,7 @@ Set `OAX_NVIM_EXECUTABLE` to pinned Neovim 0.11.5, set `OAX_NVIM_EDIT_TEST=1`, t
 ## Neovim test execution acceptance
 
 After building, set `OAX_NVIM_VERIFY_TEST=1` and the pinned `OAX_NVIM_EXECUTABLE`, then run `node scripts/test-neovim.mjs`. This extends the isolated rename fixture with actual Node test processes and native confirmation. It verifies cancellation before execution, changed-buffer rejection, passing/failing results, running-process cancellation and current review evidence. No provider usage occurs. The receipt includes `verification: true`; clear the flag to return to default acceptance. Product setup uses independent `tests = true`, with `edits = true` only when rename is also wanted.
+
+## Neovim live proposal acceptance
+
+After building, set `OAX_NVIM_PROPOSAL_TEST=1`, the pinned `OAX_NVIM_EXECUTABLE`, and the absolute `OAX_CODEX_EXECUTABLE`, then run `node scripts/test-neovim.mjs`. The installed executable can be discovered with `providerExecutable()`. This opt-in test uses the existing provider login and account usage, sends only a synthetic fixture, drives native send/write cancellations and approvals, then runs a separately approved Node test. A `proposal: true` receipt is required. Clear other Neovim acceptance mode flags first. No model usage occurs in normal Node tests.

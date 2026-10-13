@@ -180,3 +180,9 @@ The memory note picker exposes a detached read-only snapshot of note IDs, checke
 Trusted `--edits` setup selects `editor-reviewed-rename.v1`, adding three existing runtime methods: prepare rename, apply exact plan, and inspect review. The default and text-only contracts remain unchanged. The bridge retains one short-lived plan receipt per connection and consumes it on an apply attempt; the runtime still owns plan state, validation, grants, writes and review freshness.
 
 Neovim shows complete before/after content before native Cancel-default approval and checks affected loaded buffers. It refreshes only unmodified buffers after the runtime result and displays actual review evidence. No provider-specific execution, new persistence, test runner or permission engine was introduced.
+
+## Second-editor verification (2026-10-13)
+
+Independent trusted `--tests` setup selects `editor-verification.v1`, exposing the existing saved-test planner/runner and review reader. Optional rename support remains separately selected. A connection-scoped single-use receipt binds plan ID/hash and a maximum 60-second expiry before runtime dispatch. Execution, bounded output, timeout, cancellation, source freshness, grants and review state stay runtime-owned.
+
+The bridge retains verification task correlation after the initial request acknowledgement until terminal state, so later output and cancellation results reach Neovim. The adapter checks the captured buffer/session before native approval and renders the actual terminal result. Reusing a result window prevents repeated previews/results from exhausting editor splits.

@@ -68,3 +68,11 @@ Place the cursor on a saved TypeScript/JavaScript symbol and run `:OaxRename new
 Use `:OaxReview` to inspect the latest completed edit and current disk freshness. Rename's limited syntax/checker validation does not establish test success or external API compatibility. No provider-generated edits, test execution, Git writes or automatic rollback are exposed. A multi-file I/O failure can leave partial writes and is reported by the runtime; this is not an atomic transaction.
 
 With pinned Neovim configured, set `OAX_NVIM_EDIT_TEST=1` and run `node scripts/test-neovim.mjs`. The isolated synthetic fixture verifies native cancellation, changed secondary buffers, cross-file writes, refresh, review and disk-conflict rejection. It uses no provider account. Clear the flag to run default acceptance.
+
+## Separately approved test execution
+
+Set `tests = true` in trusted setup (CLI: `--tests`) to select `editor-verification.v1`. This independently adds `verification.prepare`, `verification.run` and `review.get`; combine with `edits = true` only for rename support. Existing default/text/rename contracts keep their previous allowlists.
+
+Open a saved `.test` or `.spec` JavaScript/TypeScript file and run `:OaxVerify`. Review the executable, fixed arguments, working directory, source hash, timeout and execution disclosure. Cancel is first. Run test consumes a connection-bound exact-plan approval receipt; changed buffers or sessions require a new preview, and the runtime checks disk freshness and grants at execution. Tests and their dependencies run with local-account rights, restricted environment and a five-second timeout. They can modify files or use the network; no OS sandbox or rollback is claimed. Arbitrary shell commands/package scripts remain unavailable.
+
+Output and final completed/failed/cancelled state appear in the reusable result window. Runtime events continue after the immediate task acknowledgement. `:OaxCancel` stops an active check; `:OaxReview` shows the latest edit and its test result, with source freshness checked again. Passing one selected test does not establish full project correctness. No edit review exists until a rename has completed in this session.

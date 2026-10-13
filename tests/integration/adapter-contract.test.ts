@@ -15,6 +15,7 @@ test('editor provider mode rejects relative executables and ambiguous command ar
     ['--provider', 'codex'],
     ['--codex', ''],
     ['--edits', '--edits'],
+    ['--tests', '--tests'],
     ['--edits', 'unexpected'],
   ]) {
     const result = spawnSync(

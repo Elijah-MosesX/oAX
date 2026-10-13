@@ -63,6 +63,25 @@ export const editorEditBootstrapSchema = editorBootstrapSchema.extend({
     .min(1)
     .max(EDITOR_EDIT_METHODS.length),
 });
+export const EDITOR_TEST_METHODS = [
+  ...EDITOR_READ_METHODS,
+  'review.get',
+  'verification.prepare',
+  'verification.run',
+] as const;
+export const editorTestBootstrapSchema = editorEditBootstrapSchema.extend({
+  contract: z.literal('editor-verification.v1'),
+  methods: z
+    .array(
+      z.enum([
+        ...EDITOR_EDIT_METHODS,
+        'verification.prepare',
+        'verification.run',
+      ]),
+    )
+    .min(1)
+    .max(13),
+});
 export const observationSchema = z.strictObject({
   path: z.string().min(1).max(4096),
   uri: z.string().max(8192),

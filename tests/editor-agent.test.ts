@@ -334,3 +334,137 @@ test('edit bridge requires opt-in, fresh exact one-use plans and keeps execution
     }
   }
 });
+
+test('test-only bridge binds approval and forwards late task output with original correlation', async () => {
+  const input = new PassThrough(),
+    output = new PassThrough();
+  const writer = new FrameWriter(input),
+    reader = frames(output)[Symbol.asyncIterator]();
+  let time = 100,
+    runs = 0;
+  let emit: Parameters<
+    Parameters<typeof serveEditorBridge>[0]['subscribe']
+  >[0] = () => {};
+  const hash = 'a'.repeat(64);
+  const event = (method: 'task.state' | 'agent.delta', payload: unknown) => {
+    emit(
+      messageSchema.parse({
+        type: 'event',
+        version: '0.1',
+        id: 'event',
+        timestamp: new Date().toISOString(),
+        workspaceId: 'workspace',
+        sessionId: 'session',
+        taskId: 'plan',
+        correlationId: 'internal',
+        sequence: 1,
+        method,
+        payload,
+      }) as import('@oax/protocol').Event,
+    );
+  };
+  const client: Parameters<typeof serveEditorBridge>[0] = {
+    identity: 'workspace',
+    call: async (method) => {
+      if (method === 'session.open') return { sessionId: 'session' };
+      if (method === 'verification.prepare')
+        return {
+          id: 'plan',
+          hash,
+          expiresAt: time + 60000,
+          state: 'awaiting_approval',
+          path: 'example.test.mjs',
+          sourceHash: hash,
+          executable: process.execPath,
+          args: ['--test', 'example.test.mjs'],
+          cwd: process.cwd(),
+          timeoutMs: 5000,
+          disclosure: 'Local-account execution',
+        };
+      if (method === 'verification.run') {
+        runs++;
+        event('task.state', { state: 'created' });
+        return { taskId: 'plan' };
+      }
+      return {};
+    },
+    explain: async () => 'mock',
+    subscribe: (fn) => {
+      emit = fn;
+      return () => {};
+    },
+    onDisconnect: () => () => {},
+    dispose: () => {},
+  };
+  const running = serveEditorBridge(
+    client,
+    'mock',
+    input,
+    output,
+    () => time,
+    false,
+    true,
+  );
+  const next = async () => messageSchema.parse((await reader.next()).value);
+  const send = async (method: string, payload: unknown) => {
+    const req = request('workspace', method, payload, 'session');
+    await writer.send(req);
+    return next();
+  };
+  const plan = { planId: 'plan', approvedHash: hash };
+  const prepare = async () => {
+    const r = await send('verification.prepare', {
+      observation: observation(),
+    });
+    assert.ok(r.type === 'response' && r.ok);
+  };
+  const deny = async (payload: unknown) => {
+    const r = await send('verification.run', payload);
+    assert.ok(
+      r.type === 'response' && !r.ok && r.error.code === 'PERMISSION_DENIED',
+    );
+  };
+  try {
+    const boot = await next();
+    assert.ok(boot.type === 'response' && boot.ok);
+    const methods = (boot.payload as { methods: string[] }).methods;
+    assert.ok(
+      methods.includes('verification.run') &&
+        !methods.includes('refactor.apply'),
+    );
+    await deny(plan);
+    await prepare();
+    await deny({ ...plan, approvedHash: 'b'.repeat(64) });
+    await deny(plan);
+    await prepare();
+    await deny({ ...plan, planId: 'foreign' });
+    await prepare();
+    time += 60000;
+    await deny(plan);
+    assert.equal(runs, 0);
+    await prepare();
+    const req = request('workspace', 'verification.run', plan, 'session');
+    await writer.send(req);
+    const started = await next();
+    assert.equal(started.type, 'event');
+    assert.equal(started.correlationId, req.id);
+    const ack = await next();
+    assert.ok(ack.type === 'response' && ack.ok);
+    // Events must survive the immediate acknowledgement and unrelated requests.
+    await send('review.get', {});
+    event('agent.delta', { text: 'test output' });
+    const delta = await next();
+    assert.equal(delta.type, 'event');
+    assert.equal(delta.correlationId, req.id);
+    event('task.state', { state: 'completed' });
+    const done = await next();
+    assert.equal(done.type, 'event');
+    assert.equal(done.correlationId, req.id);
+    await deny(plan);
+    assert.equal(runs, 1);
+  } finally {
+    input.end();
+    await running;
+    output.end();
+  }
+});

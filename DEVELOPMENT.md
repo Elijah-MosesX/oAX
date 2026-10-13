@@ -148,3 +148,7 @@ For the opt-in synthetic live check, set `OAX_NVIM_EXECUTABLE` to the pinned Neo
 ## Neovim reviewed-rename acceptance
 
 Set `OAX_NVIM_EXECUTABLE` to pinned Neovim 0.11.5, set `OAX_NVIM_EDIT_TEST=1`, then run `node scripts/test-neovim.mjs` after building. This creates an isolated two-file synthetic fixture and drives actual native approval, cancellation, changed-buffer protection, rename, buffer refresh, review and disk-baseline rejection. It uses no provider. Evidence is saved under `.oax/nvim-edit-*/acceptance.json`. Live and edit acceptance flags are mutually exclusive; clear the edit flag for the default read-only suite. Setup and user commands are in `docs/adapters.md`.
+
+## Neovim test execution acceptance
+
+After building, set `OAX_NVIM_VERIFY_TEST=1` and the pinned `OAX_NVIM_EXECUTABLE`, then run `node scripts/test-neovim.mjs`. This extends the isolated rename fixture with actual Node test processes and native confirmation. It verifies cancellation before execution, changed-buffer rejection, passing/failing results, running-process cancellation and current review evidence. No provider usage occurs. The receipt includes `verification: true`; clear the flag to return to default acceptance. Product setup uses independent `tests = true`, with `edits = true` only when rename is also wanted.

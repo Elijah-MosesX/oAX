@@ -49,10 +49,11 @@ function M.capture()
     cursor = start, selection = selection, openFiles = open,
     visibleRanges = {{start = {line = vim.fn.line('w0') - 1, column = 0}, ['end'] = {line = vim.fn.line('w$') - 1, column = utf16(lines[vim.fn.line('w$')] or '', #(lines[vim.fn.line('w$')] or ''))}}}}
 end
+local display
 local function receive(message)
   assert(message.version == '0.1', 'Unsupported oAX version')
   if message.type == 'response' and message.correlationId == 'adapter-bootstrap' then
-    local expected = state.edits and 'editor-reviewed-rename.v1' or state.codex and 'editor-codex-text.v1' or 'editor-read-only.v1'
+    local expected = state.tests and 'editor-verification.v1' or state.edits and 'editor-reviewed-rename.v1' or state.codex and 'editor-codex-text.v1' or 'editor-read-only.v1'
     assert(message.ok and message.payload.contract == expected and message.payload.engine == (state.codex and 'codex' or 'mock'), 'Invalid adapter bootstrap')
     state.identity, state.session = message.payload.workspaceId, message.payload.sessionId
     return
@@ -65,6 +66,14 @@ local function receive(message)
       local phase = message.payload.state
       state.task = (phase ~= 'completed' and phase ~= 'failed' and phase ~= 'cancelled') and message.taskId or nil
     end
+    if state.check and state.check.id == message.taskId then
+      if message.method == 'agent.delta' then state.check.output = (state.check.output .. message.payload.text):sub(1, 8000) end
+      if message.method == 'task.state' and (message.payload.state == 'completed' or message.payload.state == 'failed' or message.payload.state == 'cancelled') then
+        local check = state.check
+        state.check = nil
+        display({ok = true, payload = {state = message.payload.state, error = message.payload.error, output = check.output, planId = check.id}}, check.id .. '-verification')
+      end
+    end
     table.insert(state.events, message)
     if #state.events > 100 then table.remove(state.events, 1) end
     vim.api.nvim_exec_autocmds('User', {pattern = 'OaxEvent', data = message})
@@ -75,14 +84,20 @@ local function receive(message)
     callback(message)
   else error('Invalid oAX message type') end
 end
-local function display(message, id)
+display = function(message, id)
     if not message.ok then vim.notify(message.error.code .. ': ' .. message.error.message, vim.log.levels.ERROR); return end
     local buf = vim.api.nvim_create_buf(false, true)
     vim.api.nvim_buf_set_name(buf, 'oax-result://' .. id)
     local text = type(message.payload) == 'string' and message.payload or vim.inspect(message.payload)
     vim.api.nvim_buf_set_lines(buf, 0, -1, false, vim.split(text, '\n', {plain = true}))
     vim.bo[buf].modifiable = false
-    vim.cmd('botright split'); vim.api.nvim_win_set_buf(0, buf)
+    if state.result_window and vim.api.nvim_win_is_valid(state.result_window) and vim.api.nvim_buf_get_name(vim.api.nvim_win_get_buf(state.result_window)):find('oax-result://', 1, true) == 1 then
+      vim.api.nvim_set_current_win(state.result_window)
+    else
+      vim.cmd('botright split')
+      state.result_window = vim.api.nvim_get_current_win()
+    end
+    vim.api.nvim_win_set_buf(0, buf)
 end
 function M.request(method, payload, callback)
   assert(state.session, 'oAX not connected yet')
@@ -108,12 +123,14 @@ function M.setup(options)
   state.root = vim.fn.fnamemodify(options.root, ':p'):gsub('[\\/]$', '')
   state.codex = options.codex
   state.edits = options.edits == true
+  state.tests = options.tests == true
   local argv = {options.node or 'node', options.cli, 'editor-bridge', state.root}
   if options.codex then
     assert(vim.fn.fnamemodify(options.codex, ':p') == options.codex or vim.fs.normalize(vim.fn.fnamemodify(options.codex, ':p')) == vim.fs.normalize(options.codex), 'Configure an absolute Codex executable')
     vim.list_extend(argv, {'--codex', options.codex})
   end
   if state.edits then table.insert(argv, '--edits') end
+  if state.tests then table.insert(argv, '--tests') end
   state.job = vim.fn.jobstart(argv, {
     overlapped = true,
     on_stdout = function(_, chunks)
@@ -137,7 +154,7 @@ function M.setup(options)
         state.error = 'oAX bridge exited before initialization (code ' .. code .. '); check executable and provider login'
         vim.notify(state.error, vim.log.levels.ERROR)
       end
-      state.job, state.session, state.identity, state.task = nil, nil, nil, nil
+      state.job, state.session, state.identity, state.task, state.check = nil, nil, nil, nil, nil
       for _, callback in pairs(state.pending) do callback({ok = false, error = {code = 'DISCONNECTED', message = 'oAX runtime disconnected'}}) end
       state.pending = {}
     end) end,
@@ -221,8 +238,30 @@ function M.setup(options)
     end)
   end, {nargs = 1, force = true})
   vim.api.nvim_create_user_command('OaxReview', function()
-    assert(state.edits, 'Enable edits explicitly in trusted oAX setup')
+    assert(state.edits or state.tests, 'Enable edits or tests explicitly in trusted oAX setup')
     M.request('review.get', vim.empty_dict())
+  end, {force = true})
+  vim.api.nvim_create_user_command('OaxVerify', function()
+    assert(state.tests, 'Enable tests explicitly in trusted oAX setup')
+    local snapshot = M.capture()
+    assert(not snapshot.dirty, 'Save the selected test before verification')
+    local source = vim.api.nvim_get_current_buf()
+    local expected_generation, session = state.generation, state.session
+    M.request('verification.prepare', {observation = snapshot}, function(message)
+      if not message.ok then display(message, 'verification-error'); return end
+      local plan = message.payload
+      display(message, message.correlationId .. '-test-preview')
+      vim.ui.select({'Cancel', 'Run test'}, {prompt = plan.disclosure}, function(choice)
+        if choice ~= 'Run test' then return end
+        if expected_generation ~= state.generation or session ~= state.session or not vim.api.nvim_buf_is_valid(source) or vim.api.nvim_buf_get_changedtick(source) ~= snapshot.documentVersion or vim.bo[source].modified then
+          vim.notify('Test buffer or connection changed; preview again', vim.log.levels.WARN); return
+        end
+        state.check = {id = plan.id, output = ''}
+        M.request('verification.run', {planId = plan.id, approvedHash = plan.hash}, function(result)
+          if not result.ok then state.check = nil; display(result, plan.id .. '-error') end
+        end)
+      end)
+    end)
   end, {force = true})
   vim.api.nvim_create_user_command('OaxCancel', function()
     if state.task then M.request('task.cancel', {taskId = state.task}, function() end) end

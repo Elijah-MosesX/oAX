@@ -17,6 +17,9 @@ import {
   editorEditBootstrapSchema,
   EDITOR_EDIT_METHODS,
   renamePlanSchema,
+  checkPlanSchema,
+  editorTestBootstrapSchema,
+  EDITOR_TEST_METHODS,
 } from '@oax/protocol';
 
 export const EDITOR_METHODS = EDITOR_READ_METHODS;
@@ -26,6 +29,7 @@ export async function editorBridge(
   root: string,
   codex?: string,
   edits = false,
+  tests = false,
 ): Promise<void> {
   if (codex !== undefined && !path.isAbsolute(codex))
     throw new OaxError('INVALID_ARGS', 'Codex executable must be absolute');
@@ -43,6 +47,7 @@ export async function editorBridge(
       process.stdout,
       Date.now,
       edits,
+      tests,
     );
   } finally {
     client.dispose();
@@ -58,11 +63,17 @@ export async function serveEditorBridge(
   outputStream: Writable,
   now: () => number = Date.now,
   edits = false,
+  tests = false,
 ): Promise<void> {
   const writer = new FrameWriter(outputStream);
-  const methods: readonly string[] = edits
-    ? EDITOR_EDIT_METHODS
-    : EDITOR_METHODS;
+  const methods: readonly string[] = [
+    ...new Set([
+      ...(edits ? EDITOR_EDIT_METHODS : EDITOR_METHODS),
+      ...(tests ? EDITOR_TEST_METHODS : []),
+    ]),
+  ];
+  let checkReceipt: { id: string; hash: string; expires: number } | undefined;
+  let checkTask: { id: string; correlationId: string } | undefined;
   let editReceipt:
     | { id: string; hash: string; expires: number; observationHash: string }
     | undefined;
@@ -91,27 +102,42 @@ export async function serveEditorBridge(
       }),
     );
   const unsubscribe = client.subscribe((event) => {
-    if (active && event.sessionId === opened.sessionId)
+    if (event.sessionId !== opened.sessionId) return;
+    if (active?.method === 'verification.run' && !checkTask)
+      checkTask = { id: event.taskId, correlationId: active.id };
+    const correlationId =
+      checkTask?.id === event.taskId ? checkTask.correlationId : active?.id;
+    if (correlationId)
       void writer
-        .send({ ...event, correlationId: active.id })
+        .send({ ...event, correlationId })
         .catch(() => client.dispose());
+    if (
+      checkTask?.id === event.taskId &&
+      event.method === 'task.state' &&
+      ['completed', 'failed', 'cancelled'].includes(event.payload.state)
+    )
+      checkTask = undefined;
   });
   const disconnected = client.onDisconnect(() => inputStream.destroy());
   const operations = new Set<Promise<void>>();
   try {
     await send(
       'adapter-bootstrap',
-      (edits
-        ? editorEditBootstrapSchema
-        : engine === 'codex'
-          ? editorAgentBootstrapSchema
-          : editorBootstrapSchema
-      ).parse({
-        contract: edits
-          ? 'editor-reviewed-rename.v1'
+      (tests
+        ? editorTestBootstrapSchema
+        : edits
+          ? editorEditBootstrapSchema
           : engine === 'codex'
-            ? 'editor-codex-text.v1'
-            : 'editor-read-only.v1',
+            ? editorAgentBootstrapSchema
+            : editorBootstrapSchema
+      ).parse({
+        contract: tests
+          ? 'editor-verification.v1'
+          : edits
+            ? 'editor-reviewed-rename.v1'
+            : engine === 'codex'
+              ? 'editor-codex-text.v1'
+              : 'editor-read-only.v1',
         workspaceId: client.identity,
         sessionId: opened.sessionId,
         methods,
@@ -183,6 +209,24 @@ export async function serveEditorBridge(
               );
             } else {
               if (req.method === 'context.preview') preview = undefined;
+              if (req.method === 'verification.prepare')
+                checkReceipt = undefined;
+              if (req.method === 'verification.run') {
+                const params =
+                  payloadSchemas['verification.run'].parse(payload);
+                const receipt = checkReceipt;
+                checkReceipt = undefined;
+                if (
+                  !receipt ||
+                  receipt.id !== params.planId ||
+                  receipt.hash !== params.approvedHash ||
+                  now() >= receipt.expires
+                )
+                  throw new OaxError(
+                    'PERMISSION_DENIED',
+                    'Review and approve this exact test plan in this connection',
+                  );
+              }
               if (req.method === 'refactor.prepare') editReceipt = undefined;
               if (req.method === 'refactor.apply') {
                 const params = payloadSchemas['refactor.apply'].parse(payload);
@@ -201,6 +245,14 @@ export async function serveEditorBridge(
                   );
               }
               result = await client.call(req.method, payload, opened.sessionId);
+              if (req.method === 'verification.prepare') {
+                const plan = checkPlanSchema.parse(result);
+                checkReceipt = {
+                  id: plan.id,
+                  hash: plan.hash,
+                  expires: Math.min(plan.expiresAt, now() + 60000),
+                };
+              }
               if (req.method === 'refactor.prepare') {
                 const plan = renamePlanSchema.parse(result);
                 const params =

@@ -460,9 +460,11 @@ const main = async () => {
     const args = process.argv.slice(4);
     let codex: string | undefined;
     let edits = false;
+    let tests = false;
     while (args.length) {
       const flag = args.shift();
       if (flag === '--edits' && !edits) edits = true;
+      else if (flag === '--tests' && !tests) tests = true;
       else if (
         flag === '--codex' &&
         codex === undefined &&
@@ -473,7 +475,7 @@ const main = async () => {
       else
         throw new OaxError(
           'INVALID_ARGS',
-          'editor-bridge <root> [--codex <absolute-executable>] [--edits]',
+          'editor-bridge <root> [--codex <absolute-executable>] [--edits] [--tests]',
         );
     }
     if (!root)
@@ -481,7 +483,7 @@ const main = async () => {
         'INVALID_ARGS',
         'A trusted workspace root is required',
       );
-    return editorBridge(__filename, root, codex, edits);
+    return editorBridge(__filename, root, codex, edits, tests);
   }
   if (command === 'serve' && root && workspaceId)
     return serve(root, workspaceId);

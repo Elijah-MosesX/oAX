@@ -10,6 +10,7 @@ import {
   editorBootstrapSchema,
   editorAgentBootstrapSchema,
   editorEditBootstrapSchema,
+  editorTestBootstrapSchema,
 } from '@oax/protocol';
 async function main(): Promise<void> {
   mkdirSync('schemas', { recursive: true });
@@ -21,6 +22,7 @@ async function main(): Promise<void> {
     'editor-bootstrap.v0.1': editorBootstrapSchema,
     'editor-agent-bootstrap.v0.1': editorAgentBootstrapSchema,
     'editor-edit-bootstrap.v0.1': editorEditBootstrapSchema,
+    'editor-test-bootstrap.v0.1': editorTestBootstrapSchema,
     ...Object.fromEntries(
       Object.entries(payloadSchemas).map(([method, schema]) => [
         `${method}.v0.1`,

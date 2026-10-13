@@ -7,7 +7,8 @@ if (!executable || !path.isAbsolute(executable))
     'Set OAX_NVIM_EXECUTABLE to an absolute Neovim 0.11.5 executable',
   );
 const live = process.env.OAX_NVIM_LIVE_TEST === '1';
-const edits = process.env.OAX_NVIM_EDIT_TEST === '1';
+const verify = process.env.OAX_NVIM_VERIFY_TEST === '1';
+const edits = process.env.OAX_NVIM_EDIT_TEST === '1' || verify;
 if (live && edits) throw new Error('Choose one acceptance mode');
 let workspace;
 if (live || edits) {
@@ -32,6 +33,11 @@ if (live || edits) {
     await writeFile(
       path.join(workspace, 'caller.ts'),
       "import { add } from './example';\nexport const value = add(3, 4);\n",
+    );
+  if (verify)
+    await writeFile(
+      path.join(workspace, 'verify.test.mjs'),
+      "import {readFileSync,writeFileSync} from 'node:fs';\nimport assert from 'node:assert/strict';\nassert.match(readFileSync('example.ts','utf8'), /function renamed/);\nwriteFileSync('ran.txt','yes');\n",
     );
   console.log(
     `Synthetic Neovim acceptance (live provider: ${live}). Evidence: ${workspace}`,
@@ -84,8 +90,14 @@ try {
     const result = JSON.parse(
       await readFile(path.join(workspace, 'acceptance.json'), 'utf8'),
     );
-    if (!result.verified || result.engine !== (live ? 'codex' : 'mock'))
-      throw new Error('Live Neovim acceptance did not verify Codex');
+    if (
+      (verify && !result.verification) ||
+      !result.verified ||
+      result.engine !== (live ? 'codex' : 'mock')
+    )
+      throw new Error(
+        'Neovim acceptance receipt is missing or has the wrong engine',
+      );
   }
 } finally {
   clearTimeout(timer);

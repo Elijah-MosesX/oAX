@@ -1,6 +1,6 @@
 local M = {}
-local state = { pending = {}, events = {}, serial = 0, remainder = '', generation = 0 }
-local namespace = vim.api.nvim_create_namespace('oax-agent')
+local state = { waiting = {}, pending = {}, events = {}, serial = 0, remainder = '', generation = 0 }
+local presence = require('oax.presence')
 local function utf16(line, byte)
   local prefix = line:sub(1, byte)
   local count = 0
@@ -56,6 +56,7 @@ local function receive(message)
     local expected = state.codex and state.edits and 'editor-codex-edit.v1' or state.tests and 'editor-verification.v1' or state.edits and 'editor-reviewed-rename.v1' or state.codex and 'editor-codex-text.v1' or 'editor-read-only.v1'
     assert(message.ok and message.payload.contract == expected and message.payload.engine == (state.codex and 'codex' or 'mock'), 'Invalid adapter bootstrap')
     state.identity, state.session = message.payload.workspaceId, message.payload.sessionId
+    presence.schedule()
     return
   end
   assert(message.workspaceId == state.identity, 'oAX workspace mismatch')
@@ -74,6 +75,7 @@ local function receive(message)
         display({ok = true, payload = {state = message.payload.state, error = message.payload.error, output = check.output, planId = check.id}}, check.id .. '-verification')
       end
     end
+    presence.event(message)
     table.insert(state.events, message)
     if #state.events > 100 then table.remove(state.events, 1) end
     vim.api.nvim_exec_autocmds('User', {pattern = 'OaxEvent', data = message})
@@ -99,7 +101,19 @@ display = function(message, id)
     end
     vim.api.nvim_win_set_buf(0, buf)
 end
-function M.request(method, payload, callback)
+local function fail_waiting()
+  local waiting = state.waiting
+  state.waiting, state.background = {}, false
+  for _, item in ipairs(waiting) do
+    pcall(item.callback or function(message) display(message, 'disconnected') end,
+      {ok = false, error = {code = 'DISCONNECTED', message = 'oAX connection closed'}})
+  end
+end
+function M.request(method, payload, callback, background)
+  if state.background and not background and method ~= 'task.cancel' then
+    table.insert(state.waiting, {method = method, payload = payload, callback = callback})
+    return
+  end
   assert(state.session, 'oAX not connected yet')
   state.serial = state.serial + 1
   local id = 'nvim-' .. state.serial
@@ -167,6 +181,23 @@ function M.setup(options)
   assert(options.root and options.cli, 'Configure trusted root and absolute built CLI path')
   state.generation = state.generation + 1
   local generation = state.generation
+  presence.start({root = options.root, observe = options.observe ~= false, capture = M.capture,
+    request = function(method, payload, callback)
+      state.background = true
+      M.request(method, payload, function(response)
+        state.background = false
+        callback(response)
+        local waiting = state.waiting
+        state.waiting = {}
+        for _, item in ipairs(waiting) do
+          if state.session then M.request(item.method, item.payload, item.callback)
+          else pcall(item.callback or function(message) display(message, 'disconnected') end,
+            {ok = false, error = {code = 'DISCONNECTED', message = 'oAX connection closed'}}) end
+        end
+      end, true)
+    end,
+    connected = function() return state.session ~= nil end,
+    idle = function() return state.task == nil and next(state.pending) == nil end})
   state.error = nil
   state.root = vim.fn.fnamemodify(options.root, ':p'):gsub('[\\/]$', '')
   state.codex = options.codex
@@ -203,6 +234,8 @@ function M.setup(options)
         vim.notify(state.error, vim.log.levels.ERROR)
       end
       state.job, state.session, state.identity, state.task, state.check = nil, nil, nil, nil, nil
+      presence.close()
+      fail_waiting()
       for _, callback in pairs(state.pending) do callback({ok = false, error = {code = 'DISCONNECTED', message = 'oAX runtime disconnected'}}) end
       state.pending = {}
     end) end,
@@ -311,8 +344,11 @@ function M.setup(options)
   end, {force = true})
   vim.api.nvim_create_autocmd('VimLeavePre', {callback = M.close, once = true})
 end
-function M.inspect() return {connected = state.session ~= nil, engine = state.codex and 'codex' or 'mock', error = state.error, events = vim.deepcopy(state.events)} end
+function M.status() return presence.status() end
+function M.inspect() return {backgroundObservation = state.background == true, presence = presence.inspect(), connected = state.session ~= nil, engine = state.codex and 'codex' or 'mock', error = state.error, events = vim.deepcopy(state.events)} end
 function M.close()
+  presence.close()
+  fail_waiting()
   state.generation = state.generation + 1
   if state.job then vim.fn.jobstop(state.job) end
   state.job, state.session, state.identity, state.task, state.check = nil, nil, nil, nil, nil
@@ -320,6 +356,5 @@ function M.close()
   local pending = state.pending
   state.pending = {}
   for _, callback in pairs(pending) do pcall(callback, {ok = false, error = {code = 'DISCONNECTED', message = 'oAX connection closed'}}) end
-  for _, buf in ipairs(vim.api.nvim_list_bufs()) do if vim.api.nvim_buf_is_valid(buf) then vim.api.nvim_buf_clear_namespace(buf, namespace, 0, -1) end end
 end
 return M

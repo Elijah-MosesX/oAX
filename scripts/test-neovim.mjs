@@ -8,9 +8,11 @@ if (!executable || !path.isAbsolute(executable))
   );
 const proposal = process.env.OAX_NVIM_PROPOSAL_TEST === '1';
 const live = process.env.OAX_NVIM_LIVE_TEST === '1' || proposal;
+const presence = process.env.OAX_NVIM_PRESENCE_TEST === '1';
 const verify = process.env.OAX_NVIM_VERIFY_TEST === '1';
 const edits = process.env.OAX_NVIM_EDIT_TEST === '1' || verify;
-if (live && edits) throw new Error('Choose one acceptance mode');
+if ((live && edits) || (presence && (live || edits)))
+  throw new Error('Choose one acceptance mode');
 let workspace;
 if (live || edits) {
   if (
@@ -65,13 +67,15 @@ const child = spawn(
     `set rtp+=${path.resolve('adapters/neovim').replaceAll('\\', '/').replaceAll(' ', '\\ ')}`,
     '-l',
     path.resolve(
-      proposal
-        ? 'tests/neovim/proposal.lua'
-        : live
-          ? 'tests/neovim/live.lua'
-          : edits
-            ? 'tests/neovim/edit.lua'
-            : 'tests/neovim/acceptance.lua',
+      presence
+        ? 'tests/neovim/presence.lua'
+        : proposal
+          ? 'tests/neovim/proposal.lua'
+          : live
+            ? 'tests/neovim/live.lua'
+            : edits
+              ? 'tests/neovim/edit.lua'
+              : 'tests/neovim/acceptance.lua',
     ),
   ],
   {

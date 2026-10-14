@@ -156,3 +156,7 @@ After building, set `OAX_NVIM_VERIFY_TEST=1` and the pinned `OAX_NVIM_EXECUTABLE
 ## Neovim live proposal acceptance
 
 After building, set `OAX_NVIM_PROPOSAL_TEST=1`, the pinned `OAX_NVIM_EXECUTABLE`, and the absolute `OAX_CODEX_EXECUTABLE`, then run `node scripts/test-neovim.mjs`. The installed executable can be discovered with `providerExecutable()`. This opt-in test uses the existing provider login and account usage, sends only a synthetic fixture, drives native send/write cancellations and approvals, then runs a separately approved Node test. A `proposal: true` receipt is required. Clear other Neovim acceptance mode flags first. No model usage occurs in normal Node tests.
+
+## Neovim spatial presence acceptance
+
+Set `OAX_NVIM_PRESENCE_TEST=1` and the pinned `OAX_NVIM_EXECUTABLE`, then run `node scripts/test-neovim.mjs`. This uses the actual editor/runtime with an unsaved fixture and no provider. It checks automatic observation, debounce, focused symbols, actual task indicators, UTF-16 conversion, stale/missing evidence, invalid/hidden targets, busy deferral, late callbacks, cleanup and observe=false. Clear other acceptance flags first. Existing default and OAX_NVIM_VERIFY_TEST modes remain regression checks. The Lua-only presentation change does not require rebuilding the runtime bundle.

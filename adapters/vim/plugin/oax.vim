@@ -8,4 +8,6 @@ command! OaxContext call oax#request('context.preview', {'observation': oax#capt
 augroup oax_cleanup
   autocmd!
   autocmd VimLeavePre * call oax#close()
+  autocmd CursorMoved,CursorMovedI,BufEnter,WinScrolled * call oax#observe()
+  autocmd TextChanged,TextChangedI,BufWritePost,BufLeave,BufWipeout * call oax#observe(1)
 augroup END

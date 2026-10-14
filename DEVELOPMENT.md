@@ -164,3 +164,7 @@ Set `OAX_NVIM_PRESENCE_TEST=1` and the pinned `OAX_NVIM_EXECUTABLE`, then run `n
 ## Neovim live interruption and reconnect acceptance
 
 After building, set `OAX_NVIM_LIFECYCLE_TEST=1`, pinned `OAX_NVIM_EXECUTABLE`, and absolute `OAX_CODEX_EXECUTABLE`, then run `node scripts/test-neovim.mjs`. Clear other acceptance flags. This opt-in test uses existing provider login/account usage and only a synthetic addition function. It approves the native context preview, cancels after an actual provider turn-start event, rejects pending UI consent and a prior preview receipt after close/setup, then requires fresh spatial observation and a newly approved completed explanation. Source/cursor preservation and indicator cleanup are checked. The receipt requires `lifecycle: true`; normal tests never invoke this live mode.
+
+## Vim spatial presence acceptance
+
+With the pinned Windows Vim installed and the runtime built, set `OAX_VIM_PRESENCE_TEST=1` and run `node scripts/test-vim.mjs`. The actual editor exercises automatic local observation, dirty symbol focus, UTF-16, debounce/deduplication and scope/budget exclusions. A test-only delayed stdio fixture verifies stale cursor/buffer responses, exact evidence binding, foreground queuing, cancellation bypass, disconnect and fresh reconnect. Receipt: `dist/vim-presence-acceptance.json`. Clear the flag to run the original read-only regression. No live provider or new runtime build is needed for this Vimscript-only change.

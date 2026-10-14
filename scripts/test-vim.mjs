@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 const dist = path.resolve('dist');
 const root = await mkdtemp(path.join(dist, 'vim-acceptance-'));
 const vim = path.resolve('.tools/vim/9.2.1162/vim/vim92/vim.exe');
+const presence = process.env.OAX_VIM_PRESENCE_TEST === '1';
 const literal = (value) =>
   `'${value.replaceAll('\\', '/').replaceAll("'", "''")}'`;
 try {
@@ -24,34 +25,74 @@ try {
   );
   const run = spawnSync(
     vim,
-    ['-Nu', 'NONE', '-i', 'NONE', '-n', '-es', '-S', script],
-    { timeout: 45000, encoding: 'utf8', windowsHide: true },
+    [
+      '-Nu',
+      'NONE',
+      '-i',
+      'NONE',
+      '-n',
+      '-es',
+      '-S',
+      presence ? path.resolve('tests/vim/presence.vim') : script,
+    ],
+    {
+      timeout: 90000,
+      encoding: 'utf8',
+      windowsHide: true,
+      env: {
+        ...process.env,
+        OAX_TEST_ROOT: root,
+        OAX_TEST_REPO: process.cwd(),
+        OAX_TEST_CLI: path.resolve('dist/cli.cjs'),
+        OAX_TEST_NODE: process.execPath,
+        OAX_TEST_RESULT: result,
+      },
+    },
   );
   const evidence = JSON.parse(await readFile(result, 'utf8'));
   assert.equal(run.status, 0, JSON.stringify(evidence) + run.stderr);
   assert.deepEqual(evidence.errors, []);
   await writeFile(
-    'dist/vim-acceptance.json',
+    presence ? 'dist/vim-presence-acceptance.json' : 'dist/vim-acceptance.json',
     JSON.stringify(
       {
         version: '9.2.1162',
         passed: true,
-        checks: [
-          'real-runtime-callers',
-          'dirty-buffer',
-          'utf16',
-          'actual-visible-tabs',
-          'preserved-cursor',
-          'denied-writes',
-          'cleanup',
-        ],
+        checks: presence
+          ? [
+              'automatic-observation',
+              'debounce',
+              'deduplication',
+              'utf16',
+              'dirty-symbol-focus',
+              'scratch-exclusion',
+              'outside-root-and-budget-exclusion',
+              'focus-hash-path-version-binding',
+              'opt-out',
+              'stale-cursor-buffer-replies',
+              'foreground-queue',
+              'cancel-bypass',
+              'disconnect-cleanup',
+              'fresh-reconnect',
+            ]
+          : [
+              'real-runtime-callers',
+              'dirty-buffer',
+              'utf16',
+              'actual-visible-tabs',
+              'preserved-cursor',
+              'denied-writes',
+              'cleanup',
+            ],
       },
       null,
       2,
     ),
   );
   console.log(
-    'Actual Vim 9.2.1162: shared protocol graph, unsaved buffer, UTF-16, visible text windows, unchanged cursor, denied writes and cleanup passed.',
+    presence
+      ? 'Actual Vim 9.2.1162 spatial presence and delayed-response lifecycle acceptance passed.'
+      : 'Actual Vim 9.2.1162: shared protocol graph, unsaved buffer, UTF-16, visible text windows, unchanged cursor, denied writes and cleanup passed.',
   );
 } finally {
   if (

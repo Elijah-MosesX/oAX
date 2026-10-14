@@ -160,3 +160,7 @@ After building, set `OAX_NVIM_PROPOSAL_TEST=1`, the pinned `OAX_NVIM_EXECUTABLE`
 ## Neovim spatial presence acceptance
 
 Set `OAX_NVIM_PRESENCE_TEST=1` and the pinned `OAX_NVIM_EXECUTABLE`, then run `node scripts/test-neovim.mjs`. This uses the actual editor/runtime with an unsaved fixture and no provider. It checks automatic observation, debounce, focused symbols, actual task indicators, UTF-16 conversion, stale/missing evidence, invalid/hidden targets, busy deferral, late callbacks, cleanup and observe=false. Clear other acceptance flags first. Existing default and OAX_NVIM_VERIFY_TEST modes remain regression checks. The Lua-only presentation change does not require rebuilding the runtime bundle.
+
+## Neovim live interruption and reconnect acceptance
+
+After building, set `OAX_NVIM_LIFECYCLE_TEST=1`, pinned `OAX_NVIM_EXECUTABLE`, and absolute `OAX_CODEX_EXECUTABLE`, then run `node scripts/test-neovim.mjs`. Clear other acceptance flags. This opt-in test uses existing provider login/account usage and only a synthetic addition function. It approves the native context preview, cancels after an actual provider turn-start event, rejects pending UI consent and a prior preview receipt after close/setup, then requires fresh spatial observation and a newly approved completed explanation. Source/cursor preservation and indicator cleanup are checked. The receipt requires `lifecycle: true`; normal tests never invoke this live mode.

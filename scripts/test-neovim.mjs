@@ -7,11 +7,12 @@ if (!executable || !path.isAbsolute(executable))
     'Set OAX_NVIM_EXECUTABLE to an absolute Neovim 0.11.5 executable',
   );
 const proposal = process.env.OAX_NVIM_PROPOSAL_TEST === '1';
-const live = process.env.OAX_NVIM_LIVE_TEST === '1' || proposal;
+const lifecycle = process.env.OAX_NVIM_LIFECYCLE_TEST === '1';
+const live = process.env.OAX_NVIM_LIVE_TEST === '1' || proposal || lifecycle;
 const presence = process.env.OAX_NVIM_PRESENCE_TEST === '1';
 const verify = process.env.OAX_NVIM_VERIFY_TEST === '1';
 const edits = process.env.OAX_NVIM_EDIT_TEST === '1' || verify;
-if ((live && edits) || (presence && (live || edits)))
+if ((proposal && lifecycle) || (live && edits) || (presence && (live || edits)))
   throw new Error('Choose one acceptance mode');
 let workspace;
 if (live || edits) {
@@ -69,13 +70,15 @@ const child = spawn(
     path.resolve(
       presence
         ? 'tests/neovim/presence.lua'
-        : proposal
-          ? 'tests/neovim/proposal.lua'
-          : live
-            ? 'tests/neovim/live.lua'
-            : edits
-              ? 'tests/neovim/edit.lua'
-              : 'tests/neovim/acceptance.lua',
+        : lifecycle
+          ? 'tests/neovim/lifecycle.lua'
+          : proposal
+            ? 'tests/neovim/proposal.lua'
+            : live
+              ? 'tests/neovim/live.lua'
+              : edits
+                ? 'tests/neovim/edit.lua'
+                : 'tests/neovim/acceptance.lua',
     ),
   ],
   {
@@ -108,6 +111,7 @@ try {
     );
     if (
       (proposal && !result.proposal) ||
+      (lifecycle && !result.lifecycle) ||
       (verify && !result.verification) ||
       !result.verified ||
       result.engine !== (live ? 'codex' : 'mock')

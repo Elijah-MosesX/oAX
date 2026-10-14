@@ -6,6 +6,8 @@ const dist = path.resolve('dist');
 const root = await mkdtemp(path.join(dist, 'vim-acceptance-'));
 const vim = path.resolve('.tools/vim/9.2.1162/vim/vim92/vim.exe');
 const presence = process.env.OAX_VIM_PRESENCE_TEST === '1';
+const cursor = process.env.OAX_VIM_CURSOR_TEST === '1';
+if (presence && cursor) throw new Error('Choose one Vim acceptance mode');
 const literal = (value) =>
   `'${value.replaceAll('\\', '/').replaceAll("'", "''")}'`;
 try {
@@ -33,7 +35,11 @@ try {
       '-n',
       '-es',
       '-S',
-      presence ? path.resolve('tests/vim/presence.vim') : script,
+      cursor
+        ? path.resolve('tests/vim/cursor.vim')
+        : presence
+          ? path.resolve('tests/vim/presence.vim')
+          : script,
     ],
     {
       timeout: 90000,
@@ -53,46 +59,68 @@ try {
   assert.equal(run.status, 0, JSON.stringify(evidence) + run.stderr);
   assert.deepEqual(evidence.errors, []);
   await writeFile(
-    presence ? 'dist/vim-presence-acceptance.json' : 'dist/vim-acceptance.json',
+    cursor
+      ? 'dist/vim-cursor-acceptance.json'
+      : presence
+        ? 'dist/vim-presence-acceptance.json'
+        : 'dist/vim-acceptance.json',
     JSON.stringify(
       {
         version: '9.2.1162',
         passed: true,
-        checks: presence
+        checks: cursor
           ? [
-              'automatic-observation',
-              'debounce',
-              'deduplication',
-              'utf16',
-              'dirty-symbol-focus',
-              'scratch-exclusion',
-              'outside-root-and-budget-exclusion',
-              'focus-hash-path-version-binding',
+              'real-runtime-agent-event',
+              'utf16-byte-range',
+              'combining-character-capture-and-range',
+              'multiline-end-exclusive-eof',
+              'source-version-hash',
+              'visible-only',
+              'invalid-range-rejection',
+              'terminal-late-event-rejection',
+              'wrong-session-clears-indicators',
+              'edit-window-disconnect-cleanup',
+              'unrelated-properties-preserved',
+              'cursor-source-preserved',
               'opt-out',
-              'stale-cursor-buffer-replies',
-              'foreground-queue',
-              'cancel-bypass',
-              'disconnect-cleanup',
-              'fresh-reconnect',
             ]
-          : [
-              'real-runtime-callers',
-              'dirty-buffer',
-              'utf16',
-              'actual-visible-tabs',
-              'preserved-cursor',
-              'denied-writes',
-              'cleanup',
-            ],
+          : presence
+            ? [
+                'automatic-observation',
+                'debounce',
+                'deduplication',
+                'utf16',
+                'dirty-symbol-focus',
+                'scratch-exclusion',
+                'outside-root-and-budget-exclusion',
+                'focus-hash-path-version-binding',
+                'opt-out',
+                'stale-cursor-buffer-replies',
+                'foreground-queue',
+                'cancel-bypass',
+                'disconnect-cleanup',
+                'fresh-reconnect',
+              ]
+            : [
+                'real-runtime-callers',
+                'dirty-buffer',
+                'utf16',
+                'actual-visible-tabs',
+                'preserved-cursor',
+                'denied-writes',
+                'cleanup',
+              ],
       },
       null,
       2,
     ),
   );
   console.log(
-    presence
-      ? 'Actual Vim 9.2.1162 spatial presence and delayed-response lifecycle acceptance passed.'
-      : 'Actual Vim 9.2.1162: shared protocol graph, unsaved buffer, UTF-16, visible text windows, unchanged cursor, denied writes and cleanup passed.',
+    cursor
+      ? 'Actual Vim 9.2.1162 source-validated agent-location acceptance passed.'
+      : presence
+        ? 'Actual Vim 9.2.1162 spatial presence and delayed-response lifecycle acceptance passed.'
+        : 'Actual Vim 9.2.1162: shared protocol graph, unsaved buffer, UTF-16, visible text windows, unchanged cursor, denied writes and cleanup passed.',
   );
 } finally {
   if (

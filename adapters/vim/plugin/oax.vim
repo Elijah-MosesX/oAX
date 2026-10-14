@@ -10,4 +10,5 @@ augroup oax_cleanup
   autocmd VimLeavePre * call oax#close()
   autocmd CursorMoved,CursorMovedI,BufEnter,WinScrolled * call oax#observe()
   autocmd TextChanged,TextChangedI,BufWritePost,BufLeave,BufWipeout * call oax#observe(1)
+  autocmd WinClosed * call oax#cursor#clear()
 augroup END

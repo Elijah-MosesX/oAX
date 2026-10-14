@@ -21,11 +21,7 @@ function! s:timestamp() abort
   return printf('%04d-%02d-%02dT%02d:%02d:%02dZ', year, month + 1, days + 1, remainder / 3600, (remainder % 3600) / 60, remainder % 60)
 endfunction
 function! s:utf16(value) abort
-  let utf16Units = 0
-  for char in split(a:value, '\zs')
-    let utf16Units += char2nr(char) > 65535 ? 2 : 1
-  endfor
-  return utf16Units
+  return strutf16len(a:value, v:true)
 endfunction
 function! s:uri(value) abort
   let encoded = ''
@@ -73,6 +69,7 @@ function! s:snapshot() abort
 endfunction
 function! oax#observe(...) abort
   if a:0 && a:1
+    call oax#cursor#clear()
     let s:state.observed = {}
     let s:state.stamp = ''
   endif
@@ -82,7 +79,7 @@ function! oax#observe(...) abort
 endfunction
 function! s:observe(generation, timer) abort
   if a:generation != s:state.generation || a:timer != get(s:state, 'timer', -1) || !has_key(s:state, 'session') || !get(g:, 'oax_observe', 1) | return | endif
-  if !empty(s:state.pending) || get(s:state, 'task', 0) | call oax#observe() | return | endif
+  if !empty(s:state.pending) || !empty(get(s:state, 'task', '')) | call oax#observe() | return | endif
   let snapshot = s:snapshot()
   if empty(snapshot) | let s:state.observed = {} | let s:state.stamp = '' | return | endif
   let stamp = sha256(json_encode(snapshot))
@@ -127,10 +124,14 @@ function! s:receive(generation, channel, line) abort
       if message.sessionId !=# s:state.session || message.sequence <= get(s:state, 'sequence', 0) | throw 'oAX event scope/order mismatch' | endif
       let s:state.sequence = message.sequence
       if message.method ==# 'task.state'
-        let s:state.task = index(['completed', 'failed', 'cancelled'], message.payload.state) < 0
+        let s:state.task = index(['completed', 'failed', 'cancelled'], message.payload.state) < 0 ? message.taskId : ''
+        if message.payload.state ==# 'created' || empty(s:state.task) | call oax#cursor#clear() | endif
+      elseif message.method ==# 'agent.cursor.changed' && message.taskId ==# get(s:state, 'task', '')
+        call oax#cursor#show(s:state.root, message.payload)
       endif
       call add(s:state.events, message)
       if len(s:state.events) > 100 | call remove(s:state.events, 0) | endif
+      if exists('#User#OaxEvent') | doautocmd <nomodeline> User OaxEvent | endif
     elseif message.type ==# 'response' && has_key(s:state.pending, message.correlationId)
       let pending = remove(s:state.pending, message.correlationId)
       if get(pending, 'background', 0)
@@ -192,9 +193,10 @@ endfunction
 function! oax#inspect() abort
   return deepcopy({'connected': has_key(s:state, 'session'), 'events': s:state.events, 'result': get(s:state, 'result', {}), 'error': get(s:state, 'error', ''), 'pending': len(s:state.pending),
         \ 'background': !empty(filter(copy(s:state.pending), 'get(v:val, "background", 0)')), 'queued': has_key(s:state, 'waiting'),
-        \ 'observed': s:state.observed, 'observations': s:state.observations, 'observationError': get(s:state, 'observationError', '')})
+        \ 'markedBuffers': oax#cursor#buffers(), 'observed': s:state.observed, 'observations': s:state.observations, 'observationError': get(s:state, 'observationError', '')})
 endfunction
 function! oax#close() abort
+  call oax#cursor#clear()
   let s:state.generation += 1
   if has_key(s:state, 'timer') | call timer_stop(s:state.timer) | call remove(s:state, 'timer') | endif
   if has_key(s:state, 'waiting') | call remove(s:state, 'waiting') | let s:state.error = 'DISCONNECTED: queued oAX request was not sent' | endif

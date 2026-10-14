@@ -168,3 +168,7 @@ After building, set `OAX_NVIM_LIFECYCLE_TEST=1`, pinned `OAX_NVIM_EXECUTABLE`, a
 ## Vim spatial presence acceptance
 
 With the pinned Windows Vim installed and the runtime built, set `OAX_VIM_PRESENCE_TEST=1` and run `node scripts/test-vim.mjs`. The actual editor exercises automatic local observation, dirty symbol focus, UTF-16, debounce/deduplication and scope/budget exclusions. A test-only delayed stdio fixture verifies stale cursor/buffer responses, exact evidence binding, foreground queuing, cancellation bypass, disconnect and fresh reconnect. Receipt: `dist/vim-presence-acceptance.json`. Clear the flag to run the original read-only regression. No live provider or new runtime build is needed for this Vimscript-only change.
+
+## Vim agent-location acceptance
+
+Set `OAX_VIM_CURSOR_TEST=1` and run `node scripts/test-vim.mjs` with the pinned Windows Vim and built runtime. This exercises an actual mock-task event, native properties, UTF-16 emoji/combining characters, multiline/EOF ranges, source/version/hash checks, visibility, opt-out, inactive/wrong-session events and edit/window/task/disconnect cleanup. Unrelated text properties and the human cursor/source are checked. Receipt: `dist/vim-cursor-acceptance.json`. Clear other mode flags; default and presence suites remain regression checks. No live provider is used.

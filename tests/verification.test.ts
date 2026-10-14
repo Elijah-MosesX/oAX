@@ -108,6 +108,11 @@ test('Node verification requires exact grants, checks source freshness, and repo
     setTimeout(() => controller.abort(), 100);
     await assert.rejects(work);
   } finally {
-    await rm(root, { recursive: true, force: true });
+    await rm(root, {
+      recursive: true,
+      force: true,
+      maxRetries: 5,
+      retryDelay: 100,
+    });
   }
 });

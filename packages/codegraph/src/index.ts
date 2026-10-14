@@ -1,8 +1,8 @@
-import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
 import ts from 'typescript';
-import type { Position, TextRange } from '@oax/protocol';
+import { projectResolver, type ProjectFile } from './resolution.js';
+import { OaxError, type Position, type TextRange } from '@oax/protocol';
 export interface SourceSnapshot {
   path: string;
   text: string;
@@ -27,6 +27,8 @@ export interface GraphNode {
 export type Relationship =
   | 'contains'
   | 'imports'
+  | 'exports'
+  | 'reexports'
   | 'calls'
   | 'implements'
   | 'extends'
@@ -46,7 +48,7 @@ export interface GraphResult {
 }
 export const digest = (text: string) =>
   createHash('sha256').update(text).digest('hex');
-const supported = /\.(?:[cm]?tsx?|jsx?)$/i;
+const supported = /\.(?:tsx?|jsx?|mts|cts|mjs|cjs)$/i;
 const fileId = (file: string) => `file:${file}`;
 const pos = (source: ts.SourceFile, offset: number): Position => {
   const point = source.getLineAndCharacterOfPosition(offset);
@@ -78,9 +80,13 @@ export class CodeGraph {
   private declarations = new Map<ts.Node, GraphNode>();
   private sources = new Map<string, ts.SourceFile>();
   private signature = '';
-  readonly limitations = [
-    'TypeScript/JavaScript local relative-module resolution only; external packages and computed calls may be unresolved.',
+  private projectSignature = '';
+  private metadata: ProjectFile[] = [];
+  private syntaxSnapshots = new Map<string, SourceSnapshot>();
+  limitations = [
+    'TypeScript/JavaScript indexed local modules, bounded project aliases and workspace package exports; external packages and computed calls may be unresolved.',
     'Test relationships are filename heuristics and are never reported as semantic coverage.',
+    'Resolution uses captured workspace files only. Single local config inheritance, baseUrl/paths and exact package export entries are supported; external libraries, project references and wildcard package exports are unavailable. Static declaration targets do not prove runtime dispatch.',
   ];
   constructor(database = ':memory:') {
     this.db = new DatabaseSync(database);
@@ -96,7 +102,15 @@ export class CodeGraph {
       CREATE TABLE IF NOT EXISTS edges(id TEXT PRIMARY KEY, source TEXT NOT NULL REFERENCES nodes(id) ON DELETE CASCADE, target TEXT REFERENCES nodes(id) ON DELETE CASCADE, relationship TEXT NOT NULL, data TEXT NOT NULL);
       CREATE INDEX IF NOT EXISTS node_path ON nodes(path); CREATE INDEX IF NOT EXISTS edge_source ON edges(source,relationship); CREATE INDEX IF NOT EXISTS edge_target ON edges(target,relationship); PRAGMA user_version=1; COMMIT;`);
   }
-  update(snapshots: SourceSnapshot[]): {
+  update(
+    snapshots: SourceSnapshot[],
+    metadata: ProjectFile[] = [],
+    syntax: {
+      nodes: GraphNode[];
+      edges: GraphEdge[];
+      limitations: string[];
+    } = { nodes: [], edges: [], limitations: [] },
+  ): {
     changed: number;
     files: number;
     symbols: number;
@@ -104,11 +118,23 @@ export class CodeGraph {
     const files = snapshots
       .filter((s) => supported.test(s.path))
       .sort((a, b) => a.path.localeCompare(b.path));
-    const signature = files.map((s) => `${s.path}:${digest(s.text)}`).join('|');
+    const syntaxFiles = snapshots.filter((s) => /\.(py|go|java)$/.test(s.path));
+    const allFiles = [...files, ...syntaxFiles];
+    const projectSignature = metadata
+      .slice()
+      .sort((a, b) => a.path.localeCompare(b.path))
+      .map((s) => `${s.path}:${digest(s.text)}`)
+      .join('|');
+    const signature =
+      allFiles.map((s) => `${s.path}:${digest(s.text)}`).join('|') +
+      '#' +
+      projectSignature +
+      '#' +
+      digest(JSON.stringify(syntax));
     if (signature === this.signature && this.program)
       return {
         changed: 0,
-        files: files.length,
+        files: allFiles.length,
         symbols: this.nodes().filter((n) => n.kind !== 'file').length,
       };
     const changed =
@@ -118,12 +144,19 @@ export class CodeGraph {
           this.sources.get(s.path)?.text !== s.text,
       ).length +
       [...this.sources.keys()].filter((p) => !files.some((s) => s.path === p))
-        .length;
+        .length +
+      Number(!!this.signature && this.projectSignature !== projectSignature) +
+      syntaxFiles.filter(
+        (s) => this.syntaxSnapshots.get(s.path)?.text !== s.text,
+      ).length +
+      [...this.syntaxSnapshots.keys()].filter(
+        (p) => !syntaxFiles.some((s) => s.path === p),
+      ).length;
     const previous = this.sources;
-    this.sources = new Map();
-    this.declarations = new Map();
+    const sources = new Map<string, ts.SourceFile>();
+    const declarations = new Map<ts.Node, GraphNode>();
     for (const snapshot of files)
-      this.sources.set(
+      sources.set(
         snapshot.path,
         previous.get(snapshot.path)?.text === snapshot.text
           ? previous.get(snapshot.path)!
@@ -134,36 +167,20 @@ export class CodeGraph {
               true,
             ),
       );
-    const resolve = (specifier: string, importer: string) => {
-      if (!specifier.startsWith('.')) return undefined;
-      const base = path.posix.normalize(
-        path.posix.join(path.posix.dirname(importer), specifier),
-      );
-      for (const candidate of [
-        base,
-        base.replace(/\.js$/, '.ts'),
-        base.replace(/\.jsx$/, '.tsx'),
-        ...[
-          '.ts',
-          '.tsx',
-          '.js',
-          '.jsx',
-          '/index.ts',
-          '/index.tsx',
-          '/index.js',
-        ].map((ext) => base + ext),
-      ])
-        if (this.sources.has(candidate)) return candidate;
-      return undefined;
-    };
+    const resolver = projectResolver(sources, metadata);
+    const resolve = resolver.resolve;
+    const limitations = [
+      ...this.limitations.slice(0, 3),
+      ...resolver.limitations,
+    ];
     const host: ts.CompilerHost = {
-      getSourceFile: (name) => this.sources.get(name),
+      getSourceFile: (name) => sources.get(name),
       getDefaultLibFileName: () => '',
       writeFile: () => {},
       getCurrentDirectory: () => '',
       getDirectories: () => [],
-      fileExists: (name) => this.sources.has(name),
-      readFile: (name) => this.sources.get(name)?.text,
+      fileExists: (name) => sources.has(name),
+      readFile: (name) => sources.get(name)?.text,
       getCanonicalFileName: (name) => name,
       useCaseSensitiveFileNames: () => true,
       getNewLine: () => '\n',
@@ -175,15 +192,22 @@ export class CodeGraph {
                 resolvedFileName: file,
                 extension: file.endsWith('.tsx')
                   ? ts.Extension.Tsx
-                  : file.endsWith('.ts')
-                    ? ts.Extension.Ts
-                    : ts.Extension.Js,
+                  : file.endsWith('.mts')
+                    ? ts.Extension.Mts
+                    : file.endsWith('.cts')
+                      ? ts.Extension.Cts
+                      : file.endsWith('.mjs')
+                        ? ts.Extension.Mjs
+                        : file.endsWith('.cjs')
+                          ? ts.Extension.Cjs
+                          : file.endsWith('.ts')
+                            ? ts.Extension.Ts
+                            : ts.Extension.Js,
               }
             : undefined;
         }),
     };
-    this.host = host;
-    this.program = ts.createProgram(
+    const program = ts.createProgram(
       files.map((s) => s.path),
       {
         noLib: true,
@@ -193,11 +217,11 @@ export class CodeGraph {
       },
       host,
     );
-    const checker = this.program.getTypeChecker();
+    const checker = program.getTypeChecker();
     const nodes: GraphNode[] = [],
       edges: GraphEdge[] = [];
     for (const snapshot of files) {
-      const source = this.sources.get(snapshot.path)!;
+      const source = sources.get(snapshot.path)!;
       const hash = digest(snapshot.text);
       nodes.push({
         id: fileId(snapshot.path),
@@ -224,7 +248,7 @@ export class CodeGraph {
             hash,
           };
           nodes.push(item);
-          this.declarations.set(node, item);
+          declarations.set(node, item);
         }
         ts.forEachChild(node, visit);
       };
@@ -238,10 +262,10 @@ export class CodeGraph {
       if (symbol && symbol.flags & ts.SymbolFlags.Alias)
         symbol = checker.getAliasedSymbol(symbol);
       return symbol?.declarations
-        ?.map((d) => this.declarations.get(d))
+        ?.map((d) => declarations.get(d))
         .find(Boolean);
     };
-    for (const [file, source] of this.sources) {
+    for (const [file, source] of sources) {
       const add = (
         owner: string,
         destination: string | null,
@@ -265,11 +289,64 @@ export class CodeGraph {
           evidence,
         });
       };
-      const visit = (node: ts.Node, owner = fileId(file)) => {
-        const declaration = this.declarations.get(node);
+      const visit = (
+        node: ts.Node,
+        owner = fileId(file),
+        callOwner = owner,
+      ) => {
+        const declaration = declarations.get(node);
         if (declaration) {
           add(owner, declaration.id, 'contains', 'syntactic', node);
+          if (
+            ts.getCombinedModifierFlags(node as ts.Declaration) &
+            ts.ModifierFlags.Export
+          )
+            add(fileId(file), declaration.id, 'exports', 'semantic', node);
           owner = declaration.id;
+          if (
+            ['function', 'method', 'class'].includes(declaration.kind) ||
+            (ts.isVariableDeclaration(node) &&
+              node.initializer &&
+              (ts.isArrowFunction(node.initializer) ||
+                ts.isFunctionExpression(node.initializer)))
+          )
+            callOwner = declaration.id;
+        }
+        if (ts.isExportDeclaration(node)) {
+          if (
+            node.moduleSpecifier &&
+            ts.isStringLiteral(node.moduleSpecifier)
+          ) {
+            const resolved = resolve(node.moduleSpecifier.text, file);
+            add(
+              fileId(file),
+              resolved ? fileId(resolved) : null,
+              'reexports',
+              resolved ? 'semantic' : 'unresolved',
+              node.moduleSpecifier,
+            );
+          }
+          if (node.exportClause && ts.isNamedExports(node.exportClause))
+            for (const exported of node.exportClause.elements) {
+              const resolved = target(exported.name);
+              add(
+                fileId(file),
+                resolved?.id ?? null,
+                'exports',
+                resolved ? 'semantic' : 'unresolved',
+                exported,
+              );
+            }
+        }
+        if (ts.isExportAssignment(node)) {
+          const resolved = target(node.expression);
+          add(
+            fileId(file),
+            resolved?.id ?? null,
+            'exports',
+            resolved ? 'semantic' : 'unresolved',
+            node.expression,
+          );
         }
         if (
           ts.isImportDeclaration(node) &&
@@ -284,10 +361,40 @@ export class CodeGraph {
             node.moduleSpecifier,
           );
         }
+        if (
+          ts.isImportEqualsDeclaration(node) &&
+          ts.isExternalModuleReference(node.moduleReference) &&
+          node.moduleReference.expression &&
+          ts.isStringLiteral(node.moduleReference.expression)
+        ) {
+          const resolved = resolve(node.moduleReference.expression.text, file);
+          add(
+            fileId(file),
+            resolved ? fileId(resolved) : null,
+            'imports',
+            resolved ? 'semantic' : 'unresolved',
+            node.moduleReference.expression,
+          );
+        }
+        if (
+          ts.isCallExpression(node) &&
+          node.expression.kind === ts.SyntaxKind.ImportKeyword &&
+          node.arguments[0] &&
+          ts.isStringLiteral(node.arguments[0])
+        ) {
+          const resolved = resolve(node.arguments[0].text, file);
+          add(
+            fileId(file),
+            resolved ? fileId(resolved) : null,
+            'imports',
+            resolved ? 'semantic' : 'unresolved',
+            node.arguments[0],
+          );
+        }
         if (ts.isCallExpression(node)) {
           const resolved = target(node.expression);
           add(
-            owner,
+            callOwner,
             resolved?.id ?? null,
             'calls',
             resolved ? 'semantic' : 'unresolved',
@@ -307,12 +414,15 @@ export class CodeGraph {
               base,
             );
           }
-        ts.forEachChild(node, (child) => visit(child, owner));
+        ts.forEachChild(node, (child) => visit(child, owner, callOwner));
       };
       visit(source);
-      if (/\.(test|spec)\.[jt]sx?$/.test(file)) {
-        const implementation = file.replace(/\.(test|spec)(?=\.[jt]sx?$)/, '');
-        if (this.sources.has(implementation))
+      if (/\.(test|spec)\.(?:[cm]?[jt]s|[jt]sx)$/.test(file)) {
+        const implementation = file.replace(
+          /\.(test|spec)(?=\.(?:[cm]?[jt]s|[jt]sx)$)/,
+          '',
+        );
+        if (sources.has(implementation))
           add(
             fileId(implementation),
             fileId(file),
@@ -322,20 +432,43 @@ export class CodeGraph {
           );
       }
     }
+    for (const snapshot of syntaxFiles) {
+      const lines = snapshot.text.split('\n');
+      nodes.push({
+        id: fileId(snapshot.path),
+        path: snapshot.path,
+        name: snapshot.path,
+        kind: 'file',
+        hash: digest(snapshot.text),
+        range: {
+          start: { line: 0, column: 0 },
+          end: {
+            line: lines.length - 1,
+            column: lines[lines.length - 1]!.length,
+          },
+        },
+      });
+    }
+    nodes.push(...syntax.nodes);
+    edges.push(...syntax.edges);
+    limitations.push(...syntax.limitations);
     this.db.exec('BEGIN');
     try {
       this.db.exec('DELETE FROM edges');
       const removed = (
         this.db.prepare('SELECT path FROM files').all() as { path: string }[]
-      ).filter((row) => !this.sources.has(row.path));
+      ).filter((row) => !allFiles.some((f) => f.path === row.path));
       for (const row of removed)
         this.db.prepare('DELETE FROM files WHERE path=?').run(row.path);
-      for (const snapshot of files) {
+      for (const snapshot of allFiles) {
         const hash = digest(snapshot.text);
         const old = this.db
           .prepare('SELECT hash FROM files WHERE path=?')
           .get(snapshot.path);
-        if (old?.hash !== hash) {
+        if (
+          old?.hash !== hash ||
+          syntaxFiles.some((f) => f.path === snapshot.path)
+        ) {
           this.db.prepare('DELETE FROM nodes WHERE path=?').run(snapshot.path);
           this.db
             .prepare(
@@ -361,14 +494,22 @@ export class CodeGraph {
             JSON.stringify(edge),
           );
       this.db.exec('COMMIT');
+      this.sources = sources;
+      this.syntaxSnapshots = new Map(syntaxFiles.map((s) => [s.path, s]));
+      this.declarations = declarations;
+      this.host = host;
+      this.program = program;
+      this.limitations = limitations;
       this.signature = signature;
+      this.projectSignature = projectSignature;
+      this.metadata = metadata;
     } catch (error) {
       this.db.exec('ROLLBACK');
       throw error;
     }
     return {
       changed,
-      files: files.length,
+      files: allFiles.length,
       symbols: nodes.filter((n) => n.kind !== 'file').length,
     };
   }
@@ -387,6 +528,44 @@ export class CodeGraph {
     ).map((row) => JSON.parse(row.data) as GraphEdge);
   }
   focused(file: string, position: Position): GraphNode | null {
+    const syntax = this.syntaxSnapshots.get(file);
+    if (syntax) {
+      const lines = syntax.text.split('\n');
+      if (
+        position.line < 0 ||
+        position.column < 0 ||
+        position.line >= lines.length ||
+        position.column > lines[position.line]!.replace(/\r$/, '').length
+      )
+        return null;
+      const before = (a: Position, b: Position) =>
+        a.line < b.line || (a.line === b.line && a.column <= b.column);
+      return (
+        this.nodes()
+          .filter(
+            (n) =>
+              n.path === file &&
+              n.kind !== 'file' &&
+              before(n.range.start, position) &&
+              before(position, n.range.end) &&
+              !(
+                position.line === n.range.end.line &&
+                position.column === n.range.end.column
+              ),
+          )
+          .sort(
+            (a, b) =>
+              a.range.end.line -
+                a.range.start.line -
+                (b.range.end.line - b.range.start.line) ||
+              a.range.end.column -
+                a.range.start.column -
+                (b.range.end.column - b.range.start.column),
+          )[0] ??
+        this.nodes().find((n) => n.id === fileId(file)) ??
+        null
+      );
+    }
     const source = this.sources.get(file);
     if (
       !source ||
@@ -470,10 +649,13 @@ export class CodeGraph {
       !this.program ||
       !this.host
     )
-      throw new Error('A valid identifier and indexed snapshot are required');
+      throw new OaxError(
+        'RENAME_REJECTED',
+        'A valid identifier and indexed snapshot are required',
+      );
     const source = this.sources.get(file);
     if (!source || position.line >= source.getLineStarts().length)
-      throw new Error('Rename location unavailable');
+      throw new OaxError('RENAME_REJECTED', 'Rename location unavailable');
     let offset = source.getLineStarts()[position.line]! + position.column;
     const host: ts.LanguageServiceHost = {
       ...this.host,
@@ -507,7 +689,11 @@ export class CodeGraph {
           });
         }
       }
-      if (!info.canRename) throw new Error('Selected symbol cannot be renamed');
+      if (!info.canRename)
+        throw new OaxError(
+          'RENAME_REJECTED',
+          'Selected symbol cannot be renamed',
+        );
       const locations = service.findRenameLocations(
         file,
         offset,
@@ -515,7 +701,8 @@ export class CodeGraph {
         false,
         true,
       );
-      if (!locations?.length) throw new Error('No semantic rename locations');
+      if (!locations?.length)
+        throw new OaxError('RENAME_REJECTED', 'No semantic rename locations');
       const grouped = new Map<string, ts.RenameLocation[]>();
       for (const location of locations) {
         const list = grouped.get(location.fileName) ?? [];
@@ -527,7 +714,10 @@ export class CodeGraph {
         .map(([path, edits]) => {
           const before = this.sources.get(path)?.text;
           if (before === undefined)
-            throw new Error('Rename escaped indexed sources');
+            throw new OaxError(
+              'RENAME_REJECTED',
+              'Rename escaped indexed sources',
+            );
           let after = before;
           for (const edit of edits.sort(
             (a, b) => b.textSpan.start - a.textSpan.start,
@@ -550,9 +740,13 @@ export class CodeGraph {
               proposals.find((change) => change.path === path)?.after ??
               source.text,
           })),
+          this.metadata,
         );
         if (verification.program!.getSyntacticDiagnostics().length)
-          throw new Error('Rename would leave syntax errors');
+          throw new OaxError(
+            'RENAME_REJECTED',
+            'Rename would leave syntax errors',
+          );
         const key = (diagnostic: ts.Diagnostic) =>
           `${diagnostic.file?.fileName ?? ''}:${diagnostic.code}:${ts.flattenDiagnosticMessageText(diagnostic.messageText, '\n')}`;
         const existing = new Map<string, number>();
@@ -564,7 +758,8 @@ export class CodeGraph {
           const value = key(diagnostic);
           const available = existing.get(value) ?? 0;
           if (!available)
-            throw new Error(
+            throw new OaxError(
+              'RENAME_REJECTED',
               'Rename introduces a TypeScript checker diagnostic; choose another name or resolve the conflict',
             );
           existing.set(value, available - 1);

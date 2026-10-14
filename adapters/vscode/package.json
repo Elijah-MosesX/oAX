@@ -11,21 +11,54 @@
   },
   "main": "./dist/extension.cjs",
   "activationEvents": [
-    "onCommand:oax.explainSelection"
+    "onCommand:oax.explainSelection",
+    "onCommand:oax.explainMock"
   ],
   "contributes": {
     "configuration": {
       "title": "oAX",
       "properties": {
+        "oax.languageWorkersDirectory": {
+          "type": "string",
+          "default": "",
+          "scope": "application",
+          "description": "Absolute directory containing the explicitly installed oAX Python/Go/Java parser workers. User settings only; reconnect after changes."
+        },
+        "oax.pythonExecutable": {
+          "type": "string",
+          "default": "",
+          "scope": "application",
+          "description": "Absolute Python 3.12+ executable for syntax indexing. Does not execute repository imports."
+        },
+        "oax.javaExecutable": {
+          "type": "string",
+          "default": "",
+          "scope": "application",
+          "description": "Absolute Java 21 JDK executable for syntax indexing. Project build hooks and annotation processors are disabled."
+        },
+        "oax.goParserExecutable": {
+          "type": "string",
+          "default": "",
+          "scope": "application",
+          "description": "Absolute compiled oAX Go parser executable for syntax indexing."
+        },
         "oax.codexExecutable": {
           "type": "string",
           "default": "",
           "scope": "application",
-          "description": "Absolute path to the supported Codex 0.159.2 executable. Configure in user settings. Live explanations require context consent."
+          "description": "Absolute path to an exact-version-verified Codex executable. Configure in user settings. Live explanations require context consent."
         }
       }
     },
     "commands": [
+      {
+        "command": "oax.reviewLastEdit",
+        "title": "oAX: Review Last Applied Edit and Test Evidence"
+      },
+      {
+        "command": "oax.refactorSelection",
+        "title": "oAX: Refactor Selection with Codex Preview"
+      },
       {
         "command": "oax.connectGitHub",
         "title": "oAX: Connect Read-Only GitHub Evidence"
@@ -59,6 +92,10 @@
         "title": "oAX: Explain Selection (Codex)"
       },
       {
+        "command": "oax.explainWithHistory",
+        "title": "oAX: Explain Selection with History (Codex)"
+      },
+      {
         "command": "oax.find.callers",
         "title": "oAX: Find Callers"
       },
@@ -80,9 +117,46 @@
       },
       {
         "command": "oax.explainSelection",
-        "title": "oAX: Explain Selection (Mock)"
+        "title": "oAX: Explain Selection"
+      },
+      {
+        "title": "oAX: Show Continuous Index Status",
+        "command": "oax.indexStatus"
+      },
+      {
+        "command": "oax.buddy.show",
+        "title": "oAX: Show Buddy"
+      },
+      {
+        "command": "oax.buddy.hide",
+        "title": "oAX: Hide Buddy"
+      },
+      {
+        "command": "oax.memory.save",
+        "title": "oAX: Save Reviewed Memory from Selection"
+      },
+      {
+        "command": "oax.memory.list",
+        "title": "oAX: Inspect Reviewed Workspace Memory"
+      },
+      {
+        "command": "oax.memory.delete",
+        "title": "oAX: Delete Reviewed Memory"
+      },
+      {
+        "command": "oax.explainWithMemory",
+        "title": "oAX: Explain Selection with Reviewed Memory (Codex)"
       }
-    ]
+    ],
+    "views": {
+      "explorer": [
+        {
+          "id": "oax.buddy",
+          "name": "oAX Buddy",
+          "when": "oax.buddy.visible"
+        }
+      ]
+    }
   },
   "capabilities": {
     "untrustedWorkspaces": {
@@ -96,6 +170,8 @@
     "@oax/git": "workspace:*",
     "@oax/codegraph": "workspace:*",
     "@oax/protocol": "workspace:*",
-    "@oax/runtime": "workspace:*"
+    "@oax/runtime": "workspace:*",
+    "@oax/codex": "workspace:*",
+    "@oax/buddy": "workspace:*"
   }
 }

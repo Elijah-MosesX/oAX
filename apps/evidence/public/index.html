@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="theme-color" content="#08695d" />
+    <title>oAX · Evidence viewer</title>
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="icon" href="./icon.svg" />
+    <link rel="stylesheet" href="./style.css" />
+    <script src="./app.js" defer></script>
+  </head>
+  <body>
+    <header>
+      <a class="brand" href="./">oAX<span>EVIDENCE VIEWER</span></a>
+      <p>Private inspection · in your browser</p>
+    </header>
+    <main>
+      <section class="intro">
+        <p class="eyebrow">TRACEABLE CONTEXT</p>
+        <h1>Bring the evidence.<br />Keep its boundaries.</h1>
+        <p>
+          Inspect a bounded ContextSlice exported from your local oAX workbench.
+          Imported evidence stays in this page's memory and is not uploaded.
+          This hosted viewer cannot connect to your computer's runtime.
+        </p>
+      </section>
+      <form id="import">
+        <label for="evidence">Paste exported oax-evidence.v1 JSON</label
+        ><textarea
+          id="evidence"
+          required
+          maxlength="196608"
+          spellcheck="false"
+          placeholder="Export Inspect context from your local workbench, then paste the JSON here."
+        ></textarea>
+        <div class="row">
+          <button>Inspect evidence</button
+          ><button type="button" id="clear">Clear evidence</button
+          ><button type="button" id="install" hidden>Install oAX viewer</button>
+        </div>
+      </form>
+      <p id="status" role="status">
+        No evidence loaded. Source excerpts are untrusted data.
+      </p>
+      <section id="details" hidden>
+        <h2 id="symbol"></h2>
+        <p id="metadata" class="mono"></p>
+        <h3>Selected source</h3>
+        <pre id="excerpt" tabindex="0"></pre>
+        <h3>Related evidence</h3>
+        <div id="related"></div>
+        <h3>Limitations</h3>
+        <ul id="limitations"></ul>
+      </section>
+      <section>
+        <h2>Continue in your workspace</h2>
+        <p>
+          <a href="https://oax-shared-knowledge-omcqtl.v2.appdeploy.ai/"
+            >Open shared knowledge</a
+          >
+          to sign in and explicitly publish reviewed findings to a private room.
+          Opening that service does not transfer evidence from this viewer.
+        </p>
+        <p>
+          Live Codex explanation, exact approved edits, tests, diff review and
+          Buddy run through the local IDE or CLI. The public viewer neither
+          grants permissions nor executes imported content. Reloading clears
+          your imported evidence.
+        </p>
+        <p>
+          For local evidence: start your workbench, open a source file, select a
+          symbol, choose Inspect context, then Export displayed evidence. Review
+          it before sharing.
+        </p>
+      </section>
+    </main>
+    <footer>
+      One runtime. Evidence before action.<span
+        >Context viewing only · no cloud agent session</span
+      >
+    </footer>
+  </body>
+</html>

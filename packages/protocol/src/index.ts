@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
-import { z } from 'zod';
-export { z };
+import { z, positionSchema, rangeSchema } from './browser.js';
+export { z, positionSchema, rangeSchema } from './browser.js';
 export const VERSION = '0.1' as const;
 export const MAX_FRAME_BYTES = 262_144;
 export const CAPABILITIES = [
@@ -10,22 +10,92 @@ export const CAPABILITIES = [
   'task.cancel.v1',
   'spatial.observe.v1',
   'codegraph.relationships.v1',
+  'codegraph.watch.v1',
   'agent.cursor.v1',
   'context.preview.v1',
+  'context.history.v1',
+  'memory.reviewed.v1',
+  'memory.suggest.v1',
   'git.history.v1',
   'github.history.v1',
   'refactor.rename.v1',
+  'refactor.selection-edit.v1',
+  'refactor.review.v1',
   'verification.node-test.v1',
   'repository.onboard.v1',
 ] as const;
 const id = z.string().min(1).max(128);
-export const positionSchema = z.strictObject({
-  line: z.number().int().min(0),
-  column: z.number().int().min(0),
+export const EDITOR_READ_METHODS = [
+  'spatial.observe',
+  'graph.query',
+  'index.status',
+  'context.preview',
+  'repository.onboard',
+  'history.query',
+  'selection.explain',
+  'task.cancel',
+] as const;
+export const editorBootstrapSchema = z.strictObject({
+  contract: z.literal('editor-read-only.v1'),
+  workspaceId: id,
+  sessionId: id,
+  methods: z
+    .array(z.enum(EDITOR_READ_METHODS))
+    .min(1)
+    .max(EDITOR_READ_METHODS.length),
+  engine: z.literal('mock'),
 });
-export const rangeSchema = z.strictObject({
-  start: positionSchema,
-  end: positionSchema,
+export const editorAgentBootstrapSchema = editorBootstrapSchema.extend({
+  contract: z.literal('editor-codex-text.v1'),
+  engine: z.literal('codex'),
+});
+export const EDITOR_EDIT_METHODS = [
+  ...EDITOR_READ_METHODS,
+  'refactor.prepare',
+  'refactor.apply',
+  'review.get',
+] as const;
+export const editorEditBootstrapSchema = editorBootstrapSchema.extend({
+  contract: z.literal('editor-reviewed-rename.v1'),
+  engine: z.enum(['mock', 'codex']),
+  methods: z
+    .array(z.enum(EDITOR_EDIT_METHODS))
+    .min(1)
+    .max(EDITOR_EDIT_METHODS.length),
+});
+export const EDITOR_TEST_METHODS = [
+  ...EDITOR_READ_METHODS,
+  'review.get',
+  'verification.prepare',
+  'verification.run',
+] as const;
+export const editorTestBootstrapSchema = editorEditBootstrapSchema.extend({
+  contract: z.literal('editor-verification.v1'),
+  methods: z
+    .array(
+      z.enum([
+        ...EDITOR_EDIT_METHODS,
+        'verification.prepare',
+        'verification.run',
+      ]),
+    )
+    .min(1)
+    .max(13),
+});
+export const editorProposalBootstrapSchema = editorTestBootstrapSchema.extend({
+  contract: z.literal('editor-codex-edit.v1'),
+  engine: z.literal('codex'),
+  methods: z
+    .array(
+      z.enum([
+        ...EDITOR_EDIT_METHODS,
+        'refactor.propose',
+        'verification.prepare',
+        'verification.run',
+      ]),
+    )
+    .min(1)
+    .max(14),
 });
 export const observationSchema = z.strictObject({
   path: z.string().min(1).max(4096),
@@ -127,6 +197,14 @@ const eventBase = {
 export const eventSchema = z.union([
   z.strictObject({
     ...eventBase,
+    method: z.literal('agent.activity'),
+    payload: z.strictObject({
+      kind: z.enum(['turn', 'message', 'tool']),
+      state: z.enum(['started', 'completed', 'failed', 'cancelled', 'denied']),
+    }),
+  }),
+  z.strictObject({
+    ...eventBase,
     method: z.literal('task.state'),
     payload: z.strictObject({
       state: z.enum(taskStates),
@@ -159,12 +237,32 @@ export const messageSchema = z.union([
   eventSchema,
 ]);
 export const payloadSchemas = {
+  'memory.prepare': z.strictObject({
+    observation: observationSchema,
+    note: z.string().trim().min(1).max(2000),
+    retentionDays: z.number().int().min(1).max(90),
+  }),
+  'memory.save': z.strictObject({
+    planId: id,
+    approvedHash: z.string().regex(/^[a-f0-9]{64}$/),
+  }),
+  'memory.list': z.strictObject({}),
+  'memory.suggest': z.strictObject({
+    observation: observationSchema,
+    objective: z.string().min(1).max(2048),
+  }),
+  'memory.delete': z.strictObject({
+    id: z.uuid(),
+    approvedHash: z.string().regex(/^[a-f0-9]{64}$/),
+  }),
+  'review.get': z.strictObject({}),
   initialize: z.strictObject({
     token: z.string().min(32).max(128),
     capabilities: z.array(z.string().max(128)).max(32),
   }),
   'session.open': z.strictObject({}),
   'spatial.observe': z.strictObject({ observation: observationSchema }),
+  'index.status': z.strictObject({}),
   'history.query': z.strictObject({ observation: observationSchema }),
   'github.connect': z.strictObject({
     repository: z
@@ -175,6 +273,9 @@ export const payloadSchemas = {
     approved: z.literal(true),
   }),
   'github.history': z.strictObject({
+    commit: z.string().regex(/^[a-f0-9]{40,64}$/i),
+  }),
+  'github.trace': z.strictObject({
     commit: z.string().regex(/^[a-f0-9]{40,64}$/i),
   }),
   'github.disconnect': z.strictObject({}),
@@ -188,6 +289,10 @@ export const payloadSchemas = {
     observation: observationSchema,
     newName: z.string().min(1).max(128),
   }),
+  'refactor.propose': z.strictObject({
+    observation: observationSchema,
+    proposal: z.string().min(1).max(20000),
+  }),
   'refactor.apply': z.strictObject({
     planId: id,
     approvedHash: z.string().regex(/^[a-f0-9]{64}$/),
@@ -198,16 +303,20 @@ export const payloadSchemas = {
     relationship: z.enum(['callers', 'imports', 'implements', 'tests']),
   }),
   'selection.explain': z.strictObject({
+    memoryIds: z.array(z.uuid()).max(5).optional(),
     observation: observationSchema,
     objective: z.string().min(1).max(2048),
+    history: z.enum(['local', 'github']).optional(),
     approvedContextHash: z
       .string()
       .regex(/^[a-f0-9]{64}$/)
       .optional(),
   }),
   'context.preview': z.strictObject({
+    memoryIds: z.array(z.uuid()).max(5).optional(),
     observation: observationSchema,
     objective: z.string().min(1).max(2048),
+    history: z.enum(['local', 'github']).optional(),
   }),
   'task.cancel': z.strictObject({ taskId: id }),
   'session.close': z.strictObject({}),

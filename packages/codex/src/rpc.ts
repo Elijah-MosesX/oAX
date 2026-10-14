@@ -36,6 +36,8 @@ export class CodexRpc {
           const message = inputMessage as Record<string, unknown>;
           if (typeof message.method === 'string') {
             if (message.id !== undefined) {
+              for (const listener of this.listeners)
+                listener({ method: 'oax/serverRequestDenied', params: {} });
               // No provider-originated tool or approval request can grant execution.
               await writer.send({
                 id: message.id,
@@ -104,7 +106,12 @@ export class CodexRpc {
     return new Promise<T>((resolve, reject) => {
       const timer = setTimeout(() => {
         this.pending.delete(id);
-        reject(new OaxError('PROVIDER_TIMEOUT', 'Codex request timed out'));
+        reject(
+          new OaxError(
+            'PROVIDER_TIMEOUT',
+            `Codex request timed out: ${method}`,
+          ),
+        );
       }, this.timeoutMs);
       this.pending.set(id, {
         resolve: (value) => resolve(value as T),

@@ -5,7 +5,7 @@ export class WorkspaceWatcher {
   private running: Promise<void> = Promise.resolve();
   private stopped = false;
   constructor(
-    private readonly indexer: Indexer,
+    private readonly indexer: Pick<Indexer, 'refresh'>,
     private readonly changed: () => void,
     private readonly failed: (error: unknown) => void,
     private readonly intervalMs = 1000,
@@ -19,6 +19,8 @@ export class WorkspaceWatcher {
         if (!this.stopped) this.schedule();
       });
     }, this.intervalMs);
+    // Background polling alone must not keep the process alive; owners call close().
+    this.timer.unref?.();
   }
   async tick(): Promise<void> {
     try {

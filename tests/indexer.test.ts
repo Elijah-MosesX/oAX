@@ -25,6 +25,13 @@ test('indexing excludes sensitive/generated paths, replaces disk with overlays, 
     await writeFile(path.join(root, 'a.ts'), 'export const disk = 1;');
     await mkdir(path.join(root, '.env'));
     await writeFile(path.join(root, '.env', 'secret.ts'), 'const secret = 1;');
+    for (const directory of ['.tools', '.gradle', '.intellijPlatform']) {
+      await mkdir(path.join(root, directory));
+      await writeFile(
+        path.join(root, directory, 'generated.ts'),
+        'const generated = 1;',
+      );
+    }
     const indexer = new Indexer(root, graph);
     let notifications = 0;
     const failures: unknown[] = [];
@@ -46,11 +53,26 @@ test('indexing excludes sensitive/generated paths, replaces disk with overlays, 
       true,
     );
     assert.equal(
-      graph.nodes().some((n) => n.name === 'disk' || n.name === 'secret'),
+      graph
+        .nodes()
+        .some(
+          (n) =>
+            n.name === 'disk' || n.name === 'secret' || n.name === 'generated',
+        ),
       false,
     );
     await assert.rejects(
       indexer.refresh([{ path: '../outside.ts', text: '' }]),
+    );
+    await assert.rejects(
+      indexer.refresh([
+        { path: '.tools/generated.ts', text: 'const injected = 1;' },
+      ]),
+    );
+    await assert.rejects(
+      indexer.refresh([
+        { path: '.gradle/generated.ts', text: 'const injected = 1;' },
+      ]),
     );
     await assert.rejects(
       indexer.refresh([{ path: 'a.ts', text: 'x'.repeat(131073) }]),

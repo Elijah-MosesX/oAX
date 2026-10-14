@@ -1,0 +1,87 @@
+[
+  {
+    "duration": 7,
+    "label": "THE IDEA",
+    "title": ["Know the code.", "Keep the context."],
+    "body": ["oAX", "Spatially aware codebase intelligence"],
+    "narration": "Meet O A X. Connect the code you are viewing with the context you need to move forward."
+  },
+  {
+    "duration": 8,
+    "label": "01 / UNDERSTAND",
+    "title": ["Start with a symbol."],
+    "body": [
+      "Capture the current file and unsaved selection.",
+      "Find callers and dependencies with evidence.",
+      "Your cursor stays yours."
+    ],
+    "narration": "Select a symbol. Capture unsaved changes. Find callers with evidence. The agent cursor stays separate from yours."
+  },
+  {
+    "duration": 8,
+    "label": "02 / EXPLAIN",
+    "title": ["Give the agent", "the right context."],
+    "body": [
+      "Versioned selection  \u00e2\u2020\u2019  bounded ContextSlice",
+      "Inspect excerpts, references and freshness.",
+      "Approve transmission to the Codex engine."
+    ],
+    "narration": "Inspect bounded context before sending it to Codex. Ground explanations in selected code, relationships, and references."
+  },
+  {
+    "duration": 9,
+    "label": "03 / CHANGE WITH CONTROL",
+    "title": ["Explain. Approve.", "Test. Review."],
+    "body": [
+      "Review the proposed change and its impact.",
+      "Authorize the exact edit and test command.",
+      "Inspect the diff, result and audit trail."
+    ],
+    "narration": "Review a supported refactor and its impact. Approve the exact edit and test command. Inspect the diff, results, and audit trail."
+  },
+  {
+    "duration": 8,
+    "label": "04 / ONE CORE",
+    "title": ["One runtime.", "Multiple ways in."],
+    "body": [
+      "VS Code  \u00c2\u00b7  CLI  \u00c2\u00b7  local desktop",
+      "Vim and Neovim: read-only intelligence",
+      "Python, Java and Go: syntax evidence workers"
+    ],
+    "narration": "One runtime serves editors, command line, and desktop. Python, Java, and Go workers add syntax evidence."
+  },
+  {
+    "duration": 8,
+    "label": "05 / SHARED KNOWLEDGE",
+    "title": ["Leave context", "for the next person."],
+    "body": [
+      "Publish reviewed findings and questions.",
+      "Invite readers or contributors.",
+      "Keep local edit permissions separate."
+    ],
+    "narration": "Publish reviewed findings and questions. Invite readers or contributors. Keep machine credentials and local edit permissions separate.",
+    "screenshot": true
+  },
+  {
+    "duration": 7,
+    "label": "06 / HUMAN CONTROL",
+    "title": ["Show the problem.", "Review what is shared."],
+    "body": [
+      "Screen lens: choose, preview, then analyze.",
+      "Optional browser dictation creates a draft.",
+      "Live capture and multi-user acceptance still pending."
+    ],
+    "narration": "Review screenshots before analysis. Dictate optional drafts. Live acceptance checks remain."
+  },
+  {
+    "duration": 5,
+    "label": "OAX / BUILDING IN THE OPEN",
+    "title": ["Make code", "understandable."],
+    "body": [
+      "Working local workflows + hosted knowledge",
+      "See the repository for installation and verified scope.",
+      "Elijah-MosesX / oAX"
+    ],
+    "narration": "O A X. Understand the code. Review the change. Keep the knowledge."
+  }
+]

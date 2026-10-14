@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "contract": { "type": "string", "const": "editor-codex-text.v1" },
+    "workspaceId": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "sessionId": { "type": "string", "minLength": 1, "maxLength": 128 },
+    "methods": {
+      "minItems": 1,
+      "maxItems": 8,
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "spatial.observe",
+          "graph.query",
+          "index.status",
+          "context.preview",
+          "repository.onboard",
+          "history.query",
+          "selection.explain",
+          "task.cancel"
+        ]
+      }
+    },
+    "engine": { "type": "string", "const": "codex" }
+  },
+  "required": ["contract", "workspaceId", "sessionId", "methods", "engine"],
+  "additionalProperties": false
+}

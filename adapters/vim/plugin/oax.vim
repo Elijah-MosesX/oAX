@@ -1,0 +1,18 @@
+if exists('g:loaded_oax') | finish | endif
+let g:loaded_oax = 1
+command! OaxConnect call oax#connect(g:oax_root, g:oax_cli, get(g:, 'oax_node', 'node'))
+command! OaxClose call oax#close()
+command! OaxObserve call oax#request('spatial.observe', {'observation': oax#capture()})
+command! OaxCallers call oax#request('graph.query', {'observation': oax#capture(), 'relationship': 'callers'})
+command! OaxContext call oax#request('context.preview', {'observation': oax#capture(), 'objective': 'Explain current symbol and its direct callers'})
+xnoremap <silent> <Plug>(OaxObserve) <Cmd>OaxObserve<CR>
+xnoremap <silent> <Plug>(OaxCallers) <Cmd>OaxCallers<CR>
+xnoremap <silent> <Plug>(OaxContext) <Cmd>OaxContext<CR>
+augroup oax_cleanup
+  autocmd!
+  autocmd VimLeavePre * call oax#close()
+  autocmd CursorMoved,CursorMovedI,BufEnter,WinScrolled * call oax#observe()
+  autocmd ModeChanged * call oax#observe()
+  autocmd TextChanged,TextChangedI,BufWritePost,BufLeave,BufWipeout * call oax#observe(1)
+  autocmd WinClosed * call oax#cursor#clear()
+augroup END

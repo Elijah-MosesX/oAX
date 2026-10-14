@@ -33,7 +33,26 @@ export interface ContextSlice {
     resolution: string;
   }[];
   limitations?: string[];
+  historical?: {
+    source: 'local-git' | 'github';
+    reference: string;
+    sourceHash: string;
+    evidenceHash: string;
+    excerpt: string;
+    truncated: boolean;
+  }[];
   redactions?: number;
+  memory?: {
+    id: string;
+    path: string;
+    range: TextRange;
+    sourceHash: string;
+    note: string;
+    reviewedAt: number;
+    expiresAt: number;
+    validation: 'human-reviewed-source-linked';
+    trust: 'untrusted';
+  }[];
 }
 /** Conservative known-token and labeled-assignment redaction; not a complete secret detector. */
 export function redact(text: string): { text: string; count: number } {
@@ -74,9 +93,25 @@ export function redactContext(context: ContextSlice): ContextSlice {
     ...context,
     objective: clean(context.objective),
     excerpt: clean(context.excerpt),
+    ...(context.memory
+      ? {
+          memory: context.memory.map((item) => ({
+            ...item,
+            note: clean(item.note),
+          })),
+        }
+      : {}),
     ...(context.related
       ? {
           related: context.related.map((item) => ({
+            ...item,
+            excerpt: clean(item.excerpt),
+          })),
+        }
+      : {}),
+    ...(context.historical
+      ? {
+          historical: context.historical.map((item) => ({
             ...item,
             excerpt: clean(item.excerpt),
           })),
@@ -90,9 +125,16 @@ function excluded(resource: string): boolean {
     .split(/[\\/]/)
     .some(
       (p) =>
-        ['.git', '.oax', 'node_modules', '.aws', '.codex'].includes(
-          p.toLowerCase(),
-        ) ||
+        [
+          '.git',
+          '.oax',
+          'node_modules',
+          '.aws',
+          '.codex',
+          '.tools',
+          '.gradle',
+          '.intellijplatform',
+        ].includes(p.toLowerCase()) ||
         /^\.env(?:\.|$)/i.test(p) ||
         /\.(pem|key)$/i.test(p),
     );
@@ -128,7 +170,7 @@ export async function workspacePath(
     throw new OaxError('PATH_DENIED', 'Resolved resource is excluded');
   return target;
 }
-function offset(text: string, position: Position): number {
+export function offset(text: string, position: Position): number {
   const lines = text.split('\n');
   const line = lines[position.line];
   if (line === undefined || position.column > line.replace(/\r$/, '').length)

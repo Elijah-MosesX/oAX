@@ -30,14 +30,23 @@ test('provider RPC correlates responses, streams notifications, and fails closed
   );
   await assert.rejects(pending);
   await rpc.done;
-  assert.deepEqual(events, ['item/agentMessage/delta']);
+  assert.deepEqual(events, [
+    'item/agentMessage/delta',
+    'oax/serverRequestDenied',
+  ]);
   assert.ok(sent.some((frame) => frame.includes('text-only provider rejects')));
 });
 test('provider request timeout and disconnect reject outstanding work', async () => {
   const input = new PassThrough(),
     output = new PassThrough();
   const rpc = new CodexRpc(input, output, 5);
-  await assert.rejects(rpc.request('unknown', {}));
+  await assert.rejects(
+    rpc.request('account/read', { secret: 'must-not-appear' }),
+    {
+      code: 'PROVIDER_TIMEOUT',
+      message: 'Codex request timed out: account/read',
+    },
+  );
   const pending = rpc.request('initialize', {});
   input.end();
   await assert.rejects(pending);

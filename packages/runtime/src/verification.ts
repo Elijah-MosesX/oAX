@@ -91,21 +91,25 @@ export async function executeChecks(
         });
         let bytes = 0;
         let failure: OaxError | undefined;
+        let termination: Promise<void> = Promise.resolve();
         const stop = (error: OaxError) => {
           if (failure) return;
           failure = error;
           if (child.pid && process.platform === 'win32')
-            execFile(
-              path.join(
-                process.env.SystemRoot ?? 'C:\\Windows',
-                'System32',
-                'taskkill.exe',
+            termination = new Promise<void>((done) =>
+              execFile(
+                path.join(
+                  process.env.SystemRoot ?? 'C:\\Windows',
+                  'System32',
+                  'taskkill.exe',
+                ),
+                ['/PID', String(child.pid), '/T', '/F'],
+                { windowsHide: true, timeout: 5000 },
+                () => {
+                  child.kill();
+                  done();
+                },
               ),
-              ['/PID', String(child.pid), '/T', '/F'],
-              { windowsHide: true, timeout: 5000 },
-              () => {
-                child.kill();
-              },
             );
           else if (child.pid) {
             try {
@@ -153,9 +157,11 @@ export async function executeChecks(
             'Node test process could not start',
           );
         });
-        child.once('close', (exitCode) => {
+        child.once('close', async (exitCode) => {
           clearTimeout(timer);
           signal.removeEventListener('abort', abort);
+          // Windows can close the parent pipes before taskkill releases its cwd.
+          await termination;
           const output = redact(Buffer.concat(chunks).toString('utf8')).text;
           for (let offset = 0; offset < output.length; offset += 16000)
             onOutput(output.slice(offset, offset + 16000));

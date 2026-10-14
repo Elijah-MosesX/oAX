@@ -1,0 +1,149 @@
+local oax = require('oax')
+local root, repo = vim.env.OAX_LIVE_WORKSPACE, vim.env.OAX_REPO
+local verify = vim.env.OAX_NVIM_VERIFY_TEST == '1'
+local file = root .. '/example.ts'
+vim.cmd.edit(vim.fn.fnameescape(file))
+vim.api.nvim_win_set_cursor(0, {1, 17})
+local source, window = vim.api.nvim_get_current_buf(), vim.api.nvim_get_current_win()
+local caller = vim.fn.bufadd(root .. '/caller.ts')
+vim.fn.bufload(caller)
+local original = table.concat(vim.fn.readfile(file), '\n')
+oax.setup({root=root, cli=repo .. '/dist/cli.cjs', node=vim.env.OAX_NODE, edits=true, tests=verify})
+assert(vim.wait(60000,function() return oax.inspect().connected end,20))
+local function call(method,payload)
+  local response
+  oax.request(method,payload,function(r) response=r end)
+  assert(vim.wait(30000,function() return response~=nil end,20),method)
+  return response
+end
+local snapshot=oax.capture()
+local denied=call('refactor.apply',{planId='missing',approvedHash=string.rep('a',64),observation=snapshot})
+assert(not denied.ok and denied.error.code=='PERMISSION_DENIED')
+if not verify then
+  local tests=call('verification.prepare',{observation=snapshot})
+  assert(not tests.ok and tests.error.code=='UNSUPPORTED_METHOD')
+end
+local native_select=vim.ui.select
+local prompts, action = 0, 'cancel'
+vim.ui.select=function(items,options,callback)
+  prompts=prompts+1
+  assert(items[1]=='Cancel' and items[2]=='Apply rename')
+  assert(not vim.bo.modifiable)
+  local text=table.concat(vim.api.nvim_buf_get_lines(0,0,-1,false),'\n')
+  assert(text:find('BEFORE:',1,true) and text:find('AFTER:',1,true) and text:find('renamed',1,true))
+  if action=='stale' then vim.api.nvim_buf_set_lines(caller,0,0,false,{'// unsaved'}) end
+  vim.api.nvim_feedkeys(action=='cancel' and '1\r' or '2\r','nt',false)
+  native_select(items,options,callback)
+end
+vim.cmd('OaxRename renamed')
+assert(vim.wait(30000,function() return prompts==1 end,20))
+assert(table.concat(vim.fn.readfile(file),'\n')==original,'Cancel wrote disk')
+vim.api.nvim_set_current_win(window)
+action='stale'
+vim.cmd('OaxRename renamed')
+assert(vim.wait(30000,function() return prompts==2 end,20))
+assert(table.concat(vim.fn.readfile(file),'\n')==original,'Stale approval wrote disk')
+assert(vim.bo[caller].modified,'Unsaved change in another affected buffer lost')
+vim.api.nvim_buf_call(caller,function() vim.cmd('edit!') end)
+vim.api.nvim_set_current_win(window)
+vim.cmd('edit!')
+vim.api.nvim_win_set_cursor(window,{1,17})
+action='apply'
+vim.cmd('OaxRename renamed')
+assert(vim.wait(30000,function() return prompts==3 end,20))
+assert(vim.wait(30000,function() return table.concat(vim.fn.readfile(file),'\n'):find('function renamed',1,true)~=nil end,20))
+assert(vim.wait(10000,function() return table.concat(vim.api.nvim_buf_get_lines(source,0,-1,false),'\n'):find('function renamed',1,true)~=nil end,20),'Source buffer not refreshed')
+assert(not vim.bo[source].modified)
+assert(table.concat(vim.fn.readfile(root .. '/caller.ts'),'\n'):find('renamed(3, 4)',1,true),'Cross-file caller not renamed')
+assert(table.concat(vim.api.nvim_buf_get_lines(caller,0,-1,false),'\n'):find('renamed(3, 4)',1,true),'Caller buffer not refreshed')
+local review=call('review.get',vim.empty_dict())
+assert(review.ok and review.payload.current and not review.payload.verified,vim.inspect(review))
+vim.api.nvim_set_current_win(window)
+vim.cmd('OaxReview')
+assert(vim.wait(10000,function() return vim.api.nvim_get_current_buf()~=source end,20),'No review view')
+assert(not vim.bo.modifiable)
+if verify then
+  vim.api.nvim_set_current_win(window)
+  vim.cmd.edit(vim.fn.fnameescape(root .. '/verify.test.mjs'))
+  local testbuf=vim.api.nvim_get_current_buf()
+  local testprompts=0
+  vim.ui.select=function(items,options,callback)
+    testprompts=testprompts+1
+    assert(items[1]=='Cancel' and items[2]=='Run test')
+    assert(not vim.bo.modifiable)
+    local text=table.concat(vim.api.nvim_buf_get_lines(0,0,-1,false),'\n')
+    assert(text:find('executable',1,true) and text:find('timeoutMs = 5000',1,true))
+    assert(options.prompt:find('local-account rights',1,true))
+    if action=='stale' then vim.api.nvim_buf_set_lines(testbuf,0,0,false,{'// unsaved'}) end
+    vim.api.nvim_feedkeys(action=='cancel' and '1\r' or '2\r','nt',false)
+    native_select(items,options,callback)
+  end
+  local function launch(choice)
+    vim.api.nvim_set_current_win(window)
+    vim.api.nvim_win_set_buf(window,testbuf)
+    action=choice
+    local n=testprompts
+    vim.cmd('OaxVerify')
+    assert(vim.wait(30000,function() return testprompts>n end,20))
+  end
+  local function terminal(start,state)
+    assert(vim.wait(20000,function()
+      local events=oax.inspect().events
+      for i=start+1,#events do
+        if events[i].method=='task.state' and events[i].payload.state==state then return true end
+      end
+      return false
+    end,20),'Missing terminal state ' .. state)
+  end
+  launch('cancel')
+  assert(vim.fn.filereadable(root .. '/ran.txt')==0)
+  launch('stale')
+  assert(vim.fn.filereadable(root .. '/ran.txt')==0)
+  vim.api.nvim_buf_call(testbuf,function() vim.cmd('edit!') end)
+  local count=#oax.inspect().events
+  launch('run')
+  terminal(count,'completed')
+  assert(vim.fn.filereadable(root .. '/ran.txt')==1)
+  local passed=call('review.get',vim.empty_dict())
+  assert(passed.ok and passed.payload.verified and passed.payload.check.exitCode==0,vim.inspect(passed))
+  vim.api.nvim_buf_call(testbuf,function()
+    vim.api.nvim_buf_set_lines(testbuf,0,-1,false,{'process.exitCode = 1;'})
+    vim.cmd('write')
+  end)
+  count=#oax.inspect().events
+  launch('run')
+  terminal(count,'failed')
+  local failed=call('review.get',vim.empty_dict())
+  assert(failed.ok and not failed.payload.verified and failed.payload.check.state=='failed')
+  vim.api.nvim_buf_call(testbuf,function()
+    vim.api.nvim_buf_set_lines(testbuf,0,-1,false,{"import {writeFileSync} from 'node:fs'; writeFileSync('started.txt','yes'); setInterval(() => {}, 1000);"})
+    vim.cmd('write')
+  end)
+  count=#oax.inspect().events
+  launch('run')
+  assert(vim.wait(5000,function()
+    return vim.fn.filereadable(root .. '/started.txt')==1
+  end,20),'Test process did not start')
+  vim.cmd('OaxCancel')
+  terminal(count,'cancelled')
+  local cancelled=call('review.get',vim.empty_dict())
+  assert(cancelled.ok and not cancelled.payload.verified and cancelled.payload.check.state=='cancelled')
+  vim.api.nvim_set_current_win(window)
+  vim.api.nvim_win_set_buf(window,source)
+  print('NEOVIM VERIFICATION PASSED: native cancel, stale buffer, real pass/failure/cancellation and fresh review evidence')
+end
+-- A disk change after review must fail before any other file is written.
+vim.api.nvim_set_current_win(window)
+local current=oax.capture()
+current.selection={start=current.cursor,['end']=current.cursor}
+local plan=call('refactor.prepare',{observation=current,newName='again'})
+assert(plan.ok,vim.inspect(plan))
+local saved=table.concat(vim.fn.readfile(file),'\n')
+vim.fn.writefile({'// external disk edit'},root .. '/caller.ts')
+local conflict=call('refactor.apply',{planId=plan.payload.id,approvedHash=plan.payload.hash,observation=current})
+assert(not conflict.ok and conflict.error.code=='EDIT_CONFLICT',vim.inspect(conflict))
+assert(table.concat(vim.fn.readfile(file),'\n')==saved,'Partial write despite stale baseline')
+vim.fn.writefile({vim.json.encode({verified=true,verification=verify,engine='mock',cancelled=true,staleDenied=true,applied=true,reviewed=true})},root .. '/acceptance.json')
+oax.close()
+print('NEOVIM EDIT PASSED: denied missing approval/tests, native cancellation, stale buffer preserved, exact rename, buffer reload and review')
+vim.cmd('qa!')

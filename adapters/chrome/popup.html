@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>oAX connection</title>
+    <link rel="stylesheet" href="popup.css" />
+    <script src="popup.js" type="module"></script>
+  </head>
+  <body>
+    <main>
+      <h1>oAX1</h1>
+      <p>
+        Open the evidence desk, or paste the single-use link from your local
+        runtime.
+      </p>
+      <button id="cloud" type="button">Open oAX1</button>
+      <form id="connect">
+        <label for="link">Local workbench link</label
+        ><input id="link" type="password" required autocomplete="off" /><button>
+          Open workbench
+        </button>
+      </form>
+      <p id="status" role="status">
+        Links stay in this popup and are never stored.
+      </p>
+      <p>
+        This extension does not inspect pages, read files or execute agent
+        actions.
+      </p>
+    </main>
+  </body>
+</html>

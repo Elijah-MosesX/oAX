@@ -4,6 +4,8 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { BrowserInspector, browserAction } from '@oax/browser';
 import { PermissionEngine } from '@oax/permissions';
+import { JevPlanner } from '../packages/browser/src/jev.js';
+import { snapshotPage } from '../packages/browser/src/snapshot.js';
 async function main(): Promise<void> {
   let outsideRequests = 0;
   const outside = createServer((_req, response) => {
@@ -32,7 +34,7 @@ async function main(): Promise<void> {
       'Content-Security-Policy': "default-src 'none'; frame-ancestors 'none'",
     });
     response.end(
-      '<!doctype html><title>oAX fixture</title><h1>oAX browser verification</h1>',
+      '<!doctype html><title>oAX fixture</title><h1>oAX browser verification</h1><button>Continue</button>',
     );
   });
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
@@ -81,6 +83,19 @@ async function main(): Promise<void> {
     });
     const snapshot = await inspector.call('take_snapshot', { pageId });
     assert.match(JSON.stringify(snapshot), /oAX browser verification/);
+    if (process.argv.includes('--jev')) {
+      const page = snapshotPage(snapshot, origin + '/fixture');
+      assert.equal(page.actions[0]?.label, 'Continue');
+      const result = (await new JevPlanner(process.cwd()).inspect(page)) as {
+        operations: string[];
+        executed: boolean;
+      };
+      assert.deepEqual(result.operations, ['CLICK']);
+      assert.equal(result.executed, false);
+      console.log(
+        'Actual Chrome DevTools snapshot -> bounded observed page -> installed Python Jev action space passed.',
+      );
+    }
     await assert.rejects(
       inspector.call('new_page', { url: 'https://example.com' }),
     );

@@ -1,0 +1,50 @@
+[
+  {
+    "file": "dist\\oax-square-videos\\01-understand\\brag.mp4",
+    "sha256": "aaf927b3dc38978c56008a3f4b6a332082f6886b1d7d32c2f9cddb4c53d36d7a",
+    "width": 1080,
+    "height": 1080,
+    "fps": 30,
+    "frames": 600,
+    "seconds": 20,
+    "audio": "original score / AAC",
+    "decode": "passed",
+    "posterTime": 3
+  },
+  {
+    "file": "dist\\oax-square-videos\\02-refactor\\brag.mp4",
+    "sha256": "9e60f564bde73c38c3f580b2db247bbf464f6672a7cf6434522096c6a1c08fe0",
+    "width": 1080,
+    "height": 1080,
+    "fps": 30,
+    "frames": 600,
+    "seconds": 20,
+    "audio": "original score / AAC",
+    "decode": "passed",
+    "posterTime": 3
+  },
+  {
+    "file": "dist\\oax-square-videos\\03-onboarding\\brag.mp4",
+    "sha256": "9f47bae5b55ed05bbc2d0a1d142d28bfafe98e83620731466a2b4726608a66e5",
+    "width": 1080,
+    "height": 1080,
+    "fps": 30,
+    "frames": 600,
+    "seconds": 20,
+    "audio": "original score / AAC",
+    "decode": "passed",
+    "posterTime": 3
+  },
+  {
+    "file": "dist\\oax-square-videos\\04-knowledge\\brag.mp4",
+    "sha256": "0b666b6527b8b5b318143a9921bc9fab047404a012fc1b58757b6fe076ff8dfd",
+    "width": 1080,
+    "height": 1080,
+    "fps": 30,
+    "frames": 600,
+    "seconds": 20,
+    "audio": "original score / AAC",
+    "decode": "passed",
+    "posterTime": 3
+  }
+]

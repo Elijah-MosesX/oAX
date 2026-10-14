@@ -1,0 +1,62 @@
+[
+  {
+    "name": "Inspect the public sample",
+    "sanity": true,
+    "viewport": "desktop",
+    "covers": ["public sample inspection", "POST /api/inspect"],
+    "description": "Loads the built-in evidence slice through the inspect route and shows the focused symbol.",
+    "steps": ["Click Inspect public sample"],
+    "expected": "authenticateUser and src/auth.ts are visible, with the objective Explain authenticateUser."
+  },
+  {
+    "name": "Reject a broken export",
+    "viewport": "mobile",
+    "covers": [
+      "invalid evidence guardrail",
+      "POST /api/inspect",
+      "transmission consent"
+    ],
+    "description": "A non-export paste is refused and does not become a walkthrough.",
+    "steps": [
+      "Type { into Exported evidence",
+      "Check the explicit hosted-inspection consent.",
+      "Click Inspect export"
+    ],
+    "expected": "A visible inspection error is shown and no stale source report or authenticateUser is shown."
+  },
+  {
+    "name": "Walk through the loaded slice",
+    "viewport": "desktop",
+    "covers": ["walkthrough of inspected evidence"],
+    "description": "After inspection, the walkthrough shows the related call.",
+    "steps": ["Click Inspect public sample", "Open Walkthrough"],
+    "expected": "src/controller.ts is listed with calls and semantic."
+  },
+  {
+    "name": "Read the extension install path",
+    "viewport": "mobile",
+    "covers": ["chrome extension install guidance"],
+    "description": "The extension screen states the unpacked install and the loopback link rule.",
+    "steps": ["Open Extension"],
+    "expected": "Load unpacked is visible and the page says a local link must be http://127.0.0.1:PORT/#token."
+  },
+  {
+    "name": "Inspect connected history and memory with explicit consent",
+    "viewport": "desktop",
+    "covers": [
+      "POST /api/inspect",
+      "history and memory preservation",
+      "consent reset",
+      "snapshot limitations"
+    ],
+    "description": "The canonical export is inspected without turning notes into trusted facts.",
+    "steps": [
+      "Paste this synthetic export: {\"format\": \"oax-evidence.v1\", \"method\": \"context.preview\", \"capturedAt\": \"2026-10-11T00:00:00.000Z\", \"result\": {\"objective\": \"Explain calibration\", \"path\": \"src/sum.ts\", \"range\": {\"start\": {\"line\": 0, \"column\": 0}, \"end\": {\"line\": 0, \"column\": 8}}, \"documentVersion\": 1, \"dirty\": false, \"excerpt\": \"export const sum = 1 + 2;\", \"truncated\": false, \"provenance\": \"editor-buffer\", \"trust\": \"untrusted\", \"related\": [], \"historical\": [{\"source\": \"local-git\", \"reference\": \"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\", \"sourceHash\": \"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\", \"evidenceHash\": \"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\", \"excerpt\": \"Synthetic commit: introduce calibration\", \"truncated\": false}], \"memory\": [{\"id\": \"123e4567-e89b-42d3-a456-426614174000\", \"path\": \"src/sum.ts\", \"range\": {\"start\": {\"line\": 0, \"column\": 0}, \"end\": {\"line\": 0, \"column\": 8}}, \"sourceHash\": \"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\", \"note\": \"ORCHID-27 is a reviewed synthetic calibration claim.\", \"reviewedAt\": 1791676800000, \"expiresAt\": 1791763200000, \"validation\": \"human-reviewed-source-linked\", \"trust\": \"untrusted\"}]}}",
+      "Verify Inspect export is disabled until hosted-inspection consent is checked.",
+      "Check consent and inspect the export.",
+      "Verify ORCHID-27, local-git and snapshot limitations are visible.",
+      "Edit the input and verify consent resets."
+    ],
+    "expected": "History, notes and untrusted snapshot limitations are shown. Editing requires renewed consent."
+  }
+]

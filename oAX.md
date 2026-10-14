@@ -9,6 +9,8 @@
 **Initial persistence:** SQLite  
 **Repository:** `oax/`
 
+The original ideation documents were reconciled with implementation on 2026-10-04. See [product alignment](docs/product-alignment.md) for the persistent-workspace-participant intent, concrete gaps and acceptance order. Later requests for collaboration, broader environments, voice and enterprise controls remain in scope; existing supporting surfaces do not replace the shared runtime experience.
+
 ---
 
 ## 1. Product Definition
@@ -2081,3 +2083,11 @@ Once that loop is stable, every additional feature has a clear place in the arch
 An optional Chrome DevTools MCP adapter extends source intelligence with authorized browser evidence. Keep its wire details and lifecycle behind a tool adapter; scope each operation to an approved development origin and dedicated profile. Browser context is untrusted, cannot change policy, and requires separate authorization from provider context transmission. Disable unnecessary tools, personal profiles, telemetry and CrUX requests; bound and redact captured evidence.
 
 The local preview implements a pinned, origin-scoped read-only CLI inspection adapter with real loopback tests. Source-map relationships, browser evidence in ContextSlice, approved browser-driven fixes and repeated application verification remain planned. This addition does not replace the core spatial/context/runtime/Codex architecture or authorize remote submissions.
+
+## Verified implementation checkpoint — 2026-10-02
+
+The local preview now includes the supported TS/JS vertical slice, Buddy, durable source-free authorization journals and a Neovim adapter using the same runtime/protocol. JetBrains Java source compiles against its SDK, while packaging/live IDE acceptance remains separate. Python/Java/Go semantic analysis and voice are planned implementation work, not advertised capabilities. See [PROGRESS](PROGRESS.md), [language boundaries](docs/polyglot.md) and [audit](docs/audit.md) for evidence and remaining release gates. The blueprint above remains the intended full product scope.
+
+## Browser planner and shared-surface checkpoint (2026-10-02)
+
+The optional Jev integration uses a pinned Python planning worker behind the existing permissions boundary, with verified local Chrome MCP observation projection and separate exact-context authorization for TypeSafe proposals. It does not enable upstream unrestricted browser execution. A local web workbench and dedicated app-window launcher reuse the existing runtime/protocol/graph. Verified versus pending capabilities, installation and team deployment boundaries are recorded in docs/jev.md, docs/surfaces.md and PROGRESS.md. The five-interface architecture remains the intended platform; the GitHub App and enterprise hosted surfaces are not yet implemented.

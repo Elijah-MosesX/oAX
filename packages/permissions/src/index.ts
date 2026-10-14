@@ -5,7 +5,9 @@ export type Capability =
   | 'terminal.execute'
   | 'provider.context'
   | 'git.read'
+  | 'git.write'
   | 'github.read'
+  | 'github.write'
   | 'browser.read'
   | 'browser.navigate';
 export interface Action {
@@ -24,13 +26,31 @@ export interface Grant extends Action {
 export interface AuditRecord {
   timestamp: string;
   action: Action;
-  outcome: 'allow' | 'deny' | 'completed' | 'failed';
+  outcome: 'allow' | 'deny' | 'completed' | 'failed' | 'granted' | 'refused';
+  grantId?: string;
+  expiresAt?: number;
 }
 export class PermissionEngine {
   private grants: Grant[] = [];
   private records: AuditRecord[] = [];
-  constructor(private readonly now: () => number = Date.now) {}
+  constructor(
+    private readonly now: () => number = Date.now,
+    private readonly persist?: (record: AuditRecord) => void,
+  ) {}
+  private record(record: AuditRecord): void {
+    // Persist before authorization/execution; an unavailable sink fails closed.
+    this.persist?.(structuredClone(record));
+    this.records.push(record);
+  }
   grant(grant: Grant): void {
+    const { id, expiresAt, decision, ...action } = grant;
+    this.record({
+      timestamp: new Date(this.now()).toISOString(),
+      action,
+      outcome: decision === 'allow' ? 'granted' : 'refused',
+      grantId: id,
+      expiresAt,
+    });
     this.grants.push(structuredClone(grant));
   }
   get audit(): AuditRecord[] {
@@ -47,7 +67,7 @@ export class PermissionEngine {
       grants.some((g) => g.decision === 'allow') &&
       !grants.some((g) => g.decision === 'deny');
     const record = (outcome: AuditRecord['outcome']) =>
-      this.records.push({
+      this.record({
         timestamp: new Date(this.now()).toISOString(),
         action: structuredClone(action),
         outcome,

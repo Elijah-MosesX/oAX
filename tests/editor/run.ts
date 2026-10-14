@@ -17,6 +17,10 @@ async function waitForSpatial(
   );
 }
 export async function run(): Promise<void> {
+  if (process.env.OAX_LIVE_EDITOR_TEST === '1') {
+    await (await import('./live.js')).runLive();
+    return;
+  }
   const folder = vscode.workspace.workspaceFolders?.[0];
   assert.ok(folder);
   const document = await vscode.workspace.openTextDocument(
@@ -44,17 +48,39 @@ export async function run(): Promise<void> {
     replacement.split('\n')[0]!.length,
   );
   const selected = editor.selection;
-  const answer = await vscode.commands.executeCommand<string>(
-    'oax.explainSelection',
-  );
+  const answer =
+    await vscode.commands.executeCommand<string>('oax.explainMock');
   assert.ok(answer?.includes('[Mock engine'));
   assert.ok(answer.includes(replacement.split('\n')[0]!));
   assert.ok(answer.includes('(unsaved buffer)'));
   assert.ok(answer.includes(`document version ${document.version}`));
   const extension = vscode.extensions.getExtension<{
     inspectSpatial: () => SpatialInspection;
+    inspectBuddy: () => import('@oax/buddy').BuddySnapshot;
   }>('oax-dev.oax-vscode');
   assert.ok(extension?.isActive);
+  const registered = await vscode.commands.getCommands(true);
+  for (const name of [
+    'oax.memory.save',
+    'oax.memory.list',
+    'oax.memory.delete',
+    'oax.explainWithMemory',
+  ])
+    assert.ok(registered.includes(name));
+  const memory =
+    await vscode.commands.executeCommand<unknown[]>('oax.memory.list');
+  assert.ok(
+    Array.isArray(memory),
+    'Editor must use the actual runtime memory listing',
+  );
+  await assert.rejects(
+    async () => await vscode.commands.executeCommand('oax.memory.save'),
+    /Save the file and select/,
+  );
+  assert.ok(
+    editor.selection.isEqual(selected),
+    'Memory controls preserve the developer selection',
+  );
   const inspect = extension.exports.inspectSpatial;
   const decorated = await waitForSpatial(inspect, (state) => !!state.cursor);
   assert.equal(decorated.cursor!.path, 'example.ts');
@@ -63,6 +89,36 @@ export async function run(): Promise<void> {
     createHash('sha256').update(replacement).digest('hex'),
   );
   assert.deepEqual(decorated.cursor!.range.start, { line: 0, column: 0 });
+  const inspectBuddy = extension.exports.inspectBuddy;
+  const buddySession = inspectBuddy().sessions.find(
+    (session) => session.provider === 'mock',
+  );
+  assert.ok(buddySession?.connected);
+  assert.equal(buddySession.phase, 'completed');
+  assert.equal(
+    buddySession.location?.contentHash,
+    decorated.cursor!.contentHash,
+  );
+  assert.deepEqual(buddySession.location?.range, decorated.cursor!.range);
+  await vscode.commands.executeCommand('oax.buddy.show');
+  await vscode.commands.executeCommand('oax.buddy.location', buddySession.id);
+  assert.ok(
+    editor.selection.isEqual(selected),
+    'Revealing Buddy location must preserve developer selection',
+  );
+  await vscode.commands.executeCommand('oax.buddy.hide');
+  const hiddenAnswer =
+    await vscode.commands.executeCommand<string>('oax.explainMock');
+  assert.ok(
+    hiddenAnswer?.includes('[Mock engine'),
+    'Hiding Buddy cannot disable the runtime',
+  );
+  assert.equal(
+    inspectBuddy().sessions.find((session) => session.id === buddySession.id)
+      ?.phase,
+    'completed',
+  );
+  await vscode.commands.executeCommand('oax.buddy.show');
   await waitForSpatial(
     inspect,
     (state) => state.spatial?.observation.documentVersion === document.version,
@@ -116,6 +172,7 @@ export async function run(): Promise<void> {
     undefined,
     'Changing source must clear the prior agent decoration',
   );
+  assert.ok(inspectBuddy().sessions.every((session) => !session.location));
   await waitForSpatial(
     inspect,
     (state) => state.spatial?.observation.documentVersion === document.version,
@@ -137,6 +194,10 @@ export async function run(): Promise<void> {
       'oax.find.callers',
     );
   assert.equal(reconnected?.relationships[0]?.node?.name, 'caller');
+  assert.ok(
+    inspectBuddy().sessions.every((session) => session.id !== buddySession.id),
+    'Reconnect must discard prior Buddy session state',
+  );
   const walkthrough = await vscode.commands.executeCommand<
     import('../../packages/runtime/src/onboarding.js').OnboardingReport
   >('oax.onboardRepository');
@@ -146,6 +207,9 @@ export async function run(): Promise<void> {
       (module) => module.path === 'example.ts' && module.symbols >= 2,
     ),
   );
+  await (await import('./memory.js')).memoryApprovals(folder.uri.fsPath);
+  editor = await vscode.window.showTextDocument(document);
+  editor.selection = selected;
   await vscode.commands.executeCommand(
     'workbench.action.revertAndCloseActiveEditor',
   );

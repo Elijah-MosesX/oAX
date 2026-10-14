@@ -1,0 +1,6 @@
+<idea-plugin>
+  <id>dev.oax.jetbrains</id><name>oAX read-only prototype</name><vendor>oAX</vendor>
+  <description>Selected-buffer structural evidence through the same oAX runtime. No provider or write operations.</description>
+  <depends>com.intellij.modules.platform</depends>
+  <actions><action id="oax.Callers" class="dev.oax.CallersAction" text="oAX: Find Callers"><add-to-group group-id="EditorPopupMenu" anchor="last"/></action></actions>
+</idea-plugin>

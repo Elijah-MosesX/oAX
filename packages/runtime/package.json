@@ -15,6 +15,7 @@
     "@oax/context": "workspace:*",
     "@oax/spatial": "workspace:*",
     "@oax/permissions": "workspace:*",
-    "@oax/github": "workspace:*"
+    "@oax/github": "workspace:*",
+    "@oax/watcher": "workspace:*"
   }
 }

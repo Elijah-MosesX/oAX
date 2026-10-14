@@ -5,6 +5,11 @@ export interface AgentSession {
 }
 export type AgentEvent =
   | { type: 'delta'; text: string }
+  | {
+      type: 'activity';
+      kind: 'turn' | 'message' | 'tool';
+      state: 'started' | 'completed' | 'failed' | 'cancelled' | 'denied';
+    }
   | { type: 'completed' };
 export interface AgentEngine {
   readonly kind: 'local-mock' | 'external';

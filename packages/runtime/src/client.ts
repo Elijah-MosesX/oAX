@@ -1,5 +1,6 @@
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
 import { randomBytes, randomUUID } from 'node:crypto';
+import path from 'node:path';
 import {
   CAPABILITIES,
   OaxError,
@@ -16,12 +17,22 @@ interface Pending {
   reject: (error: Error) => void;
   timer: NodeJS.Timeout;
 }
+export type ParserEnvironment = Partial<
+  Record<
+    'OAX_LANGUAGE_WORKERS' | 'OAX_PYTHON' | 'OAX_JAVA' | 'OAX_GO_PARSER',
+    string
+  >
+>;
 export class RuntimeClient {
+  get identity(): string {
+    return this.workspaceId;
+  }
   private child: ChildProcessWithoutNullStreams;
   private writer: FrameWriter;
   private pending = new Map<string, Pending>();
   private listeners = new Set<(event: Event) => void>();
   private failures = new Set<(error: Error) => void>();
+  private disconnects = new Set<() => void>();
   private sequence = 0;
   private closed = false;
   private constructor(
@@ -31,6 +42,7 @@ export class RuntimeClient {
     token: string,
     nodePath: string,
     providerExecutable?: string,
+    parserEnvironment: ParserEnvironment = {},
   ) {
     this.child = spawn(nodePath, [runtimePath, 'serve', root, workspaceId], {
       stdio: 'pipe',
@@ -38,6 +50,7 @@ export class RuntimeClient {
       windowsHide: true,
       env: {
         ...process.env,
+        ...parserEnvironment,
         OAX_CONNECTION_TOKEN: token,
         ELECTRON_RUN_AS_NODE: '1',
         OAX_PROVIDER_EXECUTABLE: providerExecutable ?? '',
@@ -63,7 +76,25 @@ export class RuntimeClient {
     root: string,
     nodePath = process.execPath,
     providerExecutable?: string,
+    parserEnvironment: ParserEnvironment = {},
   ): Promise<RuntimeClient> {
+    const safeEnvironment: ParserEnvironment = {};
+    for (const key of [
+      'OAX_LANGUAGE_WORKERS',
+      'OAX_PYTHON',
+      'OAX_JAVA',
+      'OAX_GO_PARSER',
+    ] as const) {
+      const value = parserEnvironment[key];
+      if (value) {
+        if (!path.isAbsolute(value))
+          throw new OaxError(
+            'INVALID_ARGS',
+            'Language parser paths must be absolute',
+          );
+        safeEnvironment[key] = value;
+      }
+    }
     const token = randomBytes(32).toString('hex');
     const client = new RuntimeClient(
       randomUUID(),
@@ -72,6 +103,7 @@ export class RuntimeClient {
       token,
       nodePath,
       providerExecutable,
+      safeEnvironment,
     );
     try {
       await client.call('initialize', {
@@ -121,6 +153,13 @@ export class RuntimeClient {
     this.child.kill();
     for (const listener of this.failures) listener(error);
     this.failures.clear();
+    for (const listener of this.disconnects) listener();
+    this.disconnects.clear();
+  }
+  onDisconnect(listener: () => void): () => void {
+    if (this.closed) listener();
+    else this.disconnects.add(listener);
+    return () => this.disconnects.delete(listener);
   }
   subscribe(listener: (event: Event) => void): () => void {
     this.listeners.add(listener);
@@ -131,7 +170,25 @@ export class RuntimeClient {
     const result = new Promise<Response>((resolve, reject) => {
       const timer = setTimeout(
         () => this.fail(new OaxError('TIMEOUT', 'Runtime request timed out')),
-        10_000,
+        req.method === 'initialize'
+          ? 60_000
+          : [
+                'github.trace',
+                'github.history',
+                'history.query',
+                'context.preview',
+              ].includes(req.method)
+            ? 90_000
+            : [
+                  'spatial.observe',
+                  'graph.query',
+                  'context.preview',
+                  'repository.onboard',
+                  'refactor.prepare',
+                  'index.status',
+                ].includes(req.method)
+              ? 30_000
+              : 10_000,
       );
       this.pending.set(req.id, { resolve, reject, timer });
     });
@@ -154,6 +211,8 @@ export class RuntimeClient {
     objective = 'Explain this selection',
     signal?: AbortSignal,
     approvedContextHash?: string,
+    history?: 'local' | 'github',
+    memoryIds?: string[],
   ): Promise<string> {
     return this.runTask(
       sessionId,
@@ -162,6 +221,8 @@ export class RuntimeClient {
         observation,
         objective,
         ...(approvedContextHash ? { approvedContextHash } : {}),
+        ...(history ? { history } : {}),
+        ...(memoryIds?.length ? { memoryIds } : {}),
       },
       signal,
     );

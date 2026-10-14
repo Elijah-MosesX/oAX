@@ -1,22 +1,59 @@
 # oAX architecture
 
+## Opt-in second-editor text execution (2026-10-13)
+
+The private editor bridge defaults to the unchanged `editor-read-only.v1` mock contract. An explicit absolute Codex executable selects `editor-codex-text.v1` and the existing restricted runtime engine. No credentials or provider wire fields cross the bridge. A connection holds at most one source-free preview receipt (context hash, request fingerprint and 60-second expiry). One explanation attempt consumes it; the runtime independently reconstructs the context and enforces its exact hash/grant at transmission. The same method allowlist excludes edits, test execution and connection administration. Cancellation remains available while a task runs; EOF disposes the runtime.
+
+Neovim presents the full context in a read-only buffer and obtains a Cancel-default native choice. Its callback checks connection generation/session and source document version before forwarding the approved hash. Actual scoped runtime events drive task cancellation and remain available to presentation consumers; source and human cursor are preserved. This paragraph describes text-only setup. The later edit/test contracts below add the verified proposal, approval, execution and review workflow without expanding default access.
+
+Neovim's `OaxContext` command now consumes the existing read-only bridge's `context.preview` method. It converts the current line or an explicit Ex line range to a versioned unsaved UTF-16 selection and displays the runtime's bounded context/hash. No protocol capability, provider permission or bridge allowlist is expanded.
+
+The local workbench projects real read-operation receipts through the same
+`BuddyStore` used by VS Code. Inspection state is separate from agent task state,
+verification and cursor evidence. Authenticated event polls and RPC responses
+include a source-free Buddy view with monotonic revisions; delayed responses
+cannot regress the UI. Hide/show is presentation-only. No protocol 0.1 contract,
+permission, provider route or editor orchestration changes.
+See [Clicky source review](docs/clicky.md) for the pinned reference and adaptation.
+
 ## Current implementation status
 
 As of 2026-10-02 the local preview includes protocol/runtime, persistent editor connections, debounced versioned observations, deterministic TypeScript/JavaScript graph queries, bounded context, optional restricted Codex text, saved-file rename previews, Git history, observed symbol decorations, and an event-driven status bar. The complete platform is unreleased. See PROGRESS for exact verification.
 
-The core is independent of VS Code; provider-specific JSONL RPC remains in `packages/codex`. Public oAX stdio envelopes remain distinct from provider RPC. A random parent-generated token authenticates each private connection; no TCP listener exists. Runtime sessions, grants, and audits are memory-only.
+The core is independent of VS Code; provider-specific JSONL RPC remains in `packages/codex`. Public oAX stdio envelopes remain distinct from provider RPC. A random parent-generated token authenticates each private connection. Editor companions use stdio; the optional desktop/workbench adds a loopback HTTP listener with single-use bootstrap, scoped cookie and CSRF checks. Sessions and grants remain memory-only. Production companions persist source-free permission/action records through an injected sink in `.oax/audit`; records are flushed before execution and unavailable recording fails closed. See [audit boundaries](docs/audit.md).
 
-Each session owns its graph and selected-buffer overlay so one session cannot replace another's unsaved context. Indexer discovery enforces exclusions, symlink checks and budgets. TypeScript's checker resolves local relative modules and preserves unresolved edges; filename test relationships remain heuristic. SQLite migration 1 has foreign keys, indexes and transactions. Unchanged source/file records are reused; semantic relationships are reconciled globally after changes. Runtime refresh is observation-driven; the separately tested polling watcher is not attached to editor sessions yet. CLI analysis persists its graph under `.oax`; sessions do not persist source excerpts.
+Each session owns its graph and selected-buffer overlay so one session cannot replace another's unsaved context. Indexer discovery enforces exclusions, symlink checks and budgets. TypeScript's checker resolves indexed local modules, bounded project aliases, workspace package exports and re-exports and preserves unresolved edges; filename test relationships remain heuristic. SQLite migration 1 has foreign keys, indexes and transactions. Unchanged source/file records are reused; semantic relationships are reconciled globally after changes. Runtime observations and background polling share a serialized refresh queue. Background refresh retains the selected dirty overlay, records refresh errors without claiming freshness, and stops before session graph disposal. `index.status` exposes generation, counts and refresh state. CLI analysis persists its graph under `.oax`; sessions do not persist source excerpts.
 
-Context includes the captured selection, focused symbol and at most six bounded caller excerpts with source hashes and resolution labels. It does not overlay other unsaved editors. Agent cursor events identify observed graph locations; decoration never moves the human selection. The status bar consumes public events, with no provider reasoning dependency.
+Graph refresh constructs the next source/program/declaration state privately and publishes it only after the SQLite transaction commits. A failed database update retains the last committed graph and focused-symbol snapshot; retries still recognize the changed source. Fault-injection acceptance verifies rollback and recovery. The public CLI query and actual-repository acceptance are described in docs/codegraph.md.
 
-External text is explicit opt-in, pinned to Codex 0.159.2, with verified disabled environment/tool configuration and process-only MCP overrides. Runtime context approval is hash-bound and checked at engine execution. Unsupported versions/configuration fail closed. See docs/codex-integration.md. Live provider tools remain unavailable.
+Codex selection editing keeps the provider text-only. The runtime validates its untrusted JSON replacement against a saved captured range; the model cannot select another path, create files, invoke tools or grant permissions. The editor presents a native diff, and exact-plan approval reuses the runtime write boundary and baseline checks. Generated changes remain unverified until separately authorized tests run. Rename retains its deterministic semantic validation; arbitrary selection edits make no such claim.
 
-Rename plans are generated by the TypeScript language service over indexed snapshots. Only saved ordinary files can be written; exact preview approval, expiration, baseline hashes, resource grants and file identity checks gate execution. Syntax is checked before approval. Writes are not a multi-file atomic transaction; partial failures report affected files and do not promise rollback. Separate saved Node-test plans enforce exact-operation approval, source freshness, bounded output, timeout and actual exit status. General AI-generated edit plans remain pending. Local Git history uses fixed read-only subprocess commands, with no hooks/pagers/text conversion or remote operations. Historical evidence is not treated as proof of intent.
+Context includes the captured selection, focused symbol and at most six graph excerpts, prioritized by deterministic objective keywords across callers, direct callees, imports and heuristic tests. Each excerpt has an exact symbol range, source hash, resolution grade and selection reason. Stale snapshots are excluded, omissions are reported and both character and serialized-byte budgets remain enforced before hash-bound transmission approval. It does not overlay other unsaved editors. Opt-in historical context now combines saved selected-line Git evidence and explicitly connected GitHub trace snapshots under the same budget and consent hash; persistent validated memory remains pending. See docs/connected-intelligence.md. Agent cursor events identify observed graph locations; decoration never moves the human selection. The status bar consumes public events, with no provider reasoning dependency. The original product intent and the remaining connected-experience gaps are recorded in [product alignment](docs/product-alignment.md).
 
-VSIX packaging uses an allowlisted staging directory and two bundles; the CLI currently runs from a built checkout. This is a local development preview, not a public Marketplace or npm release. Optional Chrome DevTools inspection is implemented as a separate CLI adapter. Broader GitHub issue/review/check integration, richer Buddy/voice, additional adapters and team/deployment surfaces remain design work.
+External text is explicit opt-in with exact verified Codex versions and disabled environment/tool configuration plus process-only MCP overrides. Runtime context approval is hash-bound and checked at engine execution. Unsupported versions/configuration fail closed. See docs/codex-integration.md. Live provider tools remain unavailable.
+
+Rename plans are generated by the TypeScript language service over indexed snapshots. Only saved ordinary files can be written; exact preview approval, expiration, baseline hashes, resource grants and file identity checks gate execution. Rename syntax is checked before approval; model selection proposals are separately labeled unverified. Writes are not a multi-file atomic transaction; partial failures report affected files and do not promise rollback. Separate saved Node-test plans enforce exact-operation approval, source freshness, bounded output, timeout and actual exit status. Multi-file model edits and file creation/deletion remain pending. Local Git history uses fixed read-only subprocess commands, with no hooks/pagers/text conversion or remote operations. Historical evidence is not treated as proof of intent.
+
+VSIX packaging uses an allowlisted staging directory and two bundles; the CLI currently runs from a built checkout. This is a local development preview, not a public Marketplace or npm release. Optional Chrome DevTools inspection is implemented as a separate CLI adapter. Bounded GitHub issue/review/check retrieval is implemented with deterministic acceptance; live scoped product authentication remains unverified. Buddy's native VS Code presence and Neovim's separately opted-in explanation/edit/test workflow, spatial indicators and explicit reconnect acceptance are implemented; Java JetBrains SDK compilation is verified separately from live IDE acceptance. Voice and team/deployment surfaces remain future work. See [language boundaries](docs/polyglot.md) before adding workers in Python, Java or Go.
 
 ## Architectural direction
+
+The local workbench also exposes a PWA shell and a portable Windows desktop
+distribution over the same RuntimeClient. Its static service worker never stores
+private API traffic. The hosted AppDeploy PWA validates and renders exported bounded
+evidence in memory; it owns no agent session, workspace or approval state. Browser-safe
+protocol coordinate schemas are shared without importing Node transport crypto.
+The Chrome extension is a no-permission loopback launcher. Vimscript reuses the
+read-only bridge with actual unsaved snapshots and UTF-16 positions. Vimium is
+installed separately in an owned profile and never grants oAX browser tool authority.
+
+Milestone 7 introduces a private read-only editor companion over the existing protocol 0.1 envelopes, validators and RuntimeClient. Neovim captures current unsaved buffers and translates UTF-8 byte coordinates to UTF-16. The JetBrains prototype captures UTF-16 document offsets and consumes the same contract. The runtime retains graph construction, path/snapshot validation, sessions and lifecycle; editor-specific APIs remain outside core. The default bridge, Vim and JetBrains expose no provider transmission, writes, terminal execution or credentials. Neovim explicitly enables the later provider/edit/test contracts described below; these retain separate execution approvals. The subsequent desktop/workbench and hosted evidence viewer have the separate boundaries described above; see [adapter contract](docs/adapters.md).
+
+Milestone 6 adds `packages/buddy`, an editor-independent read-only projection of validated public events and actual editor prompts/edit/review receipts. The native VS Code Buddy tree and status item subscribe to it; task lifecycle remains authoritative in the runtime. Provider item completion is separate from task completion, and a completed task is separate from passing edit verification. Cursor acceptance shares the decoration's content/version checks. Source changes clear locations and invalidate known result paths; the tree labels retained verification as the last observed review. RuntimeClient exposes disconnection observation independently of task rejection. Hiding Buddy affects presentation only. The blueprint's illustrative Buddy event names are mapped to the actual protocol in [Buddy](docs/buddy.md). Voice has been assessed and deferred; no microphone capture is implemented.
+
+Applied-edit review is session-scoped and bounded. It retains the exact approved plan, before/after snapshots, test-plan identity, source hash, exit status and bounded redacted output. `review.get` rechecks changed files and the saved test before reporting verification. Matching files before/after execution and a passing approved command are required; dependency or transient changes are not tracked. Provider turn/message activity and denied tool attempts are sanitized into `agent.activity`, without arguments, credentials or reasoning. Provider tools remain disabled. Production approvals use VS Code Quick Picks with Cancel selected initially and full details in output; a read-only interaction inspector lets acceptance exercise actual choices through VS Code's command service.
+
+Historical intelligence now separates selected-line blame commits from broader file history. Fixed read-only Git operations expose bounded branches, selected-file status/diff and HEAD. An approved GitHub connection supplies resource-scoped grants to bounded PR, review, timeline-comment, issue-reference and check-run GETs. Textual issue references are heuristic; remote partial failures are explicit. Product Git/GitHub mutation capabilities are distinct and remain unavailable. See docs/history.md for implemented limits and validation.
 
 oAX is the context and interaction layer; Codex is its primary agent engine. The core runtime is independent of editor APIs and provider wire protocols. The first deployment is local, with a VS Code adapter and CLI.
 
@@ -100,7 +137,7 @@ A provider adapter must surface connection failure, disconnects, approvals, canc
 
 ## Open decisions
 
-Pin Node/pnpm and provider versions; choose local IPC transport and authentication; choose first supported languages and parser; define context budgets and exclusions; decide extension/runtime packaging and update policy; specify crash recovery and log retention. Record resolved decisions with implementation references and date.
+Node 24.19.0, pnpm 11.25.0, exact supported provider versions, authenticated private stdio, the initial TS/JS checker and bounded context are implemented. Local VSIX content validation and source-free action journals are verified. Remaining decisions concern supported public releases and updates, crash recovery/retention, voice, broader language workers, team identity/isolation and deployment operations. See PROGRESS.md for acceptance evidence.
 
 ## Added local preview boundaries
 
@@ -109,3 +146,69 @@ Repository onboarding consumes deterministic graph counts, imports, file hashes 
 The packages/github fixed-origin GET adapter is initialized only by an explicit approved selected-repository connection. Each runtime session owns its credential and authorization expiration; exact resource grants wrap requests. Editor authentication input and optional SecretStorage remain adapter responsibilities. PR association evidence is returned to the editor without being injected into provider context. Deterministic HTTP fixtures prove boundaries; live authenticated product acceptance is pending.
 
 Spatial capture now derives open files from actual file-backed text tabs, listens to tab/open/close/save events, and compares the complete source-free observation metadata before deduplication. Results from asynchronous observation requests are checked against the current active editor before display. The extension's read-only inspection API reports the accepted metadata and decorated agent location without returning buffer text; it is used for real editor acceptance and does not orchestrate core tasks.
+
+## Shared local surfaces and Python browser planner (2026-10-02)
+
+The local workbench owns loopback authentication and presentation over RuntimeClient and the same scoped protocol/session/graph used by CLI and editors. Its HTTP method allowlist exposes local intelligence without writes or provider transmission. A dedicated Chrome app-window launcher wraps that same surface. packages/browser isolates MCP snapshot projection and an optional pinned Python Jev planning worker; provider-context grants gate TypeSafe transmission, while returned choices never authorize browser execution. See docs/surfaces.md and docs/jev.md for exact supported boundaries and pending App/enterprise deployment.
+
+## Hosted knowledge boundary (2026-10-03)
+
+`deployments/team` is a separate AppDeploy React/backend surface. It shares the canonical ContextSlice validation contract through the preparation script, not local runtime credentials or authority. AppDeploy SDK identity gates private routes; an owner or a current identity-bound invitation is required on each content operation. Append-only records avoid lost updates between independent contributions. Source-free WebSocket invalidations trigger authenticated reads. No provider or repository execution is exposed by this deployment. Voice is a browser-controlled draft/read-aloud interface. See docs/team.md for limits, including unverified live multi-user acceptance and absent automatic IDE pairing.
+
+## Syntax workers and reviewed screen snapshots (2026-10-03)
+
+The indexer can invoke explicit local Python AST, Go parser and Java compiler-tree workers through a bounded versioned snapshot contract. It validates UTF-16 evidence, associates hashes, and commits syntax nodes/edges in the existing SQLite graph transaction. Caller name matches remain heuristic; imports/ambiguous calls remain unresolved. RuntimeClient and application-scoped editor settings pass absolute tool paths; no editor API enters core analysis.
+
+The hosted Screen lens is a separate provider boundary using AppDeploy structured image extraction. A user chooses a display/window/tab, capture stops after one frame, and an explicit preview/approval precedes transmission. Images are not added to the room database; analysis becomes a draft only on request. This is snapshot understanding, not continuous OS observation or verified source mapping. The earlier statement that the hosted service exposes no provider is superseded by this scoped image-analysis endpoint; local agent/edit authority remains absent.
+
+## Reviewed local memory
+
+The runtime owns a bounded JSON note store under .oax/memory, exposed through memory.prepare/save/list/delete and explicit memoryIds on ContextSlice preview/execution. Same-session hash approval authorizes persistence; source/workspace hashes and expiration gate retrieval. Notes remain untrusted, source-linked human claims. Local file locking serializes memory operations across processes; this is not distributed collaboration. See docs/reviewed-memory.md for limits and recovery.
+
+VS Code now exposes the runtime memory lifecycle through explicit commands; Buddy contains navigation links to these same controls and observes their existing approval prompts. Editor filtering is advisory; runtime source hashes, expiry, record identity and provider consent remain authoritative. Non-file Output changes do not invalidate agent code locations.
+
+Reviewed-memory suggestions are runtime-owned (`memory.suggest.v1`): exact-source freshness filters, range/lexical ranking, five-item budget, inspectable reasons/exclusions, and no automatic inclusion. CLI and VS Code share this protocol; explicit selection and context-hash consent remain separate.
+
+The hosted evidence consumers now share the canonical strict validator for code, graph, history and reviewed source-linked notes. The oAX1 duplicate validator was removed. CLI export carries these explicit selections into the existing inspect/share flow without transmitting automatically; AppDeploy releases remain separate from GitHub sync. The hosted apps neither own local memory nor grant local agent execution.
+
+## Editor memory selection inspection (2026-10-12)
+
+The memory note picker exposes a detached read-only snapshot of note IDs, checked IDs and the focused ID for actual editor acceptance. Initial keyboard focus checks no note; production context preview and explicit transmission consent remain authoritative. Reconnect hides the picker. Provider details and per-stream-step permission enforcement stay inside their existing boundaries.
+
+## Second-editor reviewed rename (2026-10-13)
+
+Trusted `--edits` setup selects `editor-reviewed-rename.v1`, adding three existing runtime methods: prepare rename, apply exact plan, and inspect review. The default and text-only contracts remain unchanged. The bridge retains one short-lived plan receipt per connection and consumes it on an apply attempt; the runtime still owns plan state, validation, grants, writes and review freshness.
+
+Neovim shows complete before/after content before native Cancel-default approval and checks affected loaded buffers. It refreshes only unmodified buffers after the runtime result and displays actual review evidence. No provider-specific execution, new persistence, test runner or permission engine was introduced.
+
+## Second-editor verification (2026-10-13)
+
+Independent trusted `--tests` setup selects `editor-verification.v1`, exposing the existing saved-test planner/runner and review reader. Optional rename support remains separately selected. A connection-scoped single-use receipt binds plan ID/hash and a maximum 60-second expiry before runtime dispatch. Execution, bounded output, timeout, cancellation, source freshness, grants and review state stay runtime-owned.
+
+The bridge retains verification task correlation after the initial request acknowledgement until terminal state, so later output and cancellation results reach Neovim. The adapter checks the captured buffer/session before native approval and renders the actual terminal result. Reusing a result window prevents repeated previews/results from exhausting editor splits.
+
+## Second-editor provider proposals (2026-10-13)
+
+Explicit Codex plus edit setup selects `editor-codex-edit.v1`; optional tests remain separately enabled. Context/explanation reuse existing hash-bound consent. Only complete non-redacted saved context can yield a fresh proposal receipt, bound to exact provider output and captured observation. A one-use refactor.propose dispatch reuses the runtime strict JSON replacement parser and single-selection plan. Write approval remains a separate plan/hash receipt and existing runtime grant/baseline boundary.
+
+Neovim shares one reviewed-plan UI for deterministic rename and provider proposals, checking affected buffers and connection continuity. Provider generation and test execution do not gain file-write authority; generated edits remain explicitly unverified until independent checks complete. VS Code production behavior and provider wire contracts are unchanged.
+
+## Neovim spatial presence (2026-10-14)
+
+The Lua presence module debounces meaningful editor observations through existing spatial.observe and ignores stale responses by connection generation and captured-state signature. It waits while requests/tasks are active, deduplicates unchanged captures and enforces automatic capture/frame budgets. Runtime graph focus is accepted only with the captured path and source hash, clears while a changed observation is pending, and is exposed as observation metadata; no task or provider route is invoked.
+
+Agent location rendering consumes validated public events and checks current visible-buffer source hashes and optional versions before UTF-16-to-byte conversion. Native extmarks render evidence without cursor movement or file opening. Source changes, task boundaries and connection cleanup invalidate marks. Local timers/callbacks cannot restore closed-session state. Optional statusline text is separate from source/results and preserves user configuration. No core/protocol/provider boundary changed.
+
+## Vim local spatial observation (2026-10-14)
+
+The existing read-only Vim adapter debounces local editor events for 250 ms and reuses spatial.observe. Current-buffer snapshot signatures and connection generations reject delayed replies; focus metadata also requires the captured path, version and source hash. Scratch/outside-root/oversized captures are omitted. Timer callbacks can see unavailable or stale viewport bounds, so capture emits no visible range when those bounds cannot be validated against the current document. Core graph and protocol validation remain authoritative.
+
+Background replies never open popups or replace explicit query results. Active requests/tasks defer capture; one explicit command can queue behind a background observation, while cancellation bypasses the wait. The queue drains only when all in-flight responses finish. Close stops timers, invalidates callbacks, clears observation metadata and reports discarded queued work. Reconnect resets connection errors and observation counts. No provider, write, test or agent-location capability was added.
+
+## Vim task-location rendering (2026-10-14)
+
+Vim tracks the current task identity, not only an active boolean. After workspace/session/order checks, only a matching active-task location can reach the native text-property renderer. It checks visible buffers, relative paths, source hashes, optional versions and UTF-16 boundaries; native conversions count combining characters separately and reject half-surrogate positions. An end-exclusive position beyond the final newline maps to the visible end of the last text line. Capture uses the same native UTF-16 length semantics.
+
+The renderer owns only the oax-agent property type. Editor invalidation, new/terminal tasks, window closure and disconnect remove those properties without clearing unrelated highlights. Public User OaxEvent notification occurs after state/rendering updates. Observations remain distinct from task activity; no provider, execution or permission boundary changed.
+
+Vim active characterwise/linewise selection capture uses native getregionpos bounds before converting to end-exclusive UTF-16. The adapter retains the actual cursor separately, includes selected line endings when present and rejects block/virtual selections. Optional Plug mappings use Cmd to preserve Visual mode during capture; ordinary colon commands retain cursor-point semantics. Mode changes invalidate the snapshot signature through the existing observation loop. Runtime and provider contracts are unchanged.

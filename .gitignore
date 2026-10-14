@@ -8,6 +8,15 @@ dist/
 *.vsix
 .vscode-test/
 coverage/
+.tools/
+**/.gradle/
+**/.intellijPlatform/
+adapters/jetbrains/build/
 desktop.ini
 agents.md-main.zip
 oAX.pdf
+
+__pycache__/
+*.py[cod]
+apps/workbench/public/icon-192.png
+apps/workbench/public/icon-512.png

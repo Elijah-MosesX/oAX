@@ -9,7 +9,20 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { OaxError } from '@oax/protocol';
 import { CodexRpc } from './rpc.js';
+import { activity, type ProviderActivity } from './events.js';
 export const SUPPORTED_CODEX_VERSION = '0.159.2';
+// Exact installed alpha verified against the same generated RPC contracts.
+export const SUPPORTED_CODEX_VERSIONS = [
+  SUPPORTED_CODEX_VERSION,
+  '0.159.0-alpha.12.1',
+  '0.162.0-alpha.2',
+  '0.162.0-alpha.17.2',
+] as const;
+export function supportedCodexVersion(output: string): string | undefined {
+  return SUPPORTED_CODEX_VERSIONS.find(
+    (version) => output.trim() === `codex-cli ${version}`,
+  );
+}
 const disabled = [
   'shell_tool',
   'unified_exec',
@@ -55,7 +68,8 @@ export class CodexTextClient {
       timeout: 10000,
       maxBuffer: 4096,
     });
-    if (result.stdout.trim() !== `codex-cli ${SUPPORTED_CODEX_VERSION}`)
+    const version = supportedCodexVersion(result.stdout);
+    if (!version)
       throw new OaxError(
         'PROVIDER_VERSION',
         'Unsupported Codex version; regenerate and verify contracts before enabling',
@@ -129,7 +143,7 @@ export class CodexTextClient {
         { refreshToken: false },
       );
       return {
-        version: SUPPORTED_CODEX_VERSION,
+        version,
         authenticated:
           account.account !== null && account.account !== undefined,
       };
@@ -142,6 +156,7 @@ export class CodexTextClient {
     text: string,
     signal?: AbortSignal,
     onDelta?: (text: string) => void,
+    onActivity?: (event: ProviderActivity) => void,
   ): Promise<string> {
     if (!this.rpc || !this.directory || this.threadId)
       throw new OaxError(
@@ -185,7 +200,10 @@ export class CodexTextClient {
     this.threadId = started.thread.id;
     let answer = '';
     return new Promise<string>((resolve, reject) => {
+      let settled = false;
       const finish = (error?: Error) => {
+        if (settled) return;
+        settled = true;
         clearTimeout(timer);
         unsubscribe();
         signal?.removeEventListener('abort', abort);
@@ -203,7 +221,40 @@ export class CodexTextClient {
         );
       }, 60000);
       const unsubscribe = this.rpc!.subscribe((event) => {
+        if (settled) return;
+        if (event.method === 'oax/serverRequestDenied') {
+          onActivity?.({ kind: 'tool', state: 'denied' });
+          return finish(
+            new OaxError(
+              'PROVIDER_POLICY',
+              'Provider requested an unavailable capability',
+            ),
+          );
+        }
         if (event.params.threadId !== this.threadId) return;
+        if (
+          this.turnId &&
+          event.params.turnId &&
+          event.params.turnId !== this.turnId
+        )
+          return;
+        try {
+          const translated = activity(event);
+          if (translated) onActivity?.(translated);
+          if (translated?.state === 'denied')
+            return finish(
+              new OaxError(
+                'PROVIDER_POLICY',
+                'Unexpected provider activity; text session interrupted',
+              ),
+            );
+        } catch (error) {
+          return finish(
+            error instanceof Error
+              ? error
+              : new OaxError('PROVIDER_PROTOCOL', 'Invalid activity'),
+          );
+        }
         if (event.method === 'item/agentMessage/delta') {
           if (typeof event.params.delta !== 'string')
             return finish(

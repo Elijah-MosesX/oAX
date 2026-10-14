@@ -14,6 +14,9 @@ importers:
       '@oax/browser':
         specifier: workspace:*
         version: link:packages/browser
+      '@oax/buddy':
+        specifier: workspace:*
+        version: link:packages/buddy
       '@oax/codegraph':
         specifier: workspace:*
         version: link:packages/codegraph
@@ -86,9 +89,15 @@ importers:
 
   adapters/vscode:
     dependencies:
+      '@oax/buddy':
+        specifier: workspace:*
+        version: link:../../packages/buddy
       '@oax/codegraph':
         specifier: workspace:*
         version: link:../../packages/codegraph
+      '@oax/codex':
+        specifier: workspace:*
+        version: link:../../packages/codex
       '@oax/git':
         specifier: workspace:*
         version: link:../../packages/git
@@ -137,6 +146,12 @@ importers:
       chrome-devtools-mcp:
         specifier: 1.10.1
         version: 1.10.1
+
+  packages/buddy:
+    dependencies:
+      '@oax/protocol':
+        specifier: workspace:*
+        version: link:../protocol
 
   packages/codegraph:
     dependencies:
@@ -224,6 +239,9 @@ importers:
       '@oax/spatial':
         specifier: workspace:*
         version: link:../spatial
+      '@oax/watcher':
+        specifier: workspace:*
+        version: link:../../services/watcher
 
   packages/spatial:
     dependencies:

@@ -7,6 +7,7 @@
     "node": "24.19.0"
   },
   "scripts": {
+    "test:languages": "node --import tsx tests/languages/acceptance.ts",
     "setup:browser": "node scripts/setup-browser.mjs",
     "test:browser": "tsx scripts/test-browser.ts",
     "build": "node scripts/build.mjs",
@@ -20,7 +21,16 @@
     "demo": "node dist/cli.cjs demo",
     "schemas": "tsx scripts/schemas.ts",
     "package:local": "node scripts/package.mjs",
-    "test:live": "tsx scripts/test-live-codex.ts"
+    "test:live": "tsx scripts/test-live-codex.ts",
+    "test:neovim": "node scripts/test-neovim.mjs",
+    "test:jev": "tsx scripts/test-jev.ts",
+    "test:browser-jev": "tsx scripts/test-browser.ts --jev",
+    "package:desktop": "node scripts/package-desktop.mjs",
+    "test:desktop": "node scripts/test-desktop.mjs",
+    "setup:editors": "node scripts/setup-editors.mjs",
+    "test:vim": "node scripts/test-vim.mjs",
+    "test:browser-addons": "node scripts/browser-addons.mjs --verify",
+    "package:chrome": "node scripts/package-chrome.mjs"
   },
   "devDependencies": {
     "@oax/browser": "workspace:*",
@@ -47,6 +57,7 @@
     "tsx": "4.20.6",
     "typescript": "5.9.3",
     "typescript-eslint": "8.71.0",
-    "@oax/github": "workspace:*"
+    "@oax/github": "workspace:*",
+    "@oax/buddy": "workspace:*"
   }
 }

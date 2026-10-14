@@ -172,3 +172,5 @@ With the pinned Windows Vim installed and the runtime built, set `OAX_VIM_PRESEN
 ## Vim agent-location acceptance
 
 Set `OAX_VIM_CURSOR_TEST=1` and run `node scripts/test-vim.mjs` with the pinned Windows Vim and built runtime. This exercises an actual mock-task event, native properties, UTF-16 emoji/combining characters, multiline/EOF ranges, source/version/hash checks, visibility, opt-out, inactive/wrong-session events and edit/window/task/disconnect cleanup. Unrelated text properties and the human cursor/source are checked. Receipt: `dist/vim-cursor-acceptance.json`. Clear other mode flags; default and presence suites remain regression checks. No live provider is used.
+
+The default `node scripts/test-vim.mjs` acceptance now runs normal Vim with `--not-a-term` and sources `tests/vim/selection.vim`. Ex mode cannot establish active Visual-mode capture. The default receipt includes Unicode, reverse/exclusive characterwise, multiline/linewise and EOF selection checks plus the public visual observation mapping against the real runtime. Presence and cursor modes retain their existing Ex-mode runners.

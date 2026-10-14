@@ -6,8 +6,10 @@ It preserves personal vimrc files, registry entries and global PATH.
 
 The Vimscript adapter uses the existing private `editor-read-only.v1` bridge and
 protocol 0.1. It captures the current unsaved buffer, versions, UTF-16 cursor,
-visible text windows and workspace scope. Current capture uses the cursor point;
-visual-selection capture is not yet implemented for Vim.
+visible text windows and workspace scope. Active characterwise and linewise visual
+selections use native Vim bounds, with zero-based, end-exclusive UTF-16 coordinates.
+Reverse selections, inclusive/exclusive settings and combining marks are supported.
+Normal mode captures the cursor point; block and virtual selections are rejected.
 It is read-only, with no Codex transmission, edits or execution. Neovim remains a
 separate adapter with its own existing acceptance.
 
@@ -39,13 +41,21 @@ OaxConnect
 ```
 
 Place the cursor on a supported TypeScript/JavaScript symbol and use `OaxObserve`,
-`OaxCallers` or `OaxContext`. A separate evidence popup preserves the developer's
+`OaxCallers` or `OaxContext`. For a visual selection, bind the provided mappings,
+for example `xmap <leader>oc <Plug>(OaxContext)` or
+`xmap <leader>oo <Plug>(OaxObserve)`; `<Plug>(OaxCallers)` is also available.
+These use `<Cmd>` to capture while Visual mode is active. Entering an ordinary
+colon command leaves Visual mode, so it captures only the current cursor.
+Mode changes also schedule fresh automatic observation. No keys are assigned by
+default. A separate evidence popup preserves the developer's
 cursor. `OaxClose` stops the owned bridge; editor exit also closes it. Responses
 validate version/workspace/correlation, events validate session/order, input and
 output are bounded and unsupported write methods fail closed.
 
 `pnpm test:vim` runs the actual installed Vim against a synthetic repository and
-the real built runtime. See PROGRESS.md for its outcome, rather than inferring
+the real built runtime. The default suite runs normal Vim mode without a terminal
+to exercise real visual selections and the public mapping, including reverse,
+Unicode, exclusive, multiline and EOF capture. See PROGRESS.md for its outcome, rather than inferring
 acceptance from this implementation.
 
 Set `OAX_VIM_PRESENCE_TEST=1` and run `node scripts/test-vim.mjs` for actual-editor

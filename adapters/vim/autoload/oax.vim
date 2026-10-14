@@ -23,6 +23,23 @@ endfunction
 function! s:utf16(value) abort
   return strutf16len(a:value, v:true)
 endfunction
+function! s:selection(point) abort
+  let kind = mode()
+  if kind ==# "\<C-V>" | throw 'Block selections are not supported by oAX' | endif
+  if kind !=# 'v' && kind !=# 'V' | return {'start': a:point, 'end': a:point} | endif
+  let bounds = getregionpos(getpos('v'), getpos('.'), {'type': kind, 'eol': v:true, 'bounds': v:true})[0]
+  let first = bounds[0]
+  let last = bounds[1]
+  if first[3] != 0 || last[3] != 0 | throw 'Virtual selections are not supported by oAX' | endif
+  let start = {'line': first[1] - 1, 'column': s:utf16(strpart(getline(first[1]), 0, first[2] - 1))}
+  let tail = getline(last[1])
+  let bytes = last[2] - 1
+  let finish = {'line': last[1] - 1, 'column': s:utf16(strpart(tail, 0, bytes) . strcharpart(strpart(tail, bytes), 0, 1, v:true))}
+  if (kind ==# 'V' || bytes >= strlen(tail)) && (last[1] < line('$') || &endofline)
+    let finish = {'line': last[1], 'column': 0}
+  endif
+  return {'start': start, 'end': finish}
+endfunction
 function! s:uri(value) abort
   let encoded = ''
   for byte in range(0, strlen(a:value) - 1)
@@ -54,7 +71,7 @@ function! oax#capture() abort
   endfor
   return {'path': strpart(file, strlen(prefix)), 'uri': s:uri(file), 'text': text,
         \ 'documentVersion': b:changedtick, 'dirty': &modified ? v:true : v:false, 'cursor': point,
-        \ 'selection': {'start': point, 'end': point}, 'openFiles': tabs,
+        \ 'selection': s:selection(point), 'openFiles': tabs,
         \ 'visibleRanges': visible}
 endfunction
 function! s:snapshot() abort

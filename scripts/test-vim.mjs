@@ -23,7 +23,7 @@ try {
   const result = path.join(root, 'result.json');
   await writeFile(
     script,
-    `set encoding=utf-8\nset nomore\nlet g:oax_acceptance=1\nexecute 'set runtimepath^=' . fnameescape(${literal(path.resolve('adapters/vim'))})\nruntime plugin/oax.vim\nexecute 'edit ' . fnameescape(${literal(path.join(root, 'sample.ts'))})\ncall setline(2, 'export function add(a: number, b: number) { return a+b+1; }')\ncall bufadd(${literal(path.join(root, 'consumer.ts'))})\ncall oax#connect(${literal(root)}, ${literal(path.resolve('dist/cli.cjs'))}, ${literal(process.execPath)})\nlet deadline=reltime()\nwhile !oax#inspect().connected && reltimefloat(reltime(deadline)) < 15\n  sleep 10m\nendwhile\ncall assert_true(oax#inspect().connected)\ncall cursor(1, strlen('// 😀 ') + 1)\ncall assert_equal(6, oax#capture().cursor.column)\ncall assert_equal(1, len(oax#capture().openFiles))\ncall assert_true(oax#capture().dirty)\ncall cursor(2, 17)\nlet before=getpos('.')\ncall oax#request('graph.query', {'observation':oax#capture(),'relationship':'callers'})\nlet deadline=reltime()\nwhile empty(oax#inspect().result) && empty(oax#inspect().error) && reltimefloat(reltime(deadline)) < 15\n  sleep 10m\nendwhile\nlet report=oax#inspect()\ncall assert_true(get(report.result, 'ok', 0))\ncall assert_match('consumer.ts', json_encode(report.result))\ncall assert_equal(before, getpos('.'))\ntry\n  call oax#request('refactor.apply', {})\n  call assert_report('Write was not rejected')\ncatch /Unsupported read-only method/\nendtry\ncall oax#close()\ncall assert_false(oax#inspect().connected)\ncall writefile([json_encode({'errors':v:errors,'vimError':v:errmsg,'report':report,'closed':!oax#inspect().connected})], ${literal(result)})\nif !empty(v:errors) | cquit | endif\nqa!\n`,
+    `set encoding=utf-8\nset nomore\nlet g:oax_acceptance=1\nexecute 'set runtimepath^=' . fnameescape(${literal(path.resolve('adapters/vim'))})\nruntime plugin/oax.vim\nexecute 'edit ' . fnameescape(${literal(path.join(root, 'sample.ts'))})\ncall setline(2, 'export function add(a: number, b: number) { return a+b+1; }')\ncall bufadd(${literal(path.join(root, 'consumer.ts'))})\ncall oax#connect(${literal(root)}, ${literal(path.resolve('dist/cli.cjs'))}, ${literal(process.execPath)})\nlet deadline=reltime()\nwhile !oax#inspect().connected && reltimefloat(reltime(deadline)) < 15\n  sleep 10m\nendwhile\ncall assert_true(oax#inspect().connected)\ncall cursor(1, strlen('// 😀 ') + 1)\ncall assert_equal(6, oax#capture().cursor.column)\ncall assert_equal(1, len(oax#capture().openFiles))\ncall assert_true(oax#capture().dirty)\ncall cursor(2, 17)\nlet before=getpos('.')\ncall oax#request('graph.query', {'observation':oax#capture(),'relationship':'callers'})\nlet deadline=reltime()\nwhile empty(oax#inspect().result) && empty(oax#inspect().error) && reltimefloat(reltime(deadline)) < 15\n  sleep 10m\nendwhile\nlet report=oax#inspect()\ncall assert_true(get(report.result, 'ok', 0))\ncall assert_match('consumer.ts', json_encode(report.result))\ncall assert_equal(before, getpos('.'))\ntry\n  call oax#request('refactor.apply', {})\n  call assert_report('Write was not rejected')\ncatch /Unsupported read-only method/\nendtry\nexecute 'source ' . fnameescape($OAX_TEST_REPO . '/tests/vim/selection.vim')\ncall oax#close()\ncall assert_false(oax#inspect().connected)\ncall writefile([json_encode({'errors':v:errors,'vimError':v:errmsg,'report':report,'closed':!oax#inspect().connected})], ${literal(result)})\nif !empty(v:errors) | cquit | endif\nqa!\n`,
   );
   const run = spawnSync(
     vim,
@@ -33,7 +33,7 @@ try {
       '-i',
       'NONE',
       '-n',
-      '-es',
+      ...(cursor || presence ? ['-es'] : ['--not-a-term']),
       '-S',
       cursor
         ? path.resolve('tests/vim/cursor.vim')
@@ -107,6 +107,7 @@ try {
                 'utf16',
                 'actual-visible-tabs',
                 'preserved-cursor',
+                'visual-selection-unicode-reverse-exclusive-linewise',
                 'denied-writes',
                 'cleanup',
               ],
